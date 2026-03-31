@@ -80,6 +80,7 @@
 - [x] Testset generation and graph transform scaffolding
 - [~] Integrations, CLI expansion, optimizers
   - [x] LangChain/LlamaIndex record adapters with evaluation wiring
+  - [x] LangChain/LlamaIndex tracing hooks with Langfuse/MLflow-style observers
   - [x] CLI scaffolding
   - [x] Optimizers (baseline scaffolding + genetic optimizer)
 
@@ -98,6 +99,42 @@
 
 ## Next Recommended Steps
 
-1. Expand integration adapters beyond record mapping (tracing/observability hooks).
+1. Expand integration adapters to additional frameworks beyond LangChain/LlamaIndex.
 2. Upgrade testset/transform scaffolds toward production-grade behavior.
 3. Implement production-grade DSPy optimizer adapter and metric prompt wiring.
+
+## Prompt Parity Findings (Python vs Kotlin)
+
+Scope compared: default evaluation metrics (`answer_relevancy`, `context_precision`, `context_recall`, `faithfulness`) and generic prompt/LLM call path.
+
+1. Python default metrics are LLM-prompt driven; Kotlin defaults are heuristic-only.
+   - Python uses metric-specific prompts + structured output models.
+   - Kotlin default metrics compute token-overlap style scores and do not send prompts to an LLM.
+
+2. Prompt construction format differs substantially.
+   - Python (`PydanticPrompt`/`BasePrompt`) builds prompts from instruction + JSON schema + few-shot examples + explicit `Input/Output` framing.
+   - Kotlin `PromptTemplate`/`SimplePrompt` is plain string interpolation without JSON schema injection or automatic structured output contract text.
+
+3. LLM output handling differs.
+   - Python expects typed structured outputs (Pydantic models) and validates/parses JSON.
+   - Kotlin primitive metrics parse raw text with lightweight heuristics (e.g., regex first-number extraction, string matching for discrete/ranking).
+
+4. `answer_relevancy` algorithm/prompting is different.
+   - Python prompts the LLM multiple times (strictness), generates reverse questions, detects noncommittal responses, then uses embedding cosine similarity.
+   - Kotlin uses Jaccard similarity over token sets of `user_input` and `response`; no LLM prompt, no noncommittal detection, no reverse-question generation.
+
+5. `context_precision` algorithm/prompting is different.
+   - Python prompts the LLM per retrieved context for binary usefulness verdicts (with reason), then computes average precision.
+   - Kotlin checks token overlap between each retrieved context and response tokens, then returns ratio of overlapping contexts.
+
+6. `context_recall` inputs and prompting are different.
+   - Python prompts the LLM to classify each statement in a reference answer as attributable/not attributable to retrieved context (with reasons).
+   - Kotlin uses token coverage between `retrieved_contexts` and `reference_contexts`; no statement-level attribution prompt and no reasoned verdicts.
+
+7. `faithfulness` pipeline is different.
+   - Python uses two LLM prompts: statement decomposition, then NLI-style faithfulness verdict per statement.
+   - Kotlin splits response into sentences and checks token overlap with retrieved-context tokens; no statement generation/NLI prompts.
+
+8. Chat message composition differs in adapters.
+   - Python prompt/LLM stack supports richer prompt objects, callbacks, and structured generation pathways.
+   - Kotlin `LangChain4jLlm` sends a single `UserMessage` containing the rendered prompt string (no explicit system-message layer in current adapter).

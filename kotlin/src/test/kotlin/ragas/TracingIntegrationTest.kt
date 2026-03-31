@@ -1,0 +1,82 @@
+package ragas
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import ragas.integrations.LangChainIntegration
+import ragas.integrations.LangChainRecord
+import ragas.integrations.LlamaIndexIntegration
+import ragas.integrations.LlamaIndexRecord
+import ragas.integrations.tracing.InMemoryTraceObserver
+import ragas.integrations.tracing.LangfuseStyleObserver
+import ragas.integrations.tracing.MetricRowLogged
+import ragas.integrations.tracing.MlflowStyleObserver
+import ragas.integrations.tracing.RunCompleted
+import ragas.integrations.tracing.RunStarted
+
+class TracingIntegrationTest {
+    @Test
+    fun langchainAdapterEmitsTraceLifecycleAndRows() {
+        val records =
+            listOf(
+                LangChainRecord(
+                    question = "What is Kotlin language",
+                    answer = "Kotlin is language.",
+                    retrievedContexts = listOf("Kotlin language on JVM", "Python language"),
+                    referenceContexts = listOf("Kotlin language", "JVM runtime"),
+                    reference = "Kotlin language",
+                ),
+            )
+
+        val memory = InMemoryTraceObserver()
+        val langfuse = LangfuseStyleObserver()
+        val mlflow = MlflowStyleObserver()
+
+        LangChainIntegration.evaluateRecords(
+            records = records,
+            observers = listOf(memory, langfuse, mlflow),
+            runName = "lc-run",
+            tags = mapOf("env" to "test"),
+            metadata = mapOf("framework_version" to "mock"),
+        )
+
+        assertTrue(memory.events.first() is RunStarted)
+        assertTrue(memory.events.last() is RunCompleted)
+        assertTrue(memory.events.any { event -> event is MetricRowLogged })
+
+        val runId = memory.events.first().runId
+        val lfTrace = langfuse.getTrace(runId)
+        assertTrue(lfTrace != null)
+        assertTrue(lfTrace!!.endTimeMs != null)
+
+        val mlRun = mlflow.getRun(runId)
+        assertTrue(mlRun != null)
+        assertEquals("FINISHED", mlRun!!.status)
+        assertTrue(mlRun.metrics.isNotEmpty())
+    }
+
+    @Test
+    fun llamaIndexAdapterEmitsTraceLifecycleAndRows() {
+        val records =
+            listOf(
+                LlamaIndexRecord(
+                    query = "What is Kotlin language",
+                    response = "Kotlin is language.",
+                    retrievedNodes = listOf("Kotlin language on JVM", "Python language"),
+                    referenceNodes = listOf("Kotlin language", "JVM runtime"),
+                    reference = "Kotlin language",
+                ),
+            )
+
+        val memory = InMemoryTraceObserver()
+        LlamaIndexIntegration.evaluateRecords(
+            records = records,
+            observers = listOf(memory),
+            runName = "li-run",
+        )
+
+        assertTrue(memory.events.first() is RunStarted)
+        assertTrue(memory.events.any { event -> event is MetricRowLogged })
+        assertTrue(memory.events.last() is RunCompleted)
+    }
+}
