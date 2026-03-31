@@ -1,6 +1,7 @@
 package ragas.cli
 
 import ragas.backends.BACKEND_REGISTRY
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     when (args.firstOrNull()) {
@@ -19,6 +20,7 @@ fun main(args: Array<String>) {
         else -> {
             println("Unknown command: ${args.first()}")
             printHelp()
+            exitProcess(1)
         }
     }
 }

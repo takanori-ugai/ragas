@@ -1,6 +1,15 @@
 package ragas.metrics.primitives
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import ragas.llms.BaseRagasLlm
+import ragas.llms.StructuredOutputRagasLlm
 import ragas.metrics.BaseMetric
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
@@ -18,7 +27,22 @@ class NumericMetric(
 ) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.CONTINUOUS),
     SingleTurnMetric,
     MetricWithLlm {
-    private val template = PromptTemplate(prompt)
+    private val template =
+        PromptTemplate(
+            instructionTemplate = prompt,
+            outputSchema =
+                buildJsonObject {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("value") {
+                            put("type", "number")
+                        }
+                    }
+                    putJsonArray("required") {
+                        add(JsonPrimitive("value"))
+                    }
+                },
+        )
 
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
@@ -27,24 +51,29 @@ class NumericMetric(
 
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
-        val response =
-            llmInstance
-                .generateText(
-                    prompt =
-                        template.render(
-                            mapOf(
-                                "user_input" to sample.userInput.orEmpty(),
-                                "response" to sample.response.orEmpty(),
-                                "reference" to sample.reference.orEmpty(),
-                                "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
-                            ),
-                        ),
-                ).generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-
-        val numeric = extractFirstNumber(response)
+        val prompt =
+            template.render(
+                mapOf(
+                    "user_input" to sample.userInput.orEmpty(),
+                    "response" to sample.response.orEmpty(),
+                    "reference" to sample.reference.orEmpty(),
+                    "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+                ),
+            )
+        val numeric =
+            if (llmInstance is StructuredOutputRagasLlm) {
+                val structured = llmInstance.generateNumericValue(prompt)
+                if (structured != null) {
+                    structured
+                } else {
+                    val raw = generateRawResponse(llmInstance, prompt)
+                    parseJsonValue(raw) ?: extractFirstNumber(raw)
+                }
+            } else {
+                val raw = generateRawResponse(llmInstance, prompt)
+                parseJsonValue(raw) ?: extractFirstNumber(raw)
+            }
+                ?: error("Metric '$name' could not parse a numeric score from LLM response.")
         val clamped =
             when {
                 numeric < allowedRange.start -> allowedRange.start
@@ -54,12 +83,30 @@ class NumericMetric(
         return clamped
     }
 
-    private fun extractFirstNumber(text: String): Double {
+    private fun parseJsonValue(raw: String): Double? =
+        runCatching {
+            val element = Json.parseToJsonElement(raw)
+            val value = (element as? JsonObject)?.get("value") as? JsonPrimitive
+            value?.content?.toDoubleOrNull()
+        }.getOrNull()
+
+    private fun extractFirstNumber(text: String): Double? {
         val match = numberRegex.find(text)
-        return match?.value?.toDoubleOrNull() ?: allowedRange.start
+        return match?.value?.toDoubleOrNull()
     }
 
     companion object {
         private val numberRegex = Regex("[-+]?[0-9]*\\.?[0-9]+")
     }
+
+    private suspend fun generateRawResponse(
+        llmInstance: BaseRagasLlm,
+        prompt: String,
+    ): String =
+        llmInstance
+            .generateText(prompt = prompt)
+            .generations
+            .firstOrNull()
+            ?.text
+            .orEmpty()
 }

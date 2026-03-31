@@ -1,6 +1,16 @@
 package ragas.metrics.primitives
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import ragas.llms.BaseRagasLlm
+import ragas.llms.StructuredOutputRagasLlm
 import ragas.metrics.BaseMetric
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
@@ -22,8 +32,30 @@ class RankingMetric(
         require(expectedSize > 0) { "expectedSize must be greater than 0" }
     }
 
-    private val template = PromptTemplate(prompt)
-    private val listPrefixPattern = Regex("^\\s*(?:[-*•]+|\\d+[.):-]?|[A-Za-z][.):-]|item\\s+\\d+\\s*[:.)-]?)\\s*", RegexOption.IGNORE_CASE)
+    private val template =
+        PromptTemplate(
+            instructionTemplate = prompt,
+            outputSchema =
+                buildJsonObject {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("items") {
+                            put("type", "array")
+                            putJsonObject("items") {
+                                put("type", "string")
+                            }
+                        }
+                    }
+                    putJsonArray("required") {
+                        add(JsonPrimitive("items"))
+                    }
+                },
+        )
+    private val listPrefixPattern =
+        Regex(
+            "^\\s*(?:[-*•]+\\s*|\\d+[.):-]\\s*|[A-Za-z][.):-]\\s*|item\\s+\\d+\\s*[:.)-]\\s*)",
+            RegexOption.IGNORE_CASE,
+        )
 
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
@@ -32,30 +64,51 @@ class RankingMetric(
 
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
+        val prompt =
+            template.render(
+                mapOf(
+                    "user_input" to sample.userInput.orEmpty(),
+                    "response" to sample.response.orEmpty(),
+                    "reference" to sample.reference.orEmpty(),
+                    "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+                ),
+            )
+
+        val parsed =
+            if (llmInstance is StructuredOutputRagasLlm) {
+                llmInstance
+                    .generateRankingItems(prompt)
+                    ?.map { item -> item.trim() }
+                    ?.filter { item -> item.isNotBlank() } ?: fallbackParse(llmInstance, prompt)
+            } else {
+                fallbackParse(llmInstance, prompt)
+            }
+
+        return parsed.take(expectedSize)
+    }
+
+    private suspend fun fallbackParse(
+        llmInstance: BaseRagasLlm,
+        prompt: String,
+    ): List<String> {
         val raw =
             llmInstance
-                .generateText(
-                    prompt =
-                        template.render(
-                            mapOf(
-                                "user_input" to sample.userInput.orEmpty(),
-                                "response" to sample.response.orEmpty(),
-                                "reference" to sample.reference.orEmpty(),
-                                "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
-                            ),
-                        ),
-                ).generations
+                .generateText(prompt = prompt)
+                .generations
                 .firstOrNull()
                 ?.text
                 .orEmpty()
+        val jsonItems =
+            runCatching {
+                val element = Json.parseToJsonElement(raw)
+                val items = (element as? JsonObject)?.get("items") as? JsonArray
+                items?.mapNotNull { (it as? JsonPrimitive)?.content }
+            }.getOrNull()
 
-        val parsed =
-            splitRankingItems(raw)
-                .map { item -> item.trim() }
-                .map { item -> item.replace(listPrefixPattern, "").trim() }
-                .filter { item -> item.isNotBlank() }
-
-        return parsed.take(expectedSize)
+        return (jsonItems ?: splitRankingItems(raw))
+            .map { item -> item.trim() }
+            .map { item -> item.replaceFirst(listPrefixPattern, "").trim() }
+            .filter { item -> item.isNotBlank() }
     }
 
     private fun splitRankingItems(raw: String): List<String> {

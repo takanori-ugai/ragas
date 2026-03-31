@@ -28,6 +28,26 @@ class LangChain4jLlmTest {
             assertEquals(0.7, request.temperature())
             assertEquals(listOf("STOP"), request.stopSequences())
         }
+
+    @Test
+    fun generateNumericValueParsesDoubleResponse() =
+        runBlocking {
+            val model = ConstantResponseChatModel("{\"value\": 0.85}")
+            val llm = LangChain4jLlm(model)
+
+            val result = llm.generateNumericValue("score this")
+            assertEquals(0.85, result)
+        }
+
+    @Test
+    fun generateRankingItemsParsesListResponse() =
+        runBlocking {
+            val model = ConstantResponseChatModel("{\"items\": [\"item1\", \"item2\"]}")
+            val llm = LangChain4jLlm(model)
+
+            val result = llm.generateRankingItems("rank these")
+            assertEquals(listOf("item1", "item2"), result)
+        }
 }
 
 private class CapturingChatModel : ChatModel {
@@ -40,4 +60,14 @@ private class CapturingChatModel : ChatModel {
             .aiMessage(AiMessage.from("ok"))
             .build()
     }
+}
+
+private class ConstantResponseChatModel(
+    private val response: String,
+) : ChatModel {
+    override fun doChat(chatRequest: ChatRequest): ChatResponse =
+        ChatResponse
+            .builder()
+            .aiMessage(AiMessage.from(response))
+            .build()
 }

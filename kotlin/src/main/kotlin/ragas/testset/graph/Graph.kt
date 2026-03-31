@@ -19,6 +19,19 @@ data class Node(
     val properties: MutableMap<String, String> = mutableMapOf(),
     val type: NodeType = NodeType.UNKNOWN,
 ) {
+    init {
+        if (properties.isNotEmpty()) {
+            val normalized =
+                properties.entries.groupBy { (key, _) -> key.lowercase() }
+            val duplicates = normalized.filterValues { it.size > 1 }.keys
+            require(duplicates.isEmpty()) {
+                "Duplicate property keys when normalized to lowercase: ${duplicates.joinToString(", ")}"
+            }
+            properties.clear()
+            properties.putAll(normalized.mapValues { (_, entries) -> entries.first().value })
+        }
+    }
+
     fun addProperty(
         key: String,
         value: String,

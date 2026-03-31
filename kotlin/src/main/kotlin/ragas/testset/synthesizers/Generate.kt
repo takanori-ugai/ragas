@@ -31,8 +31,11 @@ class TestsetGenerator(
         }
         knowledgeGraph = kg
 
+        val candidateNodes =
+            nodes.filter { node -> !node.getProperty("page_content").isNullOrBlank() }
+
         val evalSamples =
-            kg.nodes
+            candidateNodes
                 .take(testsetSize)
                 .map { node ->
                     val content = node.getProperty("page_content").orEmpty()

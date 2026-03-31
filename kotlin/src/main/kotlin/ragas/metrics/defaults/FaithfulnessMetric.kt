@@ -15,6 +15,8 @@ class FaithfulnessMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    private val minSentenceCoveragePerContext = 0.5
+
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val contexts = sample.retrievedContexts.orEmpty()
         val response = sample.response.orEmpty()
@@ -22,7 +24,7 @@ class FaithfulnessMetric :
             return 0.0
         }
 
-        val contextTokens = contexts.flatMap { context -> tokenSet(context) }.toSet()
+        val contextTokenSets = contexts.map { context -> tokenSet(context) }
         val responseSentences =
             response
                 .split(Regex("[.!?]"))
@@ -36,7 +38,12 @@ class FaithfulnessMetric :
         val supported =
             responseSentences.count { sentence ->
                 val sentenceTokens = tokenSet(sentence)
-                sentenceTokens.isNotEmpty() && sentenceTokens.intersect(contextTokens).isNotEmpty()
+                sentenceTokens.isNotEmpty() &&
+                    contextTokenSets.any { contextTokens ->
+                        val overlap = sentenceTokens.intersect(contextTokens).size.toDouble()
+                        val coverage = overlap / sentenceTokens.size.toDouble()
+                        coverage >= minSentenceCoveragePerContext
+                    }
             }
 
         return clamp01(supported.toDouble() / responseSentences.size.toDouble())

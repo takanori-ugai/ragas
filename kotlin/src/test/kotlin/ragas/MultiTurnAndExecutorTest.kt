@@ -1,6 +1,7 @@
 package ragas
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -16,6 +17,7 @@ import ragas.model.HumanMessage
 import ragas.model.MultiTurnSample
 import ragas.runtime.Executor
 import ragas.runtime.RunConfig
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -58,6 +60,26 @@ class MultiTurnAndExecutorTest {
         }
 
     @Test
+    fun executorTimeoutReturnsNullWhenRaiseExceptionsIsFalse() =
+        runBlocking {
+            val executor =
+                Executor(
+                    raiseExceptions = false,
+                    runConfig = RunConfig(maxRetries = 1, maxWaitSeconds = 0, timeoutSeconds = 1, maxWorkers = 2),
+                )
+            executor.submit(name = "timeout") {
+                delay(1_500)
+                1
+            }
+            executor.submit(name = "ok") { 2 }
+
+            val results = executor.aresults()
+            assertEquals(2, results.size)
+            assertEquals(null, results[0])
+            assertEquals(2, results[1])
+        }
+
+    @Test
     fun executorPropagatesWhenRaiseExceptionsIsTrue() {
         runBlocking {
             val executor =
@@ -87,7 +109,34 @@ class MultiTurnAndExecutorTest {
 
             executor.cancel()
             val results = executor.aresults()
-            assertEquals(0, results.size)
+            assertEquals(3, results.size)
+            assertEquals(listOf(null, null, null), results)
+        }
+
+    @Test
+    fun executorCancelStopsInFlightAndPreservesResultAlignment() =
+        runBlocking {
+            val executor = Executor(runConfig = RunConfig(timeoutSeconds = 5, maxWorkers = 4))
+            val completed = AtomicInteger(0)
+            repeat(6) { i ->
+                executor.submit {
+                    delay(2_000)
+                    completed.incrementAndGet()
+                    i
+                }
+            }
+
+            val results =
+                coroutineScope {
+                    val resultsDeferred = async { executor.aresults() }
+                    delay(100)
+                    executor.cancel()
+                    resultsDeferred.await()
+                }
+
+            assertEquals(6, results.size)
+            assertTrue(results.all { it == null })
+            assertEquals(0, completed.get())
         }
 
     @Test

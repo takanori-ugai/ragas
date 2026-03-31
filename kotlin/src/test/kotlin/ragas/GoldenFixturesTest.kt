@@ -9,7 +9,6 @@ import ragas.evaluation.evaluate
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.SingleTurnSample
-import java.io.File
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,6 +71,8 @@ class GoldenFixturesTest {
 
     private fun readFixture(name: String) =
         Json.parseToJsonElement(
-            File("src/test/resources/fixtures/evaluation/$name").readText(),
+            requireNotNull(javaClass.classLoader.getResourceAsStream("fixtures/evaluation/$name")) {
+                "Fixture not found on classpath: fixtures/evaluation/$name"
+            }.bufferedReader().use { it.readText() },
         )
 }
