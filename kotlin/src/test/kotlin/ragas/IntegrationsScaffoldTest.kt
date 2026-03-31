@@ -1,12 +1,12 @@
 package ragas
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import ragas.integrations.LangChainIntegration
 import ragas.integrations.LangChainRecord
 import ragas.integrations.LlamaIndexIntegration
 import ragas.integrations.LlamaIndexRecord
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class IntegrationsScaffoldTest {
     @Test

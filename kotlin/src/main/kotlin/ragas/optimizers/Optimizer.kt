@@ -18,7 +18,10 @@ data class OptimizerConfig(
 )
 
 fun interface PromptEvaluator {
-    fun score(prompt: String, dataset: OptimizationDataset): Double
+    fun score(
+        prompt: String,
+        dataset: OptimizationDataset,
+    ): Double
 }
 
 interface Optimizer {

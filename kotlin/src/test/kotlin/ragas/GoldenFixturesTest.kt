@@ -1,10 +1,5 @@
 package ragas
 
-import java.io.File
-import kotlin.math.abs
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
@@ -14,6 +9,11 @@ import ragas.evaluation.evaluate
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.SingleTurnSample
+import java.io.File
+import kotlin.math.abs
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class GoldenFixturesTest {
     @Test

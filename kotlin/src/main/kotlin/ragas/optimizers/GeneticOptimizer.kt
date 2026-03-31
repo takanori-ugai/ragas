@@ -62,14 +62,14 @@ class GeneticOptimizer : Optimizer {
         parent2: String,
         random: Random,
     ): String {
-        val split1 = parent1.split(" ")
-        val split2 = parent2.split(" ")
-        if (split1.isEmpty()) {
+        if (parent1.isBlank()) {
             return parent2
         }
-        if (split2.isEmpty()) {
+        if (parent2.isBlank()) {
             return parent1
         }
+        val split1 = parent1.trim().split("\\s+".toRegex())
+        val split2 = parent2.trim().split("\\s+".toRegex())
 
         val cut1 = random.nextInt(split1.size)
         val cut2 = random.nextInt(split2.size)

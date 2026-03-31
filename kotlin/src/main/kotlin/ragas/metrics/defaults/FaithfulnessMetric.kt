@@ -8,11 +8,13 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
-class FaithfulnessMetric : BaseMetric(
-    name = "faithfulness",
-    requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("retrieved_contexts", "response")),
-    outputType = MetricOutputType.CONTINUOUS,
-), SingleTurnMetric {
+class FaithfulnessMetric :
+    BaseMetric(
+        name = "faithfulness",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("retrieved_contexts", "response")),
+        outputType = MetricOutputType.CONTINUOUS,
+    ),
+    SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val contexts = sample.retrievedContexts.orEmpty()
         val response = sample.response.orEmpty()
@@ -21,9 +23,11 @@ class FaithfulnessMetric : BaseMetric(
         }
 
         val contextTokens = contexts.flatMap { context -> tokenSet(context) }.toSet()
-        val responseSentences = response.split(Regex("[.!?]"))
-            .map { sentence -> sentence.trim() }
-            .filter { sentence -> sentence.isNotBlank() }
+        val responseSentences =
+            response
+                .split(Regex("[.!?]"))
+                .map { sentence -> sentence.trim() }
+                .filter { sentence -> sentence.isNotBlank() }
 
         if (responseSentences.isEmpty()) {
             return 0.0

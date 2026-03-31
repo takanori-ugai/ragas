@@ -4,9 +4,18 @@ import ragas.backends.BACKEND_REGISTRY
 
 fun main(args: Array<String>) {
     when (args.firstOrNull()) {
-        null, "help", "--help", "-h" -> printHelp()
-        "status" -> printStatus()
-        "backends" -> printBackends()
+        null, "help", "--help", "-h" -> {
+            printHelp()
+        }
+
+        "status" -> {
+            printStatus()
+        }
+
+        "backends" -> {
+            printBackends()
+        }
+
         else -> {
             println("Unknown command: ${args.first()}")
             printHelp()

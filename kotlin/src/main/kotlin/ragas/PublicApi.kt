@@ -7,8 +7,6 @@ import ragas.backends.BackendRegistry
 import ragas.cache.CacheBackend
 import ragas.embeddings.BaseRagasEmbedding
 import ragas.embeddings.CachedRagasEmbedding
-import ragas.evaluation.aevaluate as aevaluateInternal
-import ragas.evaluation.evaluate as evaluateInternal
 import ragas.llms.BaseRagasLlm
 import ragas.llms.CachedRagasLlm
 import ragas.metrics.Metric
@@ -17,6 +15,8 @@ import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.Sample
 import ragas.runtime.RunConfig
+import ragas.evaluation.aevaluate as aevaluateInternal
+import ragas.evaluation.evaluate as evaluateInternal
 
 const val VERSION: String = "0.0.1"
 

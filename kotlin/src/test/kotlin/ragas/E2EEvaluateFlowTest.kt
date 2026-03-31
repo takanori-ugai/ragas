@@ -1,9 +1,12 @@
 package ragas
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import ragas.embeddings.BaseRagasEmbedding
+import ragas.evaluation.aevaluate
 import ragas.evaluation.evaluate
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -17,6 +20,11 @@ import ragas.metrics.SingleTurnMetric
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class E2EEvaluateFlowTest {
     @Test
@@ -46,23 +54,88 @@ class E2EEvaluateFlowTest {
         assertTrue((result.scores[1]["injected_metric"] as Double) > 0.0)
         assertEquals(null, metric.llm)
         assertEquals(null, metric.embeddings)
-        assertEquals(2, llm.calls)
+        assertEquals(2, llm.calls.get())
         assertEquals(2, embeddings.calls)
+    }
+
+    @Test
+    fun aevaluateDoesNotLeakInjectedLlmAcrossConcurrentCalls() =
+        runBlocking {
+            val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r1")))
+            val metric = DelayedLlmMetric()
+            val firstLlm = TaggedLlm("first")
+            val secondLlm = TaggedLlm("second")
+
+            val firstResultDeferred =
+                async {
+                    aevaluate(
+                        dataset = dataset,
+                        metrics = listOf(metric),
+                        llm = firstLlm,
+                    )
+                }
+
+            assertTrue(metric.awaitInit())
+
+            val secondResultDeferred =
+                async {
+                    aevaluate(
+                        dataset = dataset,
+                        metrics = listOf(metric),
+                        llm = secondLlm,
+                    )
+                }
+
+            val firstScore = firstResultDeferred.await().scores.single()["delayed_llm_metric"]
+            val secondScore = secondResultDeferred.await().scores.single()["delayed_llm_metric"]
+
+            assertEquals("first", firstScore)
+            assertEquals("second", secondScore)
+        }
+
+    @Test
+    fun aevaluateResetsInjectedDependenciesWhenMetricInitFails() {
+        val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r1")))
+        val metric = InitFailingMetric()
+        val llm = TaggedLlm("tag")
+        val embeddings = FakeE2EEmbedding(listOf(0.1f))
+
+        assertFailsWith<IllegalStateException> {
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(metric),
+                llm = llm,
+                embeddings = embeddings,
+            )
+        }
+
+        assertEquals(null, metric.llm)
+        assertEquals(null, metric.embeddings)
     }
 }
 
-private class InjectedDependenciesMetric : BaseMetric(
-    name = "injected_metric",
-    requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
-    outputType = MetricOutputType.CONTINUOUS,
-), SingleTurnMetric, MetricWithLlm, MetricWithEmbeddings {
+private class InjectedDependenciesMetric :
+    BaseMetric(
+        name = "injected_metric",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.CONTINUOUS,
+    ),
+    SingleTurnMetric,
+    MetricWithLlm,
+    MetricWithEmbeddings {
     override var llm: BaseRagasLlm? = null
     override var embeddings: BaseRagasEmbedding? = null
 
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm)
         val embeddingInstance = checkNotNull(embeddings)
-        val llmScore = llmInstance.generateText(sample.response.orEmpty()).generations.first().text.toDouble()
+        val llmScore =
+            llmInstance
+                .generateText(sample.response.orEmpty())
+                .generations
+                .first()
+                .text
+                .toDouble()
         val embeddingScore = embeddingInstance.embedText(sample.response.orEmpty()).sum().toDouble()
         return llmScore + embeddingScore
     }
@@ -71,7 +144,7 @@ private class InjectedDependenciesMetric : BaseMetric(
 private class FakeE2ELlm(
     private val output: String,
 ) : BaseRagasLlm {
-    var calls: Int = 0
+    val calls = AtomicInteger(0)
     override var runConfig: RunConfig = RunConfig()
 
     override suspend fun generateText(
@@ -80,7 +153,7 @@ private class FakeE2ELlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        calls += 1
+        calls.incrementAndGet()
         return LlmResult(generations = listOf(LlmGeneration(output)))
     }
 }
@@ -94,4 +167,74 @@ private class FakeE2EEmbedding(
         calls += 1
         return vector
     }
+}
+
+private class DelayedLlmMetric :
+    BaseMetric(
+        name = "delayed_llm_metric",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.DISCRETE,
+    ),
+    SingleTurnMetric,
+    MetricWithLlm {
+    override var llm: BaseRagasLlm? = null
+
+    private val initSignal = CompletableDeferred<Unit>()
+
+    override suspend fun init(runConfig: RunConfig) {
+        validateRequiredColumns()
+        initSignal.complete(Unit)
+    }
+
+    suspend fun awaitInit(timeoutMillis: Long = 2_000): Boolean =
+        try {
+            withTimeout(timeoutMillis) {
+                initSignal.await()
+            }
+            true
+        } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+            false
+        }
+
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+        delay(150)
+        return checkNotNull(llm)
+            .generateText("any")
+            .generations
+            .first()
+            .text
+    }
+}
+
+private class TaggedLlm(
+    private val tag: String,
+) : BaseRagasLlm {
+    override var runConfig: RunConfig = RunConfig()
+
+    override suspend fun generateText(
+        prompt: String,
+        n: Int,
+        temperature: Double?,
+        stop: List<String>?,
+    ): LlmResult = LlmResult(generations = listOf(LlmGeneration(tag)))
+}
+
+private class InitFailingMetric :
+    BaseMetric(
+        name = "init_failing_metric",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.CONTINUOUS,
+    ),
+    SingleTurnMetric,
+    MetricWithLlm,
+    MetricWithEmbeddings {
+    override var llm: BaseRagasLlm? = null
+    override var embeddings: BaseRagasEmbedding? = null
+
+    override suspend fun init(runConfig: RunConfig) {
+        validateRequiredColumns()
+        throw IllegalStateException("init failed")
+    }
+
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any = 0.0
 }

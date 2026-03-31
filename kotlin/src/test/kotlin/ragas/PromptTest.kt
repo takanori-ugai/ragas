@@ -1,11 +1,11 @@
 package ragas
 
+import ragas.prompt.PromptCollection
+import ragas.prompt.SimplePrompt
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import ragas.prompt.PromptCollection
-import ragas.prompt.SimplePrompt
 
 class PromptTest {
     @Test
@@ -22,29 +22,37 @@ class PromptTest {
         assertTrue(formatted.contains("Examples:"))
 
         val dir = createTempDirectory("ragas-prompt-test").toFile()
-        val path = dir.resolve("prompt.json").absolutePath
-        prompt.save(path)
+        try {
+            val path = dir.resolve("prompt.json").absolutePath
+            prompt.save(path)
 
-        val loaded = SimplePrompt.load(path)
-        assertEquals(prompt.instruction, loaded.instruction)
-        assertEquals(prompt.examples.size, loaded.examples.size)
+            val loaded = SimplePrompt.load(path)
+            assertEquals(prompt.instruction, loaded.instruction)
+            assertEquals(prompt.examples.size, loaded.examples.size)
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test
     fun promptCollectionSaveAndLoad() {
-        val holder = DummyPromptHolder(
-            mutableMapOf(
-                "p1" to SimplePrompt("Hello {name}"),
-                "p2" to SimplePrompt("Bye {name}"),
-            ),
-        )
+        val holder =
+            DummyPromptHolder(
+                mutableMapOf(
+                    "p1" to SimplePrompt("Hello {name}"),
+                    "p2" to SimplePrompt("Bye {name}"),
+                ),
+            )
         val dir = createTempDirectory("ragas-prompts").toFile()
+        try {
+            holder.savePrompts(dir.absolutePath)
 
-        holder.savePrompts(dir.absolutePath)
-
-        val loaded = holder.loadPrompts(dir.absolutePath)
-        assertEquals(2, loaded.size)
-        assertEquals("Hello {name}", loaded.getValue("p1").instruction)
+            val loaded = holder.loadPrompts(dir.absolutePath)
+            assertEquals(2, loaded.size)
+            assertEquals("Hello {name}", loaded.getValue("p1").instruction)
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 }
 

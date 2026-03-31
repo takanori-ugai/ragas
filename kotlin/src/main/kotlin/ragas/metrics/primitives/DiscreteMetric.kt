@@ -15,7 +15,9 @@ class DiscreteMetric(
     override var llm: BaseRagasLlm?,
     private val allowedValues: List<String>,
     override val requiredColumns: Map<MetricType, Set<String>> = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
-) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.DISCRETE), SingleTurnMetric, MetricWithLlm {
+) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.DISCRETE),
+    SingleTurnMetric,
+    MetricWithLlm {
     init {
         require(allowedValues.isNotEmpty()) { "allowedValues cannot be empty" }
     }
@@ -27,26 +29,31 @@ class DiscreteMetric(
         llm?.runConfig = runConfig
     }
 
-    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any? {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val raw =
-            llmInstance.generateText(
-                prompt =
-                    template.render(
-                        mapOf(
-                            "user_input" to sample.userInput.orEmpty(),
-                            "response" to sample.response.orEmpty(),
-                            "reference" to sample.reference.orEmpty(),
-                            "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+            llmInstance
+                .generateText(
+                    prompt =
+                        template.render(
+                            mapOf(
+                                "user_input" to sample.userInput.orEmpty(),
+                                "response" to sample.response.orEmpty(),
+                                "reference" to sample.reference.orEmpty(),
+                                "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+                            ),
                         ),
-                    ),
-            ).generations.firstOrNull()?.text.orEmpty().trim()
+                ).generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
+                .trim()
 
         val normalized = raw.lowercase()
         val selected =
             allowedValues.firstOrNull { allowed ->
                 allowed.lowercase() == normalized || normalized.contains(allowed.lowercase())
             }
-        return selected ?: allowedValues.first()
+        return selected
     }
 }

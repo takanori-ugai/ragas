@@ -9,14 +9,12 @@ suspend fun <T> retryAsync(
     block: suspend () -> T,
 ): T {
     var attempt = 0
-    var lastError: Throwable? = null
 
     while (attempt < runConfig.maxRetries) {
         try {
             return block()
         } catch (error: Throwable) {
             attempt += 1
-            lastError = error
             if (!runConfig.shouldRetry(error) || attempt >= runConfig.maxRetries) {
                 throw error
             }
@@ -28,5 +26,5 @@ suspend fun <T> retryAsync(
         }
     }
 
-    throw lastError ?: IllegalStateException("Retry loop exited without error or result.")
+    error("Retry loop exited unexpectedly")
 }

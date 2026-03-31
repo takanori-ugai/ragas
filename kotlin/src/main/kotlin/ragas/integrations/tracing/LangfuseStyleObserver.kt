@@ -24,12 +24,15 @@ class LangfuseStyleObserver : TraceObserver {
                         metadata = event.metadata,
                     )
             }
+
             is RunCompleted -> {
                 traces[event.runId]?.endTimeMs = event.timestampMs
             }
+
             is RunFailed -> {
                 traces[event.runId]?.endTimeMs = event.timestampMs
             }
+
             is MetricRowLogged -> {
                 // row-level spans can be derived externally; we keep trace-level state only
             }

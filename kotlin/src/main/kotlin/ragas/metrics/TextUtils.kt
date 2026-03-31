@@ -1,9 +1,8 @@
 package ragas.metrics
 
-private val tokenPattern = Regex("[A-Za-z0-9]+")
+private val tokenPattern = Regex("[\\p{L}\\p{M}\\p{N}]+")
 
-fun tokenize(text: String): List<String> =
-    tokenPattern.findAll(text.lowercase()).map { match -> match.value }.toList()
+fun tokenize(text: String): List<String> = tokenPattern.findAll(text.lowercase()).map { match -> match.value }.toList()
 
 fun tokenSet(text: String): Set<String> = tokenize(text).toSet()
 
@@ -16,7 +15,7 @@ fun jaccardSimilarity(
     }
     val intersection = left.intersect(right).size.toDouble()
     val union = left.union(right).size.toDouble()
-    return if (union == 0.0) 0.0 else intersection / union
+    return intersection / union
 }
 
 fun clamp01(value: Double): Double =

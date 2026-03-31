@@ -9,7 +9,7 @@ interface PromptCollection {
 
     fun savePrompts(path: String) {
         val dir = File(path)
-        dir.mkdirs()
+        require(dir.mkdirs() || dir.isDirectory) { "Failed to create directory: $path" }
         getPrompts().forEach { (name, prompt) ->
             prompt.save(File(dir, "$name.json").path)
         }
@@ -17,7 +17,7 @@ interface PromptCollection {
 
     fun loadPrompts(path: String): Map<String, SimplePrompt> {
         val dir = File(path)
-        require(dir.exists()) { "Path does not exist: $path" }
+        require(dir.isDirectory) { "Path is not a directory: $path" }
 
         return getPrompts().keys.associateWith { name ->
             SimplePrompt.load(File(dir, "$name.json").path)

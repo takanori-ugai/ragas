@@ -24,7 +24,8 @@ class TestsetGenerator(
                 )
             }
 
-        val kg = KnowledgeGraph(nodes = nodes.toMutableList())
+        val kg = knowledgeGraph
+        kg.nodes += nodes
         if (transforms != null) {
             applyTransforms(kg, transforms)
         }

@@ -1,8 +1,10 @@
 package ragas.backends
 
+import java.util.concurrent.ConcurrentHashMap
+
 class InMemoryBackend : BaseBackend {
-    private val datasets = mutableMapOf<String, List<Map<String, Any?>>>()
-    private val experiments = mutableMapOf<String, List<Map<String, Any?>>>()
+    private val datasets = ConcurrentHashMap<String, List<Map<String, Any?>>>()
+    private val experiments = ConcurrentHashMap<String, List<Map<String, Any?>>>()
 
     override fun loadDataset(name: String): List<Map<String, Any?>> =
         datasets[name]?.map { row -> row.toMap() }

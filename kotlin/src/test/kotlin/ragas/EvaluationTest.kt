@@ -56,9 +56,20 @@ private class ContainsReferenceWordMetric :
     ),
     SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
-        val response = sample.response.orEmpty().lowercase()
-        val reference = sample.reference.orEmpty().lowercase()
-        val contains = reference.split(" ").any { token -> token.isNotBlank() && token in response }
+        val responseTokens =
+            sample.response
+                .orEmpty()
+                .lowercase()
+                .split("\\s+".toRegex())
+                .filter { token -> token.isNotBlank() }
+                .toSet()
+        val referenceTokens =
+            sample.reference
+                .orEmpty()
+                .lowercase()
+                .split("\\s+".toRegex())
+                .filter { token -> token.isNotBlank() }
+        val contains = referenceTokens.any { token -> token in responseTokens }
         return if (contains) 1.0 else 0.0
     }
 }

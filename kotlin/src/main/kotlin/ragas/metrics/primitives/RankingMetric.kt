@@ -15,12 +15,15 @@ class RankingMetric(
     override var llm: BaseRagasLlm?,
     private val expectedSize: Int,
     override val requiredColumns: Map<MetricType, Set<String>> = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
-) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.RANKING), SingleTurnMetric, MetricWithLlm {
+) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.RANKING),
+    SingleTurnMetric,
+    MetricWithLlm {
     init {
         require(expectedSize > 0) { "expectedSize must be greater than 0" }
     }
 
     private val template = PromptTemplate(prompt)
+    private val listPrefixPattern = Regex("^\\s*(?:[-*•]+|\\d+[.):-]?|[A-Za-z][.):-]|item\\s+\\d+\\s*[:.)-]?)\\s*", RegexOption.IGNORE_CASE)
 
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
@@ -30,24 +33,40 @@ class RankingMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val raw =
-            llmInstance.generateText(
-                prompt =
-                    template.render(
-                        mapOf(
-                            "user_input" to sample.userInput.orEmpty(),
-                            "response" to sample.response.orEmpty(),
-                            "reference" to sample.reference.orEmpty(),
-                            "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+            llmInstance
+                .generateText(
+                    prompt =
+                        template.render(
+                            mapOf(
+                                "user_input" to sample.userInput.orEmpty(),
+                                "response" to sample.response.orEmpty(),
+                                "reference" to sample.reference.orEmpty(),
+                                "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+                            ),
                         ),
-                    ),
-            ).generations.firstOrNull()?.text.orEmpty()
+                ).generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
 
         val parsed =
-            raw
-                .split("\n", ",")
-                .map { item -> item.trim().trimStart('-', '*', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', ')', ' ') }
+            splitRankingItems(raw)
+                .map { item -> item.trim() }
+                .map { item -> item.replace(listPrefixPattern, "").trim() }
                 .filter { item -> item.isNotBlank() }
 
         return parsed.take(expectedSize)
+    }
+
+    private fun splitRankingItems(raw: String): List<String> {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) {
+            return emptyList()
+        }
+        return if (trimmed.contains('\n')) {
+            trimmed.lines()
+        } else {
+            trimmed.split(',')
+        }
     }
 }

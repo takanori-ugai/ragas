@@ -8,11 +8,13 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
-class ContextRecallMetric : BaseMetric(
-    name = "context_recall",
-    requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("retrieved_contexts", "reference_contexts")),
-    outputType = MetricOutputType.CONTINUOUS,
-), SingleTurnMetric {
+class ContextRecallMetric :
+    BaseMetric(
+        name = "context_recall",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("retrieved_contexts", "reference_contexts")),
+        outputType = MetricOutputType.CONTINUOUS,
+    ),
+    SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val retrieved = sample.retrievedContexts.orEmpty()
         val references = sample.referenceContexts.orEmpty()

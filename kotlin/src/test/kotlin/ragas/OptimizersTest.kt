@@ -1,14 +1,14 @@
 package ragas
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 import ragas.optimizers.DspyOptimizer
 import ragas.optimizers.GeneticOptimizer
 import ragas.optimizers.OptimizationDataset
 import ragas.optimizers.OptimizationExample
 import ragas.optimizers.OptimizerConfig
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class OptimizersTest {
     @Test

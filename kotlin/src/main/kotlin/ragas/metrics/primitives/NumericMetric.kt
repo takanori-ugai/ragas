@@ -15,7 +15,9 @@ class NumericMetric(
     override var llm: BaseRagasLlm?,
     private val allowedRange: ClosedFloatingPointRange<Double> = 0.0..1.0,
     override val requiredColumns: Map<MetricType, Set<String>> = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
-) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.CONTINUOUS), SingleTurnMetric, MetricWithLlm {
+) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.CONTINUOUS),
+    SingleTurnMetric,
+    MetricWithLlm {
     private val template = PromptTemplate(prompt)
 
     override suspend fun init(runConfig: RunConfig) {
@@ -26,17 +28,21 @@ class NumericMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val response =
-            llmInstance.generateText(
-                prompt =
-                    template.render(
-                        mapOf(
-                            "user_input" to sample.userInput.orEmpty(),
-                            "response" to sample.response.orEmpty(),
-                            "reference" to sample.reference.orEmpty(),
-                            "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+            llmInstance
+                .generateText(
+                    prompt =
+                        template.render(
+                            mapOf(
+                                "user_input" to sample.userInput.orEmpty(),
+                                "response" to sample.response.orEmpty(),
+                                "reference" to sample.reference.orEmpty(),
+                                "retrieved_contexts" to sample.retrievedContexts.orEmpty().joinToString("\n"),
+                            ),
                         ),
-                    ),
-            ).generations.firstOrNull()?.text.orEmpty()
+                ).generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
 
         val numeric = extractFirstNumber(response)
         val clamped =

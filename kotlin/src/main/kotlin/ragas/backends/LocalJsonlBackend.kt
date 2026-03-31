@@ -5,23 +5,37 @@ import java.io.File
 class LocalJsonlBackend(
     private val rootDir: String,
 ) : BaseBackend {
+    private val validNamePattern = Regex("[A-Za-z0-9._-]+")
+
     private fun getDataDir(dataType: String): File = File(rootDir, dataType)
 
-    private fun getFile(dataType: String, name: String): File = File(getDataDir(dataType), "$name.jsonl")
+    private fun sanitizeName(name: String): String {
+        require(name.matches(validNamePattern)) {
+            "Invalid name '$name'. Only letters, digits, dot, underscore, and hyphen are allowed."
+        }
+        return name
+    }
 
-    private fun load(dataType: String, name: String): List<Map<String, Any?>> {
+    private fun getFile(
+        dataType: String,
+        name: String,
+    ): File = File(getDataDir(dataType), "${sanitizeName(name)}.jsonl")
+
+    private fun load(
+        dataType: String,
+        name: String,
+    ): List<Map<String, Any?>> {
         val file = getFile(dataType, name)
         if (!file.exists()) {
             throw java.io.FileNotFoundException("No ${dataType.dropLast(1)} named '$name' found at ${file.path}")
         }
-        if (file.readText().isBlank()) {
-            return emptyList()
+        return file.useLines { lines ->
+            lines
+                .map { line -> line.trim() }
+                .filter { line -> line.isNotEmpty() }
+                .map { line -> jsonLineToRow(line) }
+                .toList()
         }
-
-        return file.readLines()
-            .map { line -> line.trim() }
-            .filter { line -> line.isNotEmpty() }
-            .map { line -> jsonLineToRow(line) }
     }
 
     private fun save(
@@ -47,7 +61,8 @@ class LocalJsonlBackend(
             return emptyList()
         }
 
-        return dir.listFiles { file -> file.isFile && file.extension == "jsonl" }
+        return dir
+            .listFiles { file -> file.isFile && file.extension == "jsonl" }
             ?.map { file -> file.nameWithoutExtension }
             ?.sorted()
             ?: emptyList()

@@ -43,8 +43,10 @@ abstract class Extractor(
         return filtered.nodes.map { node ->
             suspend {
                 val (key, value) = extract(node)
-                if (node.getProperty(key) == null) {
-                    node.addProperty(key, value)
+                synchronized(node) {
+                    if (node.getProperty(key) == null) {
+                        node.addProperty(key, value)
+                    }
                 }
             }
         }
@@ -74,8 +76,10 @@ abstract class Splitter(
         return filtered.nodes.map { node ->
             suspend {
                 val (nodes, relationships) = split(node)
-                kg.nodes += nodes
-                kg.relationships += relationships
+                synchronized(kg) {
+                    kg.nodes += nodes
+                    kg.relationships += relationships
+                }
             }
         }
     }

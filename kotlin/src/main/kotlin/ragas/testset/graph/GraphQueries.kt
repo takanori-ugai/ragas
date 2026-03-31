@@ -6,6 +6,7 @@ fun getChildNodes(
     level: Int = 1,
 ): List<Node> {
     val children = mutableListOf<Node>()
+    val visited = mutableSetOf<String>()
 
     fun dfs(
         currentNode: Node,
@@ -19,6 +20,9 @@ fun getChildNodes(
             .filter { rel -> rel.type == "child" && rel.sourceId == currentNode.id }
             .forEach { rel ->
                 val child = graph.getNodeById(rel.targetId) ?: return@forEach
+                if (!visited.add(child.id)) {
+                    return@forEach
+                }
                 children += child
                 dfs(child, currentLevel + 1)
             }
@@ -34,6 +38,7 @@ fun getParentNodes(
     level: Int = 1,
 ): List<Node> {
     val parents = mutableListOf<Node>()
+    val visited = mutableSetOf<String>()
 
     fun dfs(
         currentNode: Node,
@@ -47,6 +52,9 @@ fun getParentNodes(
             .filter { rel -> rel.type == "child" && rel.targetId == currentNode.id }
             .forEach { rel ->
                 val parent = graph.getNodeById(rel.sourceId) ?: return@forEach
+                if (!visited.add(parent.id)) {
+                    return@forEach
+                }
                 parents += parent
                 dfs(parent, currentLevel + 1)
             }

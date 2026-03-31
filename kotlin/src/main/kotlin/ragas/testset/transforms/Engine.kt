@@ -1,7 +1,7 @@
 package ragas.testset.transforms
 
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -31,10 +31,12 @@ suspend fun applyTransforms(
         is SingleTransform -> {
             executePlan(transforms.transform.generateExecutionPlan(kg), runConfig)
         }
+
         is Parallel -> {
             val plan = transforms.transformations.flatMap { transform -> transform.generateExecutionPlan(kg) }
             executePlan(plan, runConfig)
         }
+
         is SequenceTransforms -> {
             transforms.transformations.forEach { transform ->
                 applyTransforms(kg, transform, runConfig)
@@ -56,9 +58,9 @@ private suspend fun executePlan(
         plan
             .map { task ->
                 async {
-                semaphore.withPermit {
-                    task()
-                }
+                    semaphore.withPermit {
+                        task()
+                    }
                 }
             }.awaitAll()
     }

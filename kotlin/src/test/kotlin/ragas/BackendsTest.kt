@@ -1,14 +1,14 @@
 package ragas
 
+import ragas.backends.BackendRegistry
+import ragas.backends.InMemoryBackend
+import ragas.backends.LocalCsvBackend
+import ragas.backends.LocalJsonlBackend
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import ragas.backends.BackendRegistry
-import ragas.backends.InMemoryBackend
-import ragas.backends.LocalCsvBackend
-import ragas.backends.LocalJsonlBackend
 
 class BackendsTest {
     @Test
@@ -39,10 +39,43 @@ class BackendsTest {
         backend.saveDataset("dataset1", rows)
 
         val loaded = backend.loadDataset("dataset1")
+        assertEquals(rows.size, loaded.size)
         assertEquals("1", loaded[0]["id"])
         assertEquals("hello,world", loaded[0]["text"])
         assertEquals("true", loaded[0]["flag"])
+        assertEquals("2", loaded[1]["id"])
+        assertEquals("plain", loaded[1]["text"])
+        assertEquals("false", loaded[1]["flag"])
         assertEquals(listOf("dataset1"), backend.listDatasets())
+    }
+
+    @Test
+    fun localCsvBackendRoundTripsMultilineQuotedFields() {
+        val root = createTempDirectory("ragas-csv-test").toFile()
+        val backend = LocalCsvBackend(root.absolutePath)
+
+        val rows =
+            listOf(
+                mapOf("id" to 1, "text" to "first line\nsecond line"),
+                mapOf("id" to 2, "text" to "plain"),
+            )
+        backend.saveDataset("dataset_multiline", rows)
+
+        val loaded = backend.loadDataset("dataset_multiline")
+        assertEquals("first line\nsecond line", loaded[0]["text"])
+        assertEquals("plain", loaded[1]["text"])
+    }
+
+    @Test
+    fun localCsvBackendRejectsTraversalStyleNames() {
+        val root = createTempDirectory("ragas-csv-test").toFile()
+        val backend = LocalCsvBackend(root.absolutePath)
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                backend.saveDataset("../evil", listOf(mapOf("id" to 1)))
+            }
+        assertTrue(error.message.orEmpty().contains("Invalid name '../evil'"))
     }
 
     @Test
@@ -73,6 +106,29 @@ class BackendsTest {
     }
 
     @Test
+    fun localJsonlBackendRejectsUnsupportedValueTypes() {
+        val root = createTempDirectory("ragas-jsonl-test").toFile()
+        val backend = LocalJsonlBackend(root.absolutePath)
+
+        val rows = listOf(mapOf("id" to 1, "unsupported" to Any()))
+        assertFailsWith<IllegalArgumentException> {
+            backend.saveExperiment("exp-bad", rows)
+        }
+    }
+
+    @Test
+    fun localJsonlBackendRejectsTraversalStyleNames() {
+        val root = createTempDirectory("ragas-jsonl-test").toFile()
+        val backend = LocalJsonlBackend(root.absolutePath)
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                backend.saveExperiment("../evil", listOf(mapOf("id" to 1)))
+            }
+        assertTrue(error.message.orEmpty().contains("Invalid name '../evil'"))
+    }
+
+    @Test
     fun backendRegistrySupportsAliases() {
         val registry = BackendRegistry()
         registry.register("custom", ::InMemoryBackend, aliasList = listOf("c"))
@@ -81,6 +137,18 @@ class BackendsTest {
         assertTrue(registry.contains("c"))
         val backend = registry.create("c")
         assertTrue(backend is InMemoryBackend)
+    }
+
+    @Test
+    fun backendRegistryRejectsAliasCollisionsAcrossDifferentBackends() {
+        val registry = BackendRegistry()
+        registry.register("first", ::InMemoryBackend, aliasList = listOf("shared"))
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                registry.register("second", ::InMemoryBackend, aliasList = listOf("shared"))
+            }
+        assertTrue(error.message.orEmpty().contains("Alias 'shared' is already registered"))
     }
 
     @Test

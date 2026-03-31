@@ -15,6 +15,7 @@ enum class NodeType {
 @Serializable
 data class Node(
     val id: String = UUID.randomUUID().toString(),
+    // Mutable by design; data-class copy() is shallow for this map.
     val properties: MutableMap<String, String> = mutableMapOf(),
     val type: NodeType = NodeType.UNKNOWN,
 ) {
@@ -64,7 +65,7 @@ class KnowledgeGraph(
         val file = File(path)
         file.parentFile?.mkdirs()
         val payload = SerializableKnowledgeGraph(nodes = nodes, relationships = relationships)
-        file.writeText(Json.encodeToString(payload))
+        file.writeText(graphJson.encodeToString(payload))
     }
 
     override fun toString(): String = "KnowledgeGraph(nodes=${nodes.size}, relationships=${relationships.size})"
@@ -73,7 +74,7 @@ class KnowledgeGraph(
         fun load(path: String): KnowledgeGraph {
             val file = File(path)
             require(file.exists()) { "Knowledge graph file not found: $path" }
-            val payload = Json.decodeFromString<SerializableKnowledgeGraph>(file.readText())
+            val payload = graphJson.decodeFromString<SerializableKnowledgeGraph>(file.readText())
             return KnowledgeGraph(
                 nodes = payload.nodes.toMutableList(),
                 relationships = payload.relationships.toMutableList(),
@@ -81,3 +82,9 @@ class KnowledgeGraph(
         }
     }
 }
+
+private val graphJson =
+    Json {
+        prettyPrint = true
+        ignoreUnknownKeys = true
+    }

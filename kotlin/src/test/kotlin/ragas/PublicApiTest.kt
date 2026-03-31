@@ -1,8 +1,5 @@
 package ragas
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import ragas.cache.InMemoryCacheBackend
 import ragas.embeddings.BaseRagasEmbedding
@@ -12,6 +9,9 @@ import ragas.llms.LlmResult
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PublicApiTest {
     @Test
@@ -36,41 +36,43 @@ class PublicApiTest {
     }
 
     @Test
-    fun topLevelAevaluateWorks() = runBlocking {
-        val dataset =
-            EvaluationDataset(
-                listOf(
-                    SingleTurnSample(
-                        userInput = "What is Kotlin language",
-                        response = "Kotlin is language.",
-                        retrievedContexts = listOf("Kotlin language on JVM", "Python language"),
-                        referenceContexts = listOf("Kotlin language", "JVM runtime"),
-                        reference = "Kotlin language",
+    fun topLevelAevaluateWorks() =
+        runBlocking {
+            val dataset =
+                EvaluationDataset(
+                    listOf(
+                        SingleTurnSample(
+                            userInput = "What is Kotlin language",
+                            response = "Kotlin is language.",
+                            retrievedContexts = listOf("Kotlin language on JVM", "Python language"),
+                            referenceContexts = listOf("Kotlin language", "JVM runtime"),
+                            reference = "Kotlin language",
+                        ),
                     ),
-                ),
-            )
+                )
 
-        val result = aevaluate(dataset = dataset)
-        assertTrue(result.scores.isNotEmpty())
-    }
+            val result = aevaluate(dataset = dataset)
+            assertTrue(result.scores.isNotEmpty())
+        }
 
     @Test
-    fun topLevelWithCacheWrapsProviders() = runBlocking {
-        val llm = ApiFakeLlm("0.5")
-        val embedding = ApiFakeEmbedding(listOf(0.1f, 0.2f))
-        val cache = InMemoryCacheBackend()
+    fun topLevelWithCacheWrapsProviders() =
+        runBlocking {
+            val llm = ApiFakeLlm("0.5")
+            val embedding = ApiFakeEmbedding(listOf(0.1f, 0.2f))
+            val cache = InMemoryCacheBackend()
 
-        val cachedLlm = withCache(llm, cache)
-        val cachedEmbedding = withCache(embedding, cache)
+            val cachedLlm = withCache(llm, cache)
+            val cachedEmbedding = withCache(embedding, cache)
 
-        cachedLlm.generateText("prompt")
-        cachedLlm.generateText("prompt")
-        cachedEmbedding.embedText("text")
-        cachedEmbedding.embedText("text")
+            cachedLlm.generateText("prompt")
+            cachedLlm.generateText("prompt")
+            cachedEmbedding.embedText("text")
+            cachedEmbedding.embedText("text")
 
-        assertEquals(1, llm.calls)
-        assertEquals(1, embedding.calls)
-    }
+            assertEquals(1, llm.calls)
+            assertEquals(1, embedding.calls)
+        }
 
     @Test
     fun backendRegistryFacadeIsAvailable() {

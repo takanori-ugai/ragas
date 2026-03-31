@@ -4,8 +4,8 @@ data class MlflowRun(
     val runId: String,
     val runName: String,
     val params: Map<String, String>,
-    val metrics: MutableMap<String, Double> = mutableMapOf(),
-    var status: String = "RUNNING",
+    val metrics: Map<String, Double> = emptyMap(),
+    val status: String = "RUNNING",
 )
 
 class MlflowStyleObserver : TraceObserver {
@@ -18,24 +18,37 @@ class MlflowStyleObserver : TraceObserver {
                     MlflowRun(
                         runId = event.runId,
                         runName = event.runName,
-                        params = event.tags + event.metadata,
+                        params = (event.tags + event.metadata).toMap(),
                     )
             }
+
             is MetricRowLogged -> {
                 // MLflow-style row logs are usually reduced into final metrics
             }
+
             is RunCompleted -> {
                 val run = runs[event.runId] ?: return
-                run.metrics.putAll(event.aggregateMetrics)
-                run.status = "FINISHED"
+                runs[event.runId] =
+                    run.copy(
+                        metrics = run.metrics + event.aggregateMetrics,
+                        status = "FINISHED",
+                    )
             }
+
             is RunFailed -> {
-                runs[event.runId]?.status = "FAILED"
+                val run = runs[event.runId] ?: return
+                runs[event.runId] = run.copy(status = "FAILED")
             }
         }
     }
 
-    fun getRun(runId: String): MlflowRun? = runs[runId]
+    fun getRun(runId: String): MlflowRun? =
+        runs[runId]?.let { run ->
+            run.copy(params = run.params.toMap(), metrics = run.metrics.toMap())
+        }
 
-    fun allRuns(): List<MlflowRun> = runs.values.toList()
+    fun allRuns(): List<MlflowRun> =
+        runs.values.map { run ->
+            run.copy(params = run.params.toMap(), metrics = run.metrics.toMap())
+        }
 }

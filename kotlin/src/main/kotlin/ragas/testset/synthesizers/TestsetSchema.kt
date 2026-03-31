@@ -12,21 +12,24 @@ data class TestsetSample(
 
 data class Testset(
     val samples: List<TestsetSample>,
-    val runId: String = java.util.UUID.randomUUID().toString(),
+    val runId: String =
+        java.util.UUID
+            .randomUUID()
+            .toString(),
 ) {
     fun toEvaluationDataset(): EvaluationDataset<out Sample> {
         if (samples.isEmpty()) {
             return EvaluationDataset(emptyList<SingleTurnSample>())
         }
         val evalSamples = samples.map { sample -> sample.evalSample }
-        val first = evalSamples.first()
-        return when (first) {
-            is SingleTurnSample -> {
-                EvaluationDataset(evalSamples.map { it as SingleTurnSample })
-            }
-            is MultiTurnSample -> {
-                EvaluationDataset(evalSamples.map { it as MultiTurnSample })
-            }
+        val firstType = evalSamples.first()::class
+        require(evalSamples.all { it::class == firstType }) {
+            "Mixed sample types are not supported in a single Testset."
+        }
+        return when (firstType) {
+            SingleTurnSample::class -> EvaluationDataset(evalSamples.map { it as SingleTurnSample })
+            MultiTurnSample::class -> EvaluationDataset(evalSamples.map { it as MultiTurnSample })
+            else -> error("Unsupported sample type: $firstType")
         }
     }
 
@@ -42,8 +45,9 @@ data class Testset(
                     val synthesizer = row["synthesizer_name"]?.toString() ?: "unknown"
                     val sample =
                         if (row["user_input"] is List<*>) {
-                            // Minimal placeholder for multi-turn deserialization
-                            MultiTurnSample(userInput = emptyList())
+                            throw IllegalArgumentException(
+                                "Multi-turn deserialization is not implemented for fromList() yet.",
+                            )
                         } else {
                             SingleTurnSample(
                                 userInput = row["user_input"]?.toString(),

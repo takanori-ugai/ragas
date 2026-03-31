@@ -22,9 +22,9 @@ data class EvaluationDataset<T : Sample>(
             return
         }
         val firstType = items.first()::class
-        items.forEachIndexed { index, sample ->
+        items.drop(1).forEachIndexed { index, sample ->
             require(sample::class == firstType) {
-                "Sample at index $index is ${sample::class}, expected $firstType."
+                "Sample at index ${index + 1} is ${sample::class}, expected $firstType."
             }
         }
     }

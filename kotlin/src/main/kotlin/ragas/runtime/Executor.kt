@@ -1,5 +1,6 @@
 package ragas.runtime
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -16,6 +17,8 @@ class Executor(
     private val runConfig: RunConfig = RunConfig(),
     private val batchSize: Int? = null,
 ) {
+    private val logger = KotlinLogging.logger {}
+    private val jobsLock = Any()
     private val jobs = mutableListOf<Job>()
     private val cancelled = AtomicBoolean(false)
     private var jobsProcessed = 0
@@ -30,20 +33,28 @@ class Executor(
         name: String? = null,
         block: suspend () -> Any?,
     ) {
-        jobs += Job(index = jobsProcessed++, name = name, block = block)
+        synchronized(jobsLock) {
+            jobs += Job(index = jobsProcessed++, name = name, block = block)
+        }
     }
 
     fun clearJobs() {
-        jobs.clear()
-        jobsProcessed = 0
+        synchronized(jobsLock) {
+            jobs.clear()
+            jobsProcessed = 0
+        }
     }
 
     suspend fun aresults(): List<Any?> {
         if (jobs.isEmpty()) {
             return emptyList()
         }
-        val queuedJobs = jobs.toList()
-        jobs.clear()
+        val queuedJobs =
+            synchronized(jobsLock) {
+                val snapshot = jobs.toList()
+                jobs.clear()
+                snapshot
+            }
 
         val semaphore = Semaphore(runConfig.maxWorkers)
         val entries =
@@ -88,7 +99,7 @@ class Executor(
 
         return try {
             val value =
-                withTimeout(runConfig.timeoutSeconds * 1_000) {
+                withTimeout(runConfig.timeoutSeconds * 1_000L) {
                     retryAsync(runConfig) {
                         job.block()
                     }
@@ -101,8 +112,9 @@ class Executor(
             if (raiseExceptions) {
                 throw error
             }
-            println("[$description] Job ${job.index}${job.name?.let { " ($it)" } ?: ""} failed: ${error.message}")
-            ResultEntry(job.index, Double.NaN)
+            val jobLabel = "${job.index}${job.name?.let { " ($it)" } ?: ""}"
+            logger.warn(error) { "[$description] Job $jobLabel failed" }
+            ResultEntry(job.index, null)
         }
     }
 

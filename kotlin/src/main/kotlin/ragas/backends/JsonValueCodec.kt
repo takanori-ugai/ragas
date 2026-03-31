@@ -14,24 +14,54 @@ private val json = Json
 
 fun anyToJsonElement(value: Any?): JsonElement =
     when (value) {
-        null -> JsonNull
-        is JsonElement -> value
-        is String -> JsonPrimitive(value)
-        is Number -> JsonPrimitive(value)
-        is Boolean -> JsonPrimitive(value)
+        null -> {
+            JsonNull
+        }
+
+        is JsonElement -> {
+            value
+        }
+
+        is String -> {
+            JsonPrimitive(value)
+        }
+
+        is Number -> {
+            JsonPrimitive(value)
+        }
+
+        is Boolean -> {
+            JsonPrimitive(value)
+        }
+
         is Map<*, *> -> {
             val map = value.entries.associate { (k, v) -> k.toString() to anyToJsonElement(v) }
             JsonObject(map)
         }
-        is List<*> -> JsonArray(value.map { anyToJsonElement(it) })
-        else -> JsonPrimitive(value.toString())
+
+        is List<*> -> {
+            JsonArray(value.map { anyToJsonElement(it) })
+        }
+
+        else -> {
+            throw IllegalArgumentException("Unsupported value type for JSON serialization: ${value::class.qualifiedName}")
+        }
     }
 
 fun jsonElementToAny(element: JsonElement): Any? =
     when (element) {
-        is JsonNull -> null
-        is JsonObject -> element.mapValues { (_, value) -> jsonElementToAny(value) }
-        is JsonArray -> element.map { item -> jsonElementToAny(item) }
+        is JsonNull -> {
+            null
+        }
+
+        is JsonObject -> {
+            element.mapValues { (_, value) -> jsonElementToAny(value) }
+        }
+
+        is JsonArray -> {
+            element.map { item -> jsonElementToAny(item) }
+        }
+
         is JsonPrimitive -> {
             when {
                 element.isString -> element.content

@@ -1,16 +1,26 @@
 package ragas.backends
 
 import java.io.File
+import java.io.Reader
 
 class LocalCsvBackend(
     private val rootDir: String,
 ) : BaseBackend {
+    private val validNamePattern = Regex("[A-Za-z0-9._-]+")
+
     private fun getDataDir(dataType: String): File = File(rootDir, dataType)
+
+    private fun sanitizeName(name: String): String {
+        require(name.matches(validNamePattern)) {
+            "Invalid name '$name'. Only letters, digits, dot, underscore, and hyphen are allowed."
+        }
+        return name
+    }
 
     private fun getFile(
         dataType: String,
         name: String,
-    ): File = File(getDataDir(dataType), "$name.csv")
+    ): File = File(getDataDir(dataType), "${sanitizeName(name)}.csv")
 
     private fun load(
         dataType: String,
@@ -22,22 +32,23 @@ class LocalCsvBackend(
                 "No ${dataType.dropLast(1)} named '$name' found at ${file.path}",
             )
         }
-        val lines = file.readLines()
-        if (lines.isEmpty()) {
-            return emptyList()
-        }
-
-        val headers = parseCsvLine(lines.first())
-        return lines
-            .drop(1)
-            .filter { line -> line.isNotBlank() }
-            .map { line ->
-                val cells = parseCsvLine(line)
-                headers
-                    .mapIndexed { index, header ->
-                        header to cells.getOrElse(index) { "" }
-                    }.toMap()
+        return file.bufferedReader().use { reader ->
+            val records = parseCsvRecords(reader)
+            if (records.isEmpty()) {
+                return@use emptyList()
             }
+
+            val headers = records.first()
+            records
+                .drop(1)
+                .filter { cells -> cells.any { cell -> cell.isNotBlank() } }
+                .map { cells ->
+                    headers
+                        .mapIndexed { index, header ->
+                            header to cells.getOrElse(index) { "" }
+                        }.toMap()
+                }
+        }
     }
 
     private fun save(
@@ -114,33 +125,72 @@ class LocalCsvBackend(
         return "\"$escaped\""
     }
 
-    private fun parseCsvLine(line: String): List<String> {
-        val result = mutableListOf<String>()
+    private fun parseCsvRecords(reader: Reader): List<List<String>> {
+        val records = mutableListOf<List<String>>()
+        var row = mutableListOf<String>()
         val current = StringBuilder()
         var inQuotes = false
-        var i = 0
+        var chCode = reader.read()
 
-        while (i < line.length) {
-            val ch = line[i]
+        while (chCode != -1) {
+            val ch = chCode.toChar()
             when {
                 ch == '"' -> {
-                    if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-                        current.append('"')
-                        i += 1
+                    if (inQuotes) {
+                        reader.mark(1)
+                        val nextCode = reader.read()
+                        if (nextCode == '"'.code) {
+                            current.append('"')
+                        } else {
+                            inQuotes = false
+                            if (nextCode != -1) {
+                                reader.reset()
+                            }
+                        }
                     } else {
-                        inQuotes = !inQuotes
+                        inQuotes = true
                     }
                 }
+
                 ch == ',' && !inQuotes -> {
-                    result += current.toString()
+                    row += current.toString()
                     current.clear()
                 }
-                else -> current.append(ch)
+
+                ch == '\n' && !inQuotes -> {
+                    row += current.toString()
+                    records += row
+                    row = mutableListOf()
+                    current.clear()
+                }
+
+                ch == '\r' && !inQuotes -> {
+                    reader.mark(1)
+                    val nextCode = reader.read()
+                    if (nextCode != '\n'.code && nextCode != -1) {
+                        reader.reset()
+                    }
+                    row += current.toString()
+                    records += row
+                    row = mutableListOf()
+                    current.clear()
+                }
+
+                else -> {
+                    current.append(ch)
+                }
             }
-            i += 1
+            chCode = reader.read()
         }
 
-        result += current.toString()
-        return result
+        if (inQuotes) {
+            throw IllegalArgumentException("Malformed CSV: unterminated quoted field.")
+        }
+        if (current.isNotEmpty() || row.isNotEmpty()) {
+            row += current.toString()
+            records += row
+        }
+
+        return records
     }
 }

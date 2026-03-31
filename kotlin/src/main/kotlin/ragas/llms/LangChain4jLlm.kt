@@ -2,6 +2,7 @@ package ragas.llms
 
 import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.ChatModel
+import dev.langchain4j.model.chat.request.ChatRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -28,7 +29,17 @@ class LangChain4jLlm(
                     async {
                         withTimeout(runConfig.timeoutSeconds * 1_000) {
                             withContext(Dispatchers.IO) {
-                                val response = model.chat(UserMessage.from(prompt))
+                                val requestBuilder =
+                                    ChatRequest
+                                        .builder()
+                                        .messages(UserMessage.from(prompt))
+                                if (temperature != null) {
+                                    requestBuilder.temperature(temperature)
+                                }
+                                if (!stop.isNullOrEmpty()) {
+                                    requestBuilder.stopSequences(stop)
+                                }
+                                val response = model.chat(requestBuilder.build())
                                 val text = response.aiMessage().text()
                                 val finish = response.finishReason()?.name
                                 LlmGeneration(

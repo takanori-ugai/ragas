@@ -13,6 +13,10 @@ class BackendRegistry {
         backends[name] = factory
         aliasList.forEach { alias ->
             if (alias.isNotBlank()) {
+                val existing = aliases[alias]
+                require(existing == null || existing == name) {
+                    "Alias '$alias' is already registered for backend '$existing'."
+                }
                 aliases[alias] = name
             }
         }
@@ -20,8 +24,9 @@ class BackendRegistry {
 
     fun create(name: String): BaseBackend {
         val resolved = aliases[name] ?: name
-        val factory = backends[resolved]
-            ?: throw NoSuchElementException("Backend '$name' not found. Available backends: ${availableNames()}")
+        val factory =
+            backends[resolved]
+                ?: throw NoSuchElementException("Backend '$name' not found. Available backends: ${availableNames()}")
         return factory()
     }
 
@@ -37,11 +42,12 @@ class BackendRegistry {
     }
 }
 
-val BACKEND_REGISTRY = BackendRegistry().apply {
-    register("inmemory", ::InMemoryBackend)
-    register("local/csv", { LocalCsvBackend(".") }, aliasList = listOf("csv"))
-    register("local/jsonl", { LocalJsonlBackend(".") }, aliasList = listOf("jsonl"))
-}
+val BACKEND_REGISTRY =
+    BackendRegistry().apply {
+        register("inmemory", ::InMemoryBackend)
+        register("local/csv", { LocalCsvBackend(".") }, aliasList = listOf("csv"))
+        register("local/jsonl", { LocalJsonlBackend(".") }, aliasList = listOf("jsonl"))
+    }
 
 fun registerBackend(
     name: String,

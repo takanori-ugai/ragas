@@ -27,11 +27,12 @@ data class SimplePrompt(
         }
 
         val examplesText =
-            examples.mapIndexed { index, example ->
-                val inputText = example.input.entries.joinToString("\n") { (k, v) -> "$k: $v" }
-                val outputText = example.output.entries.joinToString("\n") { (k, v) -> "$k: $v" }
-                "Example ${index + 1}:\nInput:\n$inputText\nOutput:\n$outputText"
-            }.joinToString("\n\n")
+            examples
+                .mapIndexed { index, example ->
+                    val inputText = example.input.entries.joinToString("\n") { (k, v) -> "$k: $v" }
+                    val outputText = example.output.entries.joinToString("\n") { (k, v) -> "$k: $v" }
+                    "Example ${index + 1}:\nInput:\n$inputText\nOutput:\n$outputText"
+                }.joinToString("\n\n")
 
         return "$rendered\n\nExamples:\n$examplesText"
     }

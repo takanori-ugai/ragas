@@ -9,11 +9,13 @@ import ragas.metrics.jaccardSimilarity
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
-class AnswerRelevancyMetric : BaseMetric(
-    name = "answer_relevancy",
-    requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
-    outputType = MetricOutputType.CONTINUOUS,
-), SingleTurnMetric {
+class AnswerRelevancyMetric :
+    BaseMetric(
+        name = "answer_relevancy",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
+        outputType = MetricOutputType.CONTINUOUS,
+    ),
+    SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val questionTokens = tokenSet(sample.userInput.orEmpty())
         val answerTokens = tokenSet(sample.response.orEmpty())
