@@ -10,8 +10,8 @@
 - [x] Phase 6: Port evaluation pipeline
 - [x] Phase 7: Port initial metric set (MVP)
 - [~] Phase 8: Port supporting modules incrementally
-- [~] Phase 9: Parity test strategy
-- [ ] Phase 10: Migration and compatibility layer
+- [x] Phase 9: Parity test strategy
+- [x] Phase 10: Migration and compatibility layer
 
 `[x]` done, `[~]` partial, `[ ]` not started
 
@@ -78,23 +78,26 @@
 - [x] Prompt subsystem (simple prompt + prompt collection persistence)
 - [x] Backends (`inmemory`, `csv`, `jsonl` first)
 - [x] Testset generation and graph transform scaffolding
-- [ ] Integrations, CLI expansion, optimizers
+- [~] Integrations, CLI expansion, optimizers
+  - [x] LangChain/LlamaIndex record adapters with evaluation wiring
+  - [x] CLI scaffolding
+  - [x] Optimizers (baseline scaffolding + genetic optimizer)
 
-### 9) Parity test strategy `[~]`
+### 9) Parity test strategy `[x]`
 
 - [x] Kotlin unit tests for deterministic behavior (evaluate flow, MVP metrics, cache wrappers, prompt/backends)
 - [x] Multi-turn metric and executor failure/cancellation behavior tests
-- [ ] Golden fixtures for parsing/validation/aggregation
-- [ ] E2E evaluate-flow tests with mock LLM/embeddings
+- [x] Golden fixtures for parsing/validation/aggregation
+- [x] E2E evaluate-flow tests with mock LLM/embeddings
 
-### 10) Migration and compatibility layer `[ ]`
+### 10) Migration and compatibility layer `[x]`
 
-- [ ] Feature parity matrix (ported/partial/deferred)
-- [ ] Explicit errors for unsupported integrations
-- [ ] Stable public package/API surface
+- [x] Feature parity matrix (ported/partial/deferred)
+- [x] Explicit errors for unsupported integrations
+- [x] Stable public package/API surface
 
 ## Next Recommended Steps
 
-1. Add golden fixtures for score aggregation/validation behavior.
-2. Add E2E evaluate-flow tests with mock LLM/embeddings.
-3. Start integrations and CLI expansion scaffolding.
+1. Expand integration adapters beyond record mapping (tracing/observability hooks).
+2. Upgrade testset/transform scaffolds toward production-grade behavior.
+3. Implement production-grade DSPy optimizer adapter and metric prompt wiring.
