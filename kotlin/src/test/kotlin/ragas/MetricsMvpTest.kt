@@ -277,5 +277,5 @@ private class FakeStructuredLlm(
 
     override suspend fun generateDiscreteValue(prompt: String): String? = discrete
 
-    override suspend fun generateRankingItems(prompt: String): List<String> = ranking
+    override suspend fun generateRankingItems(prompt: String): List<String>? = ranking
 }

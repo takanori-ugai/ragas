@@ -80,10 +80,10 @@ class LangChain4jLlm(
             }
         }
 
-    override suspend fun generateRankingItems(prompt: String): List<String> =
+    override suspend fun generateRankingItems(prompt: String): List<String>? =
         withTimeout(runConfig.timeoutSeconds * 1_000) {
             withContext(Dispatchers.IO) {
-                rankingService.evaluate(prompt).items
+                rankingService.evaluate(prompt)?.items
             }
         }
 
@@ -113,7 +113,7 @@ class LangChain4jLlm(
     }
 
     private interface RankingStructuredService {
-        fun evaluate(userMessage: String): RankingStructuredOutput
+        fun evaluate(userMessage: String): RankingStructuredOutput?
     }
 
     private data class NumericStructuredOutput(

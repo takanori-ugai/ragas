@@ -23,8 +23,9 @@ data class Node(
         if (properties.isNotEmpty()) {
             val normalized =
                 properties.entries.groupBy { (key, _) -> key.lowercase() }
-            require(normalized.values.all { it.size == 1 }) {
-                "Duplicate property keys when normalized to lowercase"
+            val duplicates = normalized.filterValues { it.size > 1 }.keys
+            require(duplicates.isEmpty()) {
+                "Duplicate property keys when normalized to lowercase: ${duplicates.joinToString(", ")}"
             }
             properties.clear()
             properties.putAll(normalized.mapValues { (_, entries) -> entries.first().value })

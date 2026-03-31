@@ -5,5 +5,5 @@ interface StructuredOutputRagasLlm {
 
     suspend fun generateDiscreteValue(prompt: String): String?
 
-    suspend fun generateRankingItems(prompt: String): List<String>
+    suspend fun generateRankingItems(prompt: String): List<String>?
 }

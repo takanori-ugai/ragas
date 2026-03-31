@@ -69,10 +69,10 @@ class PromptTest {
                 "Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:",
             ),
         )
-        assertTrue(formatted.contains("double quotes,properly escaped with a backslash."))
+        assertTrue(formatted.contains("Use double quotes, properly escaped with a backslash where necessary."))
         assertTrue(formatted.contains("--------EXAMPLES-----------"))
         assertTrue(formatted.contains("Now perform the same with the following input"))
-        assertTrue(formatted.contains("input: {\n    \"question\": \"2+2\"\n}"))
+        assertTrue(formatted.contains("Input: {\n    \"question\": \"2+2\"\n}"))
         assertTrue(formatted.endsWith("Output: "))
     }
 

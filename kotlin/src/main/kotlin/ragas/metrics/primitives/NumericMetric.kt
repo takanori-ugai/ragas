@@ -1,7 +1,13 @@
 package ragas.metrics.primitives
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import ragas.llms.BaseRagasLlm
 import ragas.llms.StructuredOutputRagasLlm
 import ragas.metrics.BaseMetric
@@ -26,7 +32,15 @@ class NumericMetric(
             instructionTemplate = prompt,
             outputSchema =
                 buildJsonObject {
-                    put("type", "number")
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("value") {
+                            put("type", "number")
+                        }
+                    }
+                    putJsonArray("required") {
+                        add(JsonPrimitive("value"))
+                    }
                 },
         )
 
@@ -48,9 +62,16 @@ class NumericMetric(
             )
         val numeric =
             if (llmInstance is StructuredOutputRagasLlm) {
-                llmInstance.generateNumericValue(prompt) ?: extractFirstNumber(generateRawResponse(llmInstance, prompt))
+                val structured = llmInstance.generateNumericValue(prompt)
+                if (structured != null) {
+                    structured
+                } else {
+                    val raw = generateRawResponse(llmInstance, prompt)
+                    parseJsonValue(raw) ?: extractFirstNumber(raw)
+                }
             } else {
-                extractFirstNumber(generateRawResponse(llmInstance, prompt))
+                val raw = generateRawResponse(llmInstance, prompt)
+                parseJsonValue(raw) ?: extractFirstNumber(raw)
             }
                 ?: error("Metric '$name' could not parse a numeric score from LLM response.")
         val clamped =
@@ -61,6 +82,13 @@ class NumericMetric(
             }
         return clamped
     }
+
+    private fun parseJsonValue(raw: String): Double? =
+        runCatching {
+            val element = Json.parseToJsonElement(raw)
+            val value = (element as? JsonObject)?.get("value") as? JsonPrimitive
+            value?.content?.toDoubleOrNull()
+        }.getOrNull()
 
     private fun extractFirstNumber(text: String): Double? {
         val match = numberRegex.find(text)

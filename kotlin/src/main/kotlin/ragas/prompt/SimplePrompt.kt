@@ -91,7 +91,7 @@ data class SimplePrompt(
                 ?.let { schema ->
                     "Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:\n" +
                         schema +
-                        "Do not use single quotes in your response but double quotes,properly escaped with a backslash."
+                        "Do not use single quotes in your response. Use double quotes, properly escaped with a backslash where necessary."
                 }.orEmpty()
 
         val examplesText =
@@ -119,7 +119,7 @@ data class SimplePrompt(
                 if (values == null) {
                     append("Input: (None)\n")
                 } else {
-                    append("input: ")
+                    append("Input: ")
                     append(toJson(values, pretty = true, excludeNulls = true))
                     append("\n")
                 }
@@ -133,14 +133,19 @@ data class SimplePrompt(
         output: Map<String, String>,
     ): SimplePrompt = copy(examples = examples + PromptExample(input, output))
 
-    fun save(path: String) {
+    fun save(
+        path: String,
+        overwrite: Boolean = false,
+    ) {
         val file = File(path)
         file.parentFile?.mkdirs()
-        require(!file.exists()) { "The file '$path' already exists." }
+        if (!overwrite) {
+            require(!file.exists()) { "The file '$path' already exists." }
+        }
         val payload =
             SavedPrompt(
                 ragasVersion = VERSION,
-                originalHash = originalHash ?: stableHash(),
+                originalHash = stableHash(),
                 language = language,
                 instruction = instruction,
                 examples = examples,
@@ -346,8 +351,24 @@ data class SimplePrompt(
             val start = text.indexOf('{')
             require(start >= 0) { "Translation output did not contain a JSON object." }
             var depth = 0
+            var inString = false
+            var escaped = false
             for (index in start until text.length) {
                 val ch = text[index]
+                if (inString) {
+                    if (escaped) {
+                        escaped = false
+                    } else if (ch == '\\') {
+                        escaped = true
+                    } else if (ch == '"') {
+                        inString = false
+                    }
+                    continue
+                }
+                if (ch == '"') {
+                    inString = true
+                    continue
+                }
                 if (ch == '{') depth += 1
                 if (ch == '}') {
                     depth -= 1

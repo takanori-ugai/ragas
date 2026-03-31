@@ -1,7 +1,13 @@
 package ragas.metrics.primitives
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import ragas.llms.BaseRagasLlm
 import ragas.llms.StructuredOutputRagasLlm
@@ -31,9 +37,17 @@ class RankingMetric(
             instructionTemplate = prompt,
             outputSchema =
                 buildJsonObject {
-                    put("type", "array")
-                    putJsonObject("items") {
-                        put("type", "string")
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("items") {
+                            put("type", "array")
+                            putJsonObject("items") {
+                                put("type", "string")
+                            }
+                        }
+                    }
+                    putJsonArray("required") {
+                        add(JsonPrimitive("items"))
                     }
                 },
         )
@@ -64,23 +78,37 @@ class RankingMetric(
             if (llmInstance is StructuredOutputRagasLlm) {
                 llmInstance
                     .generateRankingItems(prompt)
-                    .map { item -> item.trim() }
-                    .filter { item -> item.isNotBlank() }
+                    ?.map { item -> item.trim() }
+                    ?.filter { item -> item.isNotBlank() } ?: fallbackParse(llmInstance, prompt)
             } else {
-                val raw =
-                    llmInstance
-                        .generateText(prompt = prompt)
-                        .generations
-                        .firstOrNull()
-                        ?.text
-                        .orEmpty()
-                splitRankingItems(raw)
-                    .map { item -> item.trim() }
-                    .map { item -> item.replaceFirst(listPrefixPattern, "").trim() }
-                    .filter { item -> item.isNotBlank() }
+                fallbackParse(llmInstance, prompt)
             }
 
         return parsed.take(expectedSize)
+    }
+
+    private suspend fun fallbackParse(
+        llmInstance: BaseRagasLlm,
+        prompt: String,
+    ): List<String> {
+        val raw =
+            llmInstance
+                .generateText(prompt = prompt)
+                .generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
+        val jsonItems =
+            runCatching {
+                val element = Json.parseToJsonElement(raw)
+                val items = (element as? JsonObject)?.get("items") as? JsonArray
+                items?.mapNotNull { (it as? JsonPrimitive)?.content }
+            }.getOrNull()
+
+        return (jsonItems ?: splitRankingItems(raw))
+            .map { item -> item.trim() }
+            .map { item -> item.replaceFirst(listPrefixPattern, "").trim() }
+            .filter { item -> item.isNotBlank() }
     }
 
     private fun splitRankingItems(raw: String): List<String> {

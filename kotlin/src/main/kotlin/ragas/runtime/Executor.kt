@@ -2,6 +2,7 @@ package ragas.runtime
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
@@ -98,7 +99,7 @@ class Executor(
             val tasks =
                 queuedJobs.map { job ->
                     job to
-                        async {
+                        async(start = CoroutineStart.LAZY) {
                             semaphore.withPermit {
                                 runJob(job)
                             }
@@ -106,7 +107,16 @@ class Executor(
                 }
 
             synchronized(activeTasksLock) {
-                tasks.forEach { (job, task) -> activeTasks[job.index] = task }
+                if (isCancelled()) {
+                    tasks.forEach { (_, task) ->
+                        task.cancel(CancellationException("Executor was cancelled"))
+                    }
+                } else {
+                    tasks.forEach { (job, task) ->
+                        activeTasks[job.index] = task
+                        task.start()
+                    }
+                }
             }
 
             try {

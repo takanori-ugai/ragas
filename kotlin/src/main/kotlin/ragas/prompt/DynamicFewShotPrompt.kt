@@ -1,6 +1,8 @@
 package ragas.prompt
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -34,6 +36,10 @@ class DynamicFewShotPrompt(
     val maxSimilarExamples: Int = 3,
     var embeddings: BaseRagasEmbedding? = null,
 ) {
+    private var cachedExampleVectors: List<List<Float>>? = null
+    private var cachedEmbeddingsModel: BaseRagasEmbedding? = null
+    private val cacheMutex = Mutex()
+
     init {
         require(maxSimilarExamples > 0) { "maxSimilarExamples must be greater than 0." }
     }
@@ -54,14 +60,19 @@ class DynamicFewShotPrompt(
         output: Map<String, String>,
     ): DynamicFewShotPrompt = copy(examples = examples + PromptExample(input, output))
 
-    fun save(path: String) {
+    fun save(
+        path: String,
+        overwrite: Boolean = false,
+    ) {
         val file = File(path)
         file.parentFile?.mkdirs()
-        require(!file.exists()) { "The file '$path' already exists." }
+        if (!overwrite) {
+            require(!file.exists()) { "The file '$path' already exists." }
+        }
         val payload =
             SavedDynamicPrompt(
                 ragasVersion = VERSION,
-                originalHash = originalHash ?: stableHash(),
+                originalHash = stableHash(),
                 language = language,
                 instruction = instruction,
                 examples = examples,
@@ -87,8 +98,19 @@ class DynamicFewShotPrompt(
         val embeddingModel = embeddings ?: return examples.take(maxSimilarExamples)
         val queryText = canonicalizeQuery(values)
         val queryVector = embeddingModel.embedText(queryText)
-        val exampleTexts = examples.map { example -> canonicalizeExampleInput(example.input) }
-        val exampleVectors = embeddingModel.embedTexts(exampleTexts)
+
+        val exampleVectors =
+            cacheMutex.withLock {
+                if (cachedExampleVectors != null && cachedEmbeddingsModel === embeddingModel) {
+                    cachedExampleVectors!!
+                } else {
+                    val exampleTexts = examples.map { example -> canonicalizeExampleInput(example.input) }
+                    val vectors = embeddingModel.embedTexts(exampleTexts)
+                    cachedExampleVectors = vectors
+                    cachedEmbeddingsModel = embeddingModel
+                    vectors
+                }
+            }
 
         val scored =
             examples

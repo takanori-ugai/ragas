@@ -80,7 +80,9 @@ internal inline fun traceEvaluation(
                     ),
                 )
             } catch (observerError: Throwable) {
-                error.addSuppressed(observerError)
+                if (observerError !== error) {
+                    error.addSuppressed(observerError)
+                }
             }
         }
         throw error
