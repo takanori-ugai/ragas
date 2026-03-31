@@ -61,6 +61,7 @@ data class MultiTurnSample(
                         "metadata" to message.metadata,
                     )
                 }
+
                 is ToolMessage -> {
                     mapOf(
                         "type" to "tool",
@@ -68,6 +69,7 @@ data class MultiTurnSample(
                         "metadata" to message.metadata,
                     )
                 }
+
                 is AiMessage -> {
                     val content: Any =
                         if (message.toolCalls.isNullOrEmpty()) {
@@ -103,7 +105,10 @@ data class MultiTurnSample(
 
         messages.forEachIndexed { index, message ->
             when (message) {
-                is AiMessage -> hasSeenAiMessage = true
+                is AiMessage -> {
+                    hasSeenAiMessage = true
+                }
+
                 is ToolMessage -> {
                     require(hasSeenAiMessage) {
                         "ToolMessage must be preceded by an AiMessage somewhere in the conversation."
@@ -117,14 +122,21 @@ data class MultiTurnSample(
                                     "ToolMessage must follow an AiMessage where tools were called."
                                 }
                             }
-                            is ToolMessage -> Unit
+
+                            is ToolMessage -> {
+                                Unit
+                            }
+
                             is HumanMessage -> {
                                 error("ToolMessage must follow an AiMessage or another ToolMessage.")
                             }
                         }
                     }
                 }
-                is HumanMessage -> Unit
+
+                is HumanMessage -> {
+                    Unit
+                }
             }
         }
     }
