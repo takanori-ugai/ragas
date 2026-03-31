@@ -21,6 +21,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TestsetScaffoldTest {
@@ -109,6 +110,24 @@ class TestsetScaffoldTest {
         }
 
     @Test
+    fun testsetGeneratorSamplesFromCurrentDocumentsNotEntireGraph() =
+        runBlocking {
+            val existing = Node(type = NodeType.DOCUMENT, properties = mutableMapOf("page_content" to "existing graph doc"))
+            val generator = TestsetGenerator(KnowledgeGraph(nodes = mutableListOf(existing)))
+
+            val testset =
+                generator.generateFromDocuments(
+                    documents = listOf("new document content"),
+                    testsetSize = 1,
+                )
+
+            val generated = testset.samples.first().evalSample as SingleTurnSample
+            val retrieved = generated.retrievedContexts.orEmpty()
+            assertEquals(listOf("new document content"), retrieved)
+            assertFalse(retrieved.contains("existing graph doc"))
+        }
+
+    @Test
     fun testsetToEvaluationDatasetRejectsMixedSampleTypes() {
         val mixed =
             Testset(
@@ -167,4 +186,23 @@ class TestsetScaffoldTest {
 
             assertTrue(node.getProperty("shared_key") in setOf("a", "b"))
         }
+
+    @Test
+    fun nodeConstructorNormalizesPropertyKeysToLowercase() {
+        val node = Node(type = NodeType.DOCUMENT, properties = mutableMapOf("Page_Content" to "alpha"))
+        assertEquals("alpha", node.getProperty("page_content"))
+        assertEquals("alpha", node.getProperty("PAGE_CONTENT"))
+    }
+
+    @Test
+    fun nodeConstructorRejectsDuplicateKeysAfterLowercaseNormalization() {
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                Node(
+                    type = NodeType.DOCUMENT,
+                    properties = mutableMapOf("Page_Content" to "alpha", "page_content" to "beta"),
+                )
+            }
+        assertTrue(error.message.orEmpty().contains("Duplicate property keys when normalized to lowercase"))
+    }
 }

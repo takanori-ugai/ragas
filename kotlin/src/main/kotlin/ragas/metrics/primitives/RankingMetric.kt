@@ -37,7 +37,11 @@ class RankingMetric(
                     }
                 },
         )
-    private val listPrefixPattern = Regex("^\\s*(?:[-*•]+|\\d+[.):-]?|[A-Za-z][.):-]|item\\s+\\d+\\s*[:.)-]?)\\s*", RegexOption.IGNORE_CASE)
+    private val listPrefixPattern =
+        Regex(
+            "^\\s*(?:[-*•]+\\s*|\\d+[.):-]\\s*|[A-Za-z][.):-]\\s*|item\\s+\\d+\\s*[:.)-]\\s*)",
+            RegexOption.IGNORE_CASE,
+        )
 
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
@@ -72,7 +76,7 @@ class RankingMetric(
                         .orEmpty()
                 splitRankingItems(raw)
                     .map { item -> item.trim() }
-                    .map { item -> item.replace(listPrefixPattern, "").trim() }
+                    .map { item -> item.replaceFirst(listPrefixPattern, "").trim() }
                     .filter { item -> item.isNotBlank() }
             }
 

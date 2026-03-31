@@ -1,7 +1,7 @@
 package ragas.metrics.primitives
 
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import ragas.llms.BaseRagasLlm
@@ -69,9 +69,13 @@ class DiscreteMetric(
 
         val normalized = raw.lowercase()
         val selected =
-            allowedValues.firstOrNull { allowed ->
-                allowed.lowercase() == normalized || normalized.contains(allowed.lowercase())
-            }
+            allowedValues
+                .sortedByDescending { it.length }
+                .firstOrNull { allowed ->
+                    val candidate = allowed.lowercase()
+                    normalized == candidate ||
+                        Regex("""\b${Regex.escape(candidate)}\b""").containsMatchIn(normalized)
+                }
         return selected
     }
 }

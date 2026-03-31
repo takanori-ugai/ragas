@@ -2,6 +2,8 @@ package ragas.runtime
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -20,11 +22,18 @@ class Executor(
     private val logger = KotlinLogging.logger {}
     private val jobsLock = Any()
     private val jobs = mutableListOf<Job>()
+    private val activeTasksLock = Any()
+    private val activeTasks = mutableMapOf<Int, Deferred<ResultEntry>>()
     private val cancelled = AtomicBoolean(false)
     private var jobsProcessed = 0
 
     fun cancel() {
         cancelled.set(true)
+        synchronized(activeTasksLock) {
+            activeTasks.values.forEach { task ->
+                task.cancel(CancellationException("Executor was cancelled"))
+            }
+        }
     }
 
     fun isCancelled(): Boolean = cancelled.get()
@@ -46,15 +55,17 @@ class Executor(
     }
 
     suspend fun aresults(): List<Any?> {
-        if (jobs.isEmpty()) {
-            return emptyList()
-        }
         val queuedJobs =
             synchronized(jobsLock) {
-                val snapshot = jobs.toList()
-                jobs.clear()
-                snapshot
+                if (jobs.isEmpty()) {
+                    emptyList()
+                } else {
+                    jobs.toList().also { jobs.clear() }
+                }
             }
+        if (queuedJobs.isEmpty()) {
+            return emptyList()
+        }
 
         val semaphore = Semaphore(runConfig.maxWorkers)
         val entries =
@@ -63,7 +74,7 @@ class Executor(
             } else {
                 queuedJobs.chunked(batchSize).flatMap { chunk ->
                     if (isCancelled()) {
-                        emptyList()
+                        chunk.map { ResultEntry(index = it.index, value = null) }
                     } else {
                         processJobs(chunk, semaphore)
                     }
@@ -78,19 +89,45 @@ class Executor(
     private suspend fun processJobs(
         queuedJobs: List<Job>,
         semaphore: Semaphore,
-    ): List<ResultEntry> =
-        coroutineScope {
-            queuedJobs
-                .takeIf { !isCancelled() }
-                .orEmpty()
-                .map { job ->
-                    async {
-                        semaphore.withPermit {
-                            runJob(job)
+    ): List<ResultEntry> {
+        if (isCancelled()) {
+            return queuedJobs.map { ResultEntry(index = it.index, value = null) }
+        }
+
+        return coroutineScope {
+            val tasks =
+                queuedJobs.map { job ->
+                    job to
+                        async {
+                            semaphore.withPermit {
+                                runJob(job)
+                            }
+                        }
+                }
+
+            synchronized(activeTasksLock) {
+                tasks.forEach { (job, task) -> activeTasks[job.index] = task }
+            }
+
+            try {
+                tasks.map { (job, task) ->
+                    try {
+                        task.await()
+                    } catch (error: CancellationException) {
+                        if (isCancelled()) {
+                            ResultEntry(index = job.index, value = null)
+                        } else {
+                            throw error
                         }
                     }
-                }.awaitAll()
+                }
+            } finally {
+                synchronized(activeTasksLock) {
+                    tasks.forEach { (job, _) -> activeTasks.remove(job.index) }
+                }
+            }
         }
+    }
 
     private suspend fun runJob(job: Job): ResultEntry {
         if (isCancelled()) {
@@ -107,7 +144,12 @@ class Executor(
             ResultEntry(job.index, value)
         } catch (error: Throwable) {
             if (error is CancellationException) {
-                throw error
+                if (isCancelled()) {
+                    return ResultEntry(job.index, null)
+                }
+                if (error !is TimeoutCancellationException) {
+                    throw error
+                }
             }
             if (raiseExceptions) {
                 throw error

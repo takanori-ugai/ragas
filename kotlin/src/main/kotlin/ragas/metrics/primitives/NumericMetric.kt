@@ -52,6 +52,7 @@ class NumericMetric(
             } else {
                 extractFirstNumber(generateRawResponse(llmInstance, prompt))
             }
+                ?: error("Metric '$name' could not parse a numeric score from LLM response.")
         val clamped =
             when {
                 numeric < allowedRange.start -> allowedRange.start
@@ -61,9 +62,9 @@ class NumericMetric(
         return clamped
     }
 
-    private fun extractFirstNumber(text: String): Double {
+    private fun extractFirstNumber(text: String): Double? {
         val match = numberRegex.find(text)
-        return match?.value?.toDoubleOrNull() ?: allowedRange.start
+        return match?.value?.toDoubleOrNull()
     }
 
     companion object {

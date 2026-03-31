@@ -31,11 +31,12 @@ class PromptTemplate(
         }
 
         val outputSignature =
-            outputSchema?.let { schema ->
-                "Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:\n" +
-                    compactJson.encodeToString(JsonElement.serializer(), schema) +
-                    "Do not use single quotes in your response but double quotes,properly escaped with a backslash."
-            }.orEmpty()
+            outputSchema
+                ?.let { schema ->
+                    "Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:\n" +
+                        compactJson.encodeToString(JsonElement.serializer(), schema) +
+                        "Do not use single quotes in your response but double quotes,properly escaped with a backslash."
+                }.orEmpty()
 
         val examplesText =
             if (examples.isNotEmpty()) {
@@ -103,10 +104,22 @@ class PromptTemplate(
         excludeNulls: Boolean,
     ): JsonElement =
         when (value) {
-            null -> JsonNull
-            is String -> JsonPrimitive(value)
-            is Number -> JsonPrimitive(value)
-            is Boolean -> JsonPrimitive(value)
+            null -> {
+                JsonNull
+            }
+
+            is String -> {
+                JsonPrimitive(value)
+            }
+
+            is Number -> {
+                JsonPrimitive(value)
+            }
+
+            is Boolean -> {
+                JsonPrimitive(value)
+            }
+
             is Map<*, *> -> {
                 val stringKeyMap =
                     value.entries
@@ -114,8 +127,14 @@ class PromptTemplate(
                         .associate { (k, v) -> k as String to v }
                 encodeMap(stringKeyMap, excludeNulls)
             }
-            is List<*> -> encodeList(value, excludeNulls)
-            else -> JsonPrimitive(value.toString())
+
+            is List<*> -> {
+                encodeList(value, excludeNulls)
+            }
+
+            else -> {
+                JsonPrimitive(value.toString())
+            }
         }
 
     companion object {

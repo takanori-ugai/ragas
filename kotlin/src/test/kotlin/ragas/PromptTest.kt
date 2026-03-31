@@ -64,7 +64,11 @@ class PromptTest {
             )
 
         val formatted = prompt.format(mapOf("question" to "2+2"))
-        assertTrue(formatted.contains("Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:"))
+        assertTrue(
+            formatted.contains(
+                "Please return the output in a JSON format that complies with the following schema as specified in JSON Schema:",
+            ),
+        )
         assertTrue(formatted.contains("double quotes,properly escaped with a backslash."))
         assertTrue(formatted.contains("--------EXAMPLES-----------"))
         assertTrue(formatted.contains("Now perform the same with the following input"))

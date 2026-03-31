@@ -14,6 +14,7 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class MetricsMvpTest {
@@ -105,6 +106,22 @@ class MetricsMvpTest {
         }
 
     @Test
+    fun discreteMetricPrefersLongestWordBoundaryMatch() =
+        runBlocking {
+            val llm = FakeLlm(outputs = listOf("Result: partially correct."))
+            val sample = SingleTurnSample(userInput = "u", response = "r")
+            val discrete =
+                DiscreteMetric(
+                    name = "discrete_overlap",
+                    prompt = "Decide: {response}",
+                    llm = llm,
+                    allowedValues = listOf("correct", "partially correct"),
+                )
+
+            assertEquals("partially correct", discrete.singleTurnAscore(sample))
+        }
+
+    @Test
     fun rankingMetricParsesCommonListPrefixes() =
         runBlocking {
             val sample = SingleTurnSample(userInput = "u", response = "r", reference = "ref", retrievedContexts = listOf("ctx"))
@@ -138,6 +155,16 @@ class MetricsMvpTest {
                     expectedSize = 2,
                 )
             assertEquals(listOf("2024 Report", "42 Insights"), numericContentMetric.singleTurnAscore(sample))
+
+            val noPunctuationNumericLlm = FakeLlm(outputs = listOf("2024 Report, 42 Insights"))
+            val noPunctuationNumericMetric =
+                RankingMetric(
+                    name = "ranking_no_punctuation_numeric_content",
+                    prompt = "Rank: {response}",
+                    llm = noPunctuationNumericLlm,
+                    expectedSize = 2,
+                )
+            assertEquals(listOf("2024 Report", "42 Insights"), noPunctuationNumericMetric.singleTurnAscore(sample))
         }
 
     @Test
@@ -183,6 +210,26 @@ class MetricsMvpTest {
             assertEquals(0.91, numeric.singleTurnAscore(sample))
             assertEquals("pass", discrete.singleTurnAscore(sample))
             assertEquals(listOf("alpha", "beta", "gamma"), ranking.singleTurnAscore(sample))
+        }
+
+    @Test
+    fun numericMetricThrowsWhenNoNumericValueCanBeParsed() =
+        runBlocking {
+            val llm = FakeLlm(outputs = listOf("no numeric value here"))
+            val sample = SingleTurnSample(userInput = "u", response = "r")
+            val metric =
+                NumericMetric(
+                    name = "numeric_parse_fail",
+                    prompt = "Rate: {response}",
+                    llm = llm,
+                    allowedRange = 0.0..1.0,
+                )
+
+            assertFailsWith<IllegalStateException> {
+                metric.singleTurnAscore(sample)
+            }
+
+            Unit
         }
 }
 

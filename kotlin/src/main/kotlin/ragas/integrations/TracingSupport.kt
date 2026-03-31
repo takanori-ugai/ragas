@@ -67,17 +67,21 @@ internal inline fun traceEvaluation(
     } catch (error: Throwable) {
         val endMs = System.currentTimeMillis()
         observers.forEach { observer ->
-            observer.onEvent(
-                RunFailed(
-                    runId = runId,
-                    framework = framework,
-                    runName = runName,
-                    timestampMs = endMs,
-                    durationMs = endMs - start,
-                    errorType = error::class.simpleName ?: "UnknownError",
-                    errorMessage = error.message.orEmpty(),
-                ),
-            )
+            try {
+                observer.onEvent(
+                    RunFailed(
+                        runId = runId,
+                        framework = framework,
+                        runName = runName,
+                        timestampMs = endMs,
+                        durationMs = endMs - start,
+                        errorType = error::class.simpleName ?: "UnknownError",
+                        errorMessage = error.message.orEmpty(),
+                    ),
+                )
+            } catch (observerError: Throwable) {
+                error.addSuppressed(observerError)
+            }
         }
         throw error
     }
