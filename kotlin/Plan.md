@@ -8,8 +8,8 @@
 - [x] Phase 4: Port metric abstraction layer
 - [x] Phase 5: Port LLM + Embedding adapters (minimal provider set first)
 - [x] Phase 6: Port evaluation pipeline
-- [ ] Phase 7: Port initial metric set (MVP)
-- [ ] Phase 8: Port supporting modules incrementally
+- [x] Phase 7: Port initial metric set (MVP)
+- [~] Phase 8: Port supporting modules incrementally
 - [~] Phase 9: Parity test strategy
 - [ ] Phase 10: Migration and compatibility layer
 
@@ -54,7 +54,7 @@
 - [x] Define provider-agnostic LLM interface (`BaseRagasLlm`).
 - [x] Implement LangChain4j chat-model adapter (`LangChain4jLlm`).
 - [x] Add embeddings abstraction + adapter(s).
-- [ ] Add cache integration points.
+- [x] Add cache integration points.
 
 ### 6) Port evaluation pipeline `[x]`
 
@@ -64,25 +64,25 @@
   - [x] per-row/per-metric async execution
   - [x] aggregation into evaluation result
 
-### 7) Port initial metric set (MVP) `[ ]`
+### 7) Port initial metric set (MVP) `[x]`
 
-- [ ] Port default baseline metrics:
-  - answer relevancy
-  - context precision
-  - faithfulness
-  - context recall
-- [ ] Add generic discrete/numeric/ranking primitives.
+- [x] Port default baseline metrics:
+  - [x] answer relevancy
+  - [x] context precision
+  - [x] faithfulness
+  - [x] context recall
+- [x] Add generic discrete/numeric/ranking primitives.
 
-### 8) Port supporting modules incrementally `[ ]`
+### 8) Port supporting modules incrementally `[~]`
 
-- [ ] Prompt subsystem
-- [ ] Backends (`inmemory`, `csv`, `jsonl` first)
+- [x] Prompt subsystem (simple prompt + prompt collection persistence)
+- [x] Backends (`inmemory`, `csv`, `jsonl` first)
 - [ ] Testset generation and graph transforms
 - [ ] Integrations, CLI expansion, optimizers
 
 ### 9) Parity test strategy `[~]`
 
-- [x] Kotlin unit tests for deterministic behavior (initial evaluate flow test added)
+- [x] Kotlin unit tests for deterministic behavior (evaluate flow, MVP metrics, cache wrappers, prompt/backends)
 - [ ] Golden fixtures for parsing/validation/aggregation
 - [ ] E2E evaluate-flow tests with mock LLM/embeddings
 
@@ -94,6 +94,6 @@
 
 ## Next Recommended Steps
 
-1. Implement Phase 7 initial metrics (answer relevancy, context precision, faithfulness, context recall).
-2. Add cache integration for LLM/embedding calls.
-3. Expand tests for multi-turn metrics and failure/cancellation paths.
+1. Expand tests for multi-turn metrics and failure/cancellation paths.
+2. Implement testset generation and graph transform scaffolding.
+3. Add golden fixtures for score aggregation/validation behavior.

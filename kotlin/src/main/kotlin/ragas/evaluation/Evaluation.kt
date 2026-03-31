@@ -8,6 +8,7 @@ import ragas.metrics.MetricWithEmbeddings
 import ragas.metrics.MetricWithLlm
 import ragas.metrics.MultiTurnMetric
 import ragas.metrics.SingleTurnMetric
+import ragas.metrics.defaults.defaultSingleTurnMetrics
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.MultiTurnSample
@@ -20,22 +21,23 @@ private const val EVALUATION_DESC = "Evaluating"
 
 suspend fun aevaluate(
     dataset: EvaluationDataset<out Sample>,
-    metrics: List<Metric>,
+    metrics: List<Metric>? = null,
     llm: BaseRagasLlm? = null,
     embeddings: BaseRagasEmbedding? = null,
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
 ): EvaluationResult {
-    require(metrics.isNotEmpty()) { "Provide at least one metric for evaluation." }
+    val selectedMetrics = metrics ?: defaultMetricsForDataset(dataset)
+    require(selectedMetrics.isNotEmpty()) { "Provide at least one metric for evaluation." }
 
-    validateRequiredColumns(dataset, metrics)
-    validateSupportedMetrics(dataset, metrics)
+    validateRequiredColumns(dataset, selectedMetrics)
+    validateSupportedMetrics(dataset, selectedMetrics)
 
     val llmChanged = mutableListOf<MetricWithLlm>()
     val embeddingsChanged = mutableListOf<MetricWithEmbeddings>()
 
-    metrics.forEach { metric ->
+    selectedMetrics.forEach { metric ->
         if (metric is MetricWithLlm && metric.llm == null && llm != null) {
             metric.llm = llm
             llmChanged += metric
@@ -56,7 +58,7 @@ suspend fun aevaluate(
         )
 
     dataset.samples.forEachIndexed { rowIndex, sample ->
-        metrics.forEach { metric ->
+        selectedMetrics.forEach { metric ->
             val metricName = metric.name
             when {
                 sample is SingleTurnSample && metric is SingleTurnMetric -> {
@@ -80,7 +82,7 @@ suspend fun aevaluate(
         var cursor = 0
         repeat(dataset.samples.size) {
             val row = linkedMapOf<String, Any?>()
-            metrics.forEach { metric ->
+            selectedMetrics.forEach { metric ->
                 row[metric.name] = flatResults[cursor++]
             }
             rowScores += row
@@ -98,7 +100,7 @@ suspend fun aevaluate(
 
 fun evaluate(
     dataset: EvaluationDataset<out Sample>,
-    metrics: List<Metric>,
+    metrics: List<Metric>? = null,
     llm: BaseRagasLlm? = null,
     embeddings: BaseRagasEmbedding? = null,
     runConfig: RunConfig = RunConfig(),
@@ -130,6 +132,17 @@ private fun validateRequiredColumns(
         }
     }
 }
+
+private fun defaultMetricsForDataset(dataset: EvaluationDataset<out Sample>): List<Metric> =
+    when (dataset.getSampleType()) {
+        SingleTurnSample::class -> defaultSingleTurnMetrics()
+        MultiTurnSample::class -> {
+            error("Default metrics are currently implemented only for single-turn datasets.")
+        }
+        else -> {
+            error("Unsupported sample type: ${dataset.getSampleType()}")
+        }
+    }
 
 private fun validateSupportedMetrics(
     dataset: EvaluationDataset<out Sample>,
