@@ -5,6 +5,7 @@ import ragas.evaluation.evaluate
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
+import ragas.llms.StructuredOutputRagasLlm
 import ragas.metrics.primitives.DiscreteMetric
 import ragas.metrics.primitives.NumericMetric
 import ragas.metrics.primitives.RankingMetric
@@ -138,6 +139,51 @@ class MetricsMvpTest {
                 )
             assertEquals(listOf("2024 Report", "42 Insights"), numericContentMetric.singleTurnAscore(sample))
         }
+
+    @Test
+    fun primitiveMetricsUseStructuredOutputWhenAvailable() =
+        runBlocking {
+            val llm =
+                FakeStructuredLlm(
+                    numeric = 0.91,
+                    discrete = "pass",
+                    ranking = listOf("alpha", "beta", "gamma"),
+                )
+
+            val sample =
+                SingleTurnSample(
+                    userInput = "u",
+                    response = "r",
+                    reference = "ref",
+                    retrievedContexts = listOf("ctx"),
+                )
+
+            val numeric =
+                NumericMetric(
+                    name = "numeric_structured",
+                    prompt = "Rate: {response}",
+                    llm = llm,
+                    allowedRange = 0.0..1.0,
+                )
+            val discrete =
+                DiscreteMetric(
+                    name = "discrete_structured",
+                    prompt = "Decide: {response}",
+                    llm = llm,
+                    allowedValues = listOf("pass", "fail"),
+                )
+            val ranking =
+                RankingMetric(
+                    name = "ranking_structured",
+                    prompt = "Rank: {response}",
+                    llm = llm,
+                    expectedSize = 3,
+                )
+
+            assertEquals(0.91, numeric.singleTurnAscore(sample))
+            assertEquals("pass", discrete.singleTurnAscore(sample))
+            assertEquals(listOf("alpha", "beta", "gamma"), ranking.singleTurnAscore(sample))
+        }
 }
 
 private class FakeLlm(
@@ -157,4 +203,32 @@ private class FakeLlm(
         cursor += 1
         return LlmResult(generations = listOf(LlmGeneration(text = next)))
     }
+}
+
+private class FakeStructuredLlm(
+    private val numeric: Double?,
+    private val discrete: String?,
+    private val ranking: List<String>,
+) : BaseRagasLlm,
+    StructuredOutputRagasLlm {
+    override var runConfig: RunConfig = RunConfig()
+
+    override suspend fun generateText(
+        prompt: String,
+        n: Int,
+        temperature: Double?,
+        stop: List<String>?,
+    ): LlmResult =
+        LlmResult(
+            generations =
+                listOf(
+                    LlmGeneration(text = "fallback"),
+                ),
+        )
+
+    override suspend fun generateNumericValue(prompt: String): Double? = numeric
+
+    override suspend fun generateDiscreteValue(prompt: String): String? = discrete
+
+    override suspend fun generateRankingItems(prompt: String): List<String> = ranking
 }

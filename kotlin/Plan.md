@@ -75,7 +75,7 @@
 
 ### 8) Port supporting modules incrementally `[~]`
 
-- [x] Prompt subsystem (simple prompt + prompt collection persistence)
+- [x] Prompt subsystem (simple prompt + prompt collection persistence + Python-style prompt framing compatibility)
 - [x] Backends (`inmemory`, `csv`, `jsonl` first)
 - [x] Testset generation and graph transform scaffolding
 - [~] Integrations, CLI expansion, optimizers
@@ -111,11 +111,11 @@ Scope compared: default evaluation metrics (`answer_relevancy`, `context_precisi
    - Python uses metric-specific prompts + structured output models.
    - Kotlin default metrics compute token-overlap style scores and do not send prompts to an LLM.
 
-2. Prompt construction format differs substantially.
+2. Prompt construction format differs substantially. `[partially closed]`
    - Python (`PydanticPrompt`/`BasePrompt`) builds prompts from instruction + JSON schema + few-shot examples + explicit `Input/Output` framing.
-   - Kotlin `PromptTemplate`/`SimplePrompt` is plain string interpolation without JSON schema injection or automatic structured output contract text.
+   - Kotlin now mirrors this structure in `PromptTemplate`/`SimplePrompt` (schema contract text + examples + explicit `Input/Output` frame), while remaining string-based rather than model-bound prompt classes.
 
-3. LLM output handling differs.
+3. LLM output handling differs. `[open]`
    - Python expects typed structured outputs (Pydantic models) and validates/parses JSON.
    - Kotlin primitive metrics parse raw text with lightweight heuristics (e.g., regex first-number extraction, string matching for discrete/ranking).
 
