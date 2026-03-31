@@ -77,12 +77,13 @@
 
 - [x] Prompt subsystem (simple prompt + prompt collection persistence)
 - [x] Backends (`inmemory`, `csv`, `jsonl` first)
-- [ ] Testset generation and graph transforms
+- [x] Testset generation and graph transform scaffolding
 - [ ] Integrations, CLI expansion, optimizers
 
 ### 9) Parity test strategy `[~]`
 
 - [x] Kotlin unit tests for deterministic behavior (evaluate flow, MVP metrics, cache wrappers, prompt/backends)
+- [x] Multi-turn metric and executor failure/cancellation behavior tests
 - [ ] Golden fixtures for parsing/validation/aggregation
 - [ ] E2E evaluate-flow tests with mock LLM/embeddings
 
@@ -94,6 +95,6 @@
 
 ## Next Recommended Steps
 
-1. Expand tests for multi-turn metrics and failure/cancellation paths.
-2. Implement testset generation and graph transform scaffolding.
-3. Add golden fixtures for score aggregation/validation behavior.
+1. Add golden fixtures for score aggregation/validation behavior.
+2. Add E2E evaluate-flow tests with mock LLM/embeddings.
+3. Start integrations and CLI expansion scaffolding.
