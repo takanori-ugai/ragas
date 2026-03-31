@@ -23,20 +23,20 @@ complexity:
     active: false
   LongMethod:
     active: true
-    threshold: 200
+    threshold: 120
   ComplexCondition:
     active: true
     threshold: 10
   NestedBlockDepth:
     active: true
-    threshold: 20
+    threshold: 12
   LongParameterList:
     active: true
     functionThreshold: 20
     constructorThreshold: 20
   CyclomaticComplexMethod:
     active: true
-    threshold: 200
+    threshold: 80
   TooManyFunctions:
     active: true
     thresholdInFiles: 50
