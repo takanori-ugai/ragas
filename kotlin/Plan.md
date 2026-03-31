@@ -41,10 +41,52 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ### WS2: Prompt System Parity `[ ]`
 
-- [ ] Implement typed prompt abstractions equivalent to Python `BasePrompt` + `PydanticPrompt`.
-- [ ] Add structured output parsing/validation loop (retry-on-parse-failure semantics).
-- [ ] Port few-shot typed prompt variants (including few-shot Pydantic flows).
-- [ ] Evaluate and scope multimodal prompt parity (`multi_modal_prompt.py`) for Kotlin compatibility.
+- [x] Implement typed prompt abstractions equivalent to Python `BasePrompt` + `PydanticPrompt`.
+- [x] Add structured output parsing/validation loop (retry-on-parse-failure semantics).
+- [x] Port few-shot typed prompt variants (including few-shot Pydantic flows).
+- [x] Evaluate and scope multimodal prompt parity (`multi_modal_prompt.py`) for Kotlin compatibility.
+- Progress note (2026-03-31):
+  - Added WS2 foundation in `src/main/kotlin/ragas/prompt/TypedPrompt.kt`:
+    `BasePrompt`, typed prompt model (`TypedPromptModel` / `TypedPromptExample`), `TypedPrompt`,
+    `StructuredOutputParser`, and parse-retry generation flow.
+  - Added coverage in `src/test/kotlin/ragas/prompt/TypedPromptTest.kt`.
+  - Added few-shot typed variants in `src/main/kotlin/ragas/prompt/TypedPrompt.kt`:
+    `FewShotTypedPrompt`, `DynamicFewShotTypedPrompt`, `FewShotPydanticPrompt`,
+    and `DynamicFewShotPydanticPrompt`.
+  - Extended `src/test/kotlin/ragas/prompt/TypedPromptTest.kt` with dynamic few-shot
+    selection and few-shot Pydantic flow tests.
+  - Multimodal parity scope (from Python `../src/ragas/prompt/multi_modal_prompt.py`):
+    - Gap identified: Kotlin `BaseRagasLlm` is text-only (`generateText`) and currently has
+      no multimodal message abstraction comparable to Python `PromptValue.to_messages()`.
+    - Gap identified: Kotlin prompt stack has no typed image/text content block model and no
+      secure image-source normalization pipeline (data URI / URL / local file policy).
+    - Kotlin MVP scope (implement first):
+      1. Add multimodal content model in prompt layer:
+         `PromptContentPart.Text`, `PromptContentPart.ImageDataUri`, `PromptContentPart.ImageUrl`.
+      2. Add multimodal-capable LLM interface extension:
+         `MultiModalRagasLlm.generateContent(parts, ...)` while keeping `generateText` backward compatible.
+      3. Add `ImageTextTypedPrompt` + few-shot variant on top of `BasePrompt` typed stack.
+      4. Support data-URI images and already-hosted HTTPS image URLs; keep parsing-retry behavior from WS2.
+      5. Add conformance tests for mixed text+image formatting and parser retry behavior.
+    - Deferred (explicit, non-blocking for MVP):
+      1. URL download/proxy/validation pipeline (SSRF checks, max-size streaming, content sniffing).
+      2. Optional local file loading policy and directory allow-list behavior.
+      3. Full Python callback/tracing parity for multimodal prompt generation path.
+    - Exit target for multimodal scope:
+      Kotlin can format and execute typed text+image prompts against multimodal-capable backends,
+      with deterministic JSON output parsing/retry behavior equivalent to text prompts.
+  - Implemented WS2 multimodal MVP:
+    - Added prompt content-part model in `src/main/kotlin/ragas/prompt/PromptContentPart.kt`
+      (`Text`, `ImageDataUri`, `ImageUrl` with HTTPS/data-URI validation).
+    - Added multimodal LLM extension in
+      `src/main/kotlin/ragas/llms/MultiModalRagasLlm.kt`.
+    - Extended `src/main/kotlin/ragas/llms/LangChain4jLlm.kt` to implement multimodal generation.
+    - Added `ImageTextTypedPrompt` in
+      `src/main/kotlin/ragas/prompt/ImageTextTypedPrompt.kt` with retry-on-parse-failure semantics
+      and text-only fallback for non-multimodal LLMs.
+    - Added tests in
+      `src/test/kotlin/ragas/prompt/ImageTextTypedPromptTest.kt` for mixed content assembly,
+      multimodal retry flow, and fallback behavior.
 - Exit criteria:
   - Metrics/optimizers can operate on typed prompt objects rather than string-only heuristics.
 
@@ -146,6 +188,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Implement WS2 foundation (`BasePrompt`/typed prompt model + structured output parser).
-2. Start WS3 Tier-1 metric ports using existing Python fixtures as baseline.
-3. Add WS9 parity map document (Python file -> Kotlin target + status).
+1. Start WS3 Tier-1 metric ports using existing Python fixtures as baseline.
+2. Add WS9 parity map document (Python file -> Kotlin target + status).
+3. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.

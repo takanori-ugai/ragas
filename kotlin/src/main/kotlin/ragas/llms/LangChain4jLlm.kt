@@ -10,13 +10,15 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import ragas.prompt.PromptContentPart
 import ragas.runtime.RunConfig
 
 class LangChain4jLlm(
     private val model: ChatModel,
     override var runConfig: RunConfig = RunConfig(),
 ) : BaseRagasLlm,
-    StructuredOutputRagasLlm {
+    StructuredOutputRagasLlm,
+    MultiModalRagasLlm {
     private val numericService: NumericStructuredService by lazy {
         AiServices.create(NumericStructuredService::class.java, model)
     }
@@ -86,6 +88,16 @@ class LangChain4jLlm(
                 rankingService.evaluate(prompt)?.items
             }
         }
+
+    override suspend fun generateContent(
+        content: List<PromptContentPart>,
+        n: Int,
+        temperature: Double?,
+        stop: List<String>?,
+    ): LlmResult {
+        val textPrompt = content.joinToString(separator = "\n") { part -> part.toPromptText() }
+        return generateText(prompt = textPrompt, n = n, temperature = temperature, stop = stop)
+    }
 
     private fun applyStop(
         text: String,
