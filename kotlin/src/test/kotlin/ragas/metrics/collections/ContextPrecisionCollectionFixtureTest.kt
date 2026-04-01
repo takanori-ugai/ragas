@@ -28,7 +28,12 @@ class ContextPrecisionCollectionFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                val expected = obj.getValue("expected_scores").jsonObject.getValue(metric.name).jsonPrimitive.double
+                val expected =
+                    obj
+                        .getValue("expected_scores")
+                        .jsonObject
+                        .getValue(metric.name)
+                        .jsonPrimitive.double
                 assertFixtureScore(score, expected, metric.name)
             }
         }
@@ -49,7 +54,12 @@ class ContextPrecisionCollectionFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                val expected = obj.getValue("expected_scores").jsonObject.getValue(metric.name).jsonPrimitive.double
+                val expected =
+                    obj
+                        .getValue("expected_scores")
+                        .jsonObject
+                        .getValue(metric.name)
+                        .jsonPrimitive.double
                 assertFixtureScore(score, expected, metric.name)
             }
         }

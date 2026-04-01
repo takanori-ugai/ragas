@@ -127,8 +127,7 @@ abstract class BaseContextPrecisionMetric(
 
 open class ContextPrecisionWithReferenceMetric(
     name: String = "context_precision_with_reference",
-) : 
-    BaseContextPrecisionMetric(
+) : BaseContextPrecisionMetric(
         name = name,
         requiredColumns = setOf("user_input", "retrieved_contexts", "reference"),
     ) {
@@ -137,8 +136,7 @@ open class ContextPrecisionWithReferenceMetric(
 
 open class ContextPrecisionWithoutReferenceMetric(
     name: String = "context_precision_without_reference",
-) :
-    BaseContextPrecisionMetric(
+) : BaseContextPrecisionMetric(
         name = name,
         requiredColumns = setOf("user_input", "retrieved_contexts", "response"),
     ) {
