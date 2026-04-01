@@ -56,6 +56,7 @@ class RankingMetric(
                     }
                 },
         )
+
     private val listPrefixPattern =
         Regex(
             "^\\s*(?:[-*•]+\\s*|\\d+[.):-]\\s*|[A-Za-z][.):-]\\s*|item\\s+\\d+\\s*[:.)-]\\s*)",

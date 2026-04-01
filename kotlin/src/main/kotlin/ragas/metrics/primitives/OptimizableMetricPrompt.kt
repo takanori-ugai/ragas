@@ -1,11 +1,11 @@
 package ragas.metrics.primitives
 
+import ragas.optimizers.OptimizationDataset
 import ragas.optimizers.Optimizer
+import ragas.optimizers.OptimizerConfig
 import ragas.optimizers.OptimizerOutcome
 import ragas.optimizers.OptimizerPrompt
 import ragas.optimizers.PromptObjectEvaluator
-import ragas.optimizers.OptimizationDataset
-import ragas.optimizers.OptimizerConfig
 
 interface OptimizableMetricPrompt {
     fun optimizerPrompt(): OptimizerPrompt

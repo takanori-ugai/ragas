@@ -56,12 +56,16 @@ data class OptimizerOutcome(
     fun toLegacyMap(): Map<String, String> {
         val base =
             when (optimizedPrompt) {
-                is OptimizerPrompt.Text -> mapOf("optimized_prompt" to optimizedPrompt.value)
-                is OptimizerPrompt.MultiModal ->
+                is OptimizerPrompt.Text -> {
+                    mapOf("optimized_prompt" to optimizedPrompt.value)
+                }
+
+                is OptimizerPrompt.MultiModal -> {
                     mapOf(
                         "optimized_prompt" to optimizedPrompt.asTextPrompt(),
                         "optimized_prompt_type" to "multimodal",
                     )
+                }
             }
         return base + metadata
     }
@@ -84,12 +88,13 @@ interface Optimizer {
         optimizePrompts(
             dataset = dataset,
             initialPrompts = initialPrompts.map { OptimizerPrompt.Text(it) },
-            evaluator = PromptObjectEvaluator { prompt, ds ->
-                when (prompt) {
-                    is OptimizerPrompt.Text -> evaluator.score(prompt.value, ds)
-                    is OptimizerPrompt.MultiModal -> evaluator.score(prompt.asTextPrompt(), ds)
-                }
-            },
+            evaluator =
+                PromptObjectEvaluator { prompt, ds ->
+                    when (prompt) {
+                        is OptimizerPrompt.Text -> evaluator.score(prompt.value, ds)
+                        is OptimizerPrompt.MultiModal -> evaluator.score(prompt.asTextPrompt(), ds)
+                    }
+                },
             config = config,
         ).toLegacyMap()
 }
