@@ -44,7 +44,6 @@ class ToolCallAccuracyMetric(
         }
 
         var score = 0.0
-        val comparedCount = minOf(predicted.size, reference.size)
 
         reference.zip(predicted).forEach { (referenceToolCall, predictedToolCall) ->
             if (referenceToolCall.name == predictedToolCall.name) {
@@ -53,11 +52,6 @@ class ToolCallAccuracyMetric(
         }
 
         score /= reference.size.toDouble()
-
-        if (comparedCount < reference.size) {
-            val coveragePenalty = comparedCount.toDouble() / reference.size.toDouble()
-            score *= coveragePenalty
-        }
 
         return clamp01(score)
     }
@@ -81,7 +75,7 @@ class ToolCallAccuracyMetric(
         var matched = 0.0
         referenceArgs.forEach { (argName, referenceValue) ->
             val predictedValue = predictedArgs[argName]
-            if (predictedValue != null && predictedValue.toString() == referenceValue.toString()) {
+            if (predictedValue != null && predictedValue == referenceValue) {
                 matched += 1.0
             }
         }
@@ -93,9 +87,30 @@ class ToolCallAccuracyMetric(
             toolCall.args
                 .toList()
                 .sortedBy { (name, _) -> name }
-                .joinToString("|") { (name, value) -> "$name=$value" }
+                .joinToString("|") { (name, value) -> "$name=${canonicalizeJson(value)}" }
         return "${toolCall.name}|$sortedArgPairs"
     }
+
+    private fun canonicalizeJson(value: JsonElement): String =
+        when (value) {
+            is JsonObject -> {
+                value.entries
+                    .sortedBy { (name, _) -> name }
+                    .joinToString(prefix = "{", postfix = "}", separator = ",") { (name, child) ->
+                        "\"$name\":${canonicalizeJson(child)}"
+                    }
+            }
+
+            is JsonArray -> {
+                value.joinToString(prefix = "[", postfix = "]", separator = ",") { child ->
+                    canonicalizeJson(child)
+                }
+            }
+
+            is JsonPrimitive -> {
+                value.toString()
+            }
+        }
 
     private fun isSequenceAligned(
         predictedSequence: List<String>,
@@ -150,6 +165,7 @@ class ToolCallF1Metric(
             if (precision + recall > 0.0) {
                 (2 * precision * recall) / (precision + recall)
             } else {
+                // Keep empty/empty at 0.0 for parity with the Python implementation.
                 0.0
             }
 

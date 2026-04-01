@@ -74,12 +74,12 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 0.0,
         "agent_goal_accuracy_without_reference": 0.0,
-        "agent_workflow_completion": 0.4
+        "agent_workflow_completion": 0.08
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "low",
         "agent_goal_accuracy_without_reference": "low",
-        "agent_workflow_completion": "partial"
+        "agent_workflow_completion": "low"
       }
     },
     {
@@ -144,12 +144,12 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 0.0,
         "agent_goal_accuracy_without_reference": 0.0,
-        "agent_workflow_completion": 0.7
+        "agent_workflow_completion": 0.14
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "low",
         "agent_goal_accuracy_without_reference": "low",
-        "agent_workflow_completion": "high"
+        "agent_workflow_completion": "low"
       }
     }
   ]

@@ -87,7 +87,7 @@ class AgentWorkflowCompletionMetric(
                     } else {
                         minOf(aiMessages.size.toDouble() / humanMessages.size.toDouble(), 1.0)
                     }
-                (0.6 * toolExecutionCoverage) + (0.3 * finalResponseScore) + (0.1 * turnBalanceScore)
+                ((0.6 * toolExecutionCoverage) + (0.3 * finalResponseScore) + (0.1 * turnBalanceScore)) * refusalPenalty
             }
 
         return clamp01(score)
@@ -106,8 +106,7 @@ private fun inferDesiredOutcome(messages: List<ConversationMessage>): String {
 
     val actionableMessage =
         humanContents.firstOrNull { text ->
-            val normalized = text.lowercase()
-            ACKNOWLEDGEMENT_PATTERNS.none { regex -> regex.containsMatchIn(normalized) }
+            ACKNOWLEDGEMENT_PATTERNS.none { regex -> regex.containsMatchIn(text) }
         }
 
     return actionableMessage ?: humanContents.first()
@@ -176,11 +175,11 @@ private fun isFailureOrRefusal(text: String): Boolean {
 
 private val ACKNOWLEDGEMENT_PATTERNS =
     listOf(
-        Regex("^thanks[.! ]*$"),
-        Regex("^thank\\s+you[.! ]*$"),
-        Regex("^ok(?:ay)?[.! ]*$"),
-        Regex("^great[.! ]*$"),
-        Regex("^sounds\\s+good[.! ]*$"),
+        Regex("^thanks[.! ]*$", RegexOption.IGNORE_CASE),
+        Regex("^thank\\s+you[.! ]*$", RegexOption.IGNORE_CASE),
+        Regex("^ok(?:ay)?[.! ]*$", RegexOption.IGNORE_CASE),
+        Regex("^great[.! ]*$", RegexOption.IGNORE_CASE),
+        Regex("^sounds\\s+good[.! ]*$", RegexOption.IGNORE_CASE),
     )
 
 private val FAILURE_OR_REFUSAL_PATTERNS =
