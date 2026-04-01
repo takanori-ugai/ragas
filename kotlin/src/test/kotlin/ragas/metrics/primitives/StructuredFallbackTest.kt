@@ -53,34 +53,69 @@ class StructuredFallbackTest {
         runBlocking {
             val llm = FakeLlm(listOf("{\"value\": 0.91}"))
             val metric = NumericMetric("test", "prompt", llm)
-            val dataset =
-                OptimizationDataset(
-                    metricName = "test",
-                    examples = listOf(OptimizationExample(promptInput = mapOf("q" to "x"), expectedOutput = "y")),
-                )
-            val optimizer =
-                object : Optimizer {
-                    override fun optimizePrompts(
-                        dataset: OptimizationDataset,
-                        initialPrompts: List<OptimizerPrompt>,
-                        evaluator: PromptObjectEvaluator,
-                        config: OptimizerConfig,
-                    ): OptimizerOutcome =
-                        OptimizerOutcome(
-                            optimizedPrompt = OptimizerPrompt.Text("Optimized prompt using concise JSON output."),
-                            metadata = mapOf("optimizer" to "fake"),
-                        )
-                }
-
-            metric.optimizePrompt(
-                optimizer = optimizer,
-                dataset = dataset,
-                evaluator = PromptObjectEvaluator { _, _ -> 1.0 },
-            )
+            optimizePromptForMetric(metric)
 
             val score = metric.singleTurnAscore(SingleTurnSample(userInput = "u", response = "r"))
             assertEquals(0.91, score)
             assertTrue(llm.seenPrompts.any { "Optimized prompt using concise JSON output." in it })
+        }
+
+    @Test
+    fun discreteMetricAcceptsOptimizedPromptObject() =
+        runBlocking {
+            val llm = FakeLlm(listOf("{\"value\": \"pass\"}"))
+            val metric = DiscreteMetric("test", "prompt", llm, allowedValues = listOf("pass", "fail"))
+            optimizePromptForMetric(metric)
+
+            val score = metric.singleTurnAscore(SingleTurnSample(userInput = "u", response = "r"))
+            assertEquals("pass", score)
+            assertTrue(llm.seenPrompts.any { "Optimized prompt using concise JSON output." in it })
+        }
+
+    @Test
+    fun rankingMetricAcceptsOptimizedPromptObject() =
+        runBlocking {
+            val llm = FakeLlm(listOf("{\"items\": [\"a\", \"b\"]}"))
+            val metric = RankingMetric("test", "prompt", llm, expectedSize = 2)
+            optimizePromptForMetric(metric)
+
+            val score = metric.singleTurnAscore(SingleTurnSample(userInput = "u", response = "r"))
+            assertEquals(listOf("a", "b"), score)
+            assertTrue(llm.seenPrompts.any { "Optimized prompt using concise JSON output." in it })
+        }
+
+    private fun optimizePromptForMetric(metric: OptimizableMetricPrompt) {
+        val dataset =
+            OptimizationDataset(
+                metricName = "test",
+                examples = listOf(OptimizationExample(promptInput = mapOf("q" to "x"), expectedOutput = "y")),
+            )
+
+        metric.optimizePrompt(
+            optimizer = fixedPromptOptimizer(expectedInitialPrompt = "prompt"),
+            dataset = dataset,
+            evaluator = PromptObjectEvaluator { _, _ -> 1.0 },
+        )
+    }
+
+    private fun fixedPromptOptimizer(expectedInitialPrompt: String): Optimizer =
+        object : Optimizer {
+            override fun optimizePrompts(
+                dataset: OptimizationDataset,
+                initialPrompts: List<OptimizerPrompt>,
+                evaluator: PromptObjectEvaluator,
+                config: OptimizerConfig,
+            ): OptimizerOutcome {
+                assertEquals(1, initialPrompts.size)
+                val initial = initialPrompts.single()
+                assertTrue(initial is OptimizerPrompt.Text)
+                assertEquals(expectedInitialPrompt, initial.value)
+
+                return OptimizerOutcome(
+                    optimizedPrompt = OptimizerPrompt.Text("Optimized prompt using concise JSON output."),
+                    metadata = mapOf("optimizer" to "fake"),
+                )
+            }
         }
 
     private class FakeLlm(

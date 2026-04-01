@@ -8,10 +8,11 @@ import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
+import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.GeneticOptimizer
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PublicApiTest {
@@ -125,9 +126,9 @@ class PublicApiTest {
         val dspy = dspyOptimizer()
         val dspyWithCache = dspyOptimizer(InMemoryCacheBackend())
 
-        assertNotNull(genetic)
-        assertNotNull(dspy)
-        assertNotNull(dspyWithCache)
+        assertTrue(genetic is GeneticOptimizer)
+        assertTrue(dspy is DspyOptimizer)
+        assertTrue(dspyWithCache is DspyOptimizer)
     }
 }
 

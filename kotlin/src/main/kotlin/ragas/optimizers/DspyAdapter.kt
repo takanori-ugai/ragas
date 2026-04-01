@@ -1,5 +1,7 @@
 package ragas.optimizers
 
+import ragas.prompt.PromptContentPart
+import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
 
 data class DspyCompileContext(
@@ -18,7 +20,12 @@ fun interface DspyAdapter {
 }
 
 object DspyAdapterLoader {
-    fun loadFirstOrNull(): DspyAdapter? = ServiceLoader.load(DspyAdapter::class.java).firstOrNull()
+    fun loadFirstOrNull(): DspyAdapter? =
+        try {
+            ServiceLoader.load(DspyAdapter::class.java).firstOrNull()
+        } catch (_: ServiceConfigurationError) {
+            null
+        }
 }
 
 internal class HeuristicDspyAdapter : DspyAdapter {
@@ -41,11 +48,15 @@ internal class HeuristicDspyAdapter : DspyAdapter {
     private fun proposeMultimodalCandidates(prompt: OptimizerPrompt.MultiModal): List<OptimizerPrompt.MultiModal> {
         val base = prompt.content
         return listOf(
-            OptimizerPrompt.MultiModal(base + ragas.prompt.PromptContentPart.Text("Think step-by-step, then answer with JSON only.")),
             OptimizerPrompt.MultiModal(
-                base + ragas.prompt.PromptContentPart.Text("Use retrieved context strictly and avoid unsupported claims."),
+                base + PromptContentPart.Text("Think step-by-step, then answer with JSON only."),
             ),
-            OptimizerPrompt.MultiModal(base + ragas.prompt.PromptContentPart.Text("Keep the answer concise and deterministic.")),
+            OptimizerPrompt.MultiModal(
+                base + PromptContentPart.Text("Use retrieved context strictly and avoid unsupported claims."),
+            ),
+            OptimizerPrompt.MultiModal(
+                base + PromptContentPart.Text("Keep the answer concise and deterministic."),
+            ),
         )
     }
 }
