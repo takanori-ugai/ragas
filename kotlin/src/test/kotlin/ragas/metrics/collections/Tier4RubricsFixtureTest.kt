@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class Tier4RubricsFixtureTest {
@@ -93,6 +94,34 @@ class Tier4RubricsFixtureTest {
         }
 
     @Test
+    fun domainSpecificRubricsRequiresUserInput() =
+        runBlocking {
+            val err =
+                runCatching {
+                    DomainSpecificRubricsMetric(withReference = false).singleTurnAscore(
+                        SingleTurnSample(
+                            response = "Photosynthesis lets plants make food from sunlight.",
+                        ),
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
+    fun domainSpecificRubricsRequiresResponse() =
+        runBlocking {
+            val err =
+                runCatching {
+                    DomainSpecificRubricsMetric(withReference = false).singleTurnAscore(
+                        SingleTurnSample(
+                            userInput = "Explain photosynthesis",
+                        ),
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
     fun instanceSpecificRubricsMatchesFixture() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
@@ -134,8 +163,48 @@ class Tier4RubricsFixtureTest {
         }
 
     @Test
+    fun instanceSpecificRubricsRequiresUserInput() =
+        runBlocking {
+            val err =
+                runCatching {
+                    InstanceSpecificRubricsMetric().singleTurnAscore(
+                        SingleTurnSample(
+                            response = "Photosynthesis lets plants make food from sunlight.",
+                            rubrics = mapOf("0" to "wrong", "5" to "correct"),
+                        ),
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
+    fun instanceSpecificRubricsRequiresResponse() =
+        runBlocking {
+            val err =
+                runCatching {
+                    InstanceSpecificRubricsMetric().singleTurnAscore(
+                        SingleTurnSample(
+                            userInput = "Explain photosynthesis",
+                            rubrics = mapOf("0" to "wrong", "5" to "correct"),
+                        ),
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
     fun tier4MetricListIncludesRubricsPorts() {
         AgentFixtureTestSupport.assertTier4MetricRegistryMatchesExpected()
+    }
+
+    @Test
+    fun advancedRubricsTier4MetricsReturnsOnlyRubricsMetrics() {
+        val names = advancedRubricsTier4Metrics().map { metric -> metric.name }.toSet()
+        assertEquals(4, names.size)
+        assertTrue("domain_specific_rubrics" in names)
+        assertTrue("rubrics_score_without_reference" in names)
+        assertTrue("rubrics_score_with_reference" in names)
+        assertTrue("instance_specific_rubrics" in names)
     }
 
     private companion object {

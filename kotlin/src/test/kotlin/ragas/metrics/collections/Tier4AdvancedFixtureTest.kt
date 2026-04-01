@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class Tier4AdvancedFixtureTest {
@@ -73,6 +74,98 @@ class Tier4AdvancedFixtureTest {
         }
 
     @Test
+    fun dataCompyScoreParsesQuotedMultilineCells() =
+        runBlocking {
+            val csv =
+                """
+                id,notes
+                1,"first line
+                second line"
+                """.trimIndent()
+            val metric = DataCompyScoreMetric(mode = DataCompyScoreMetric.Mode.ROWS, metric = DataCompyScoreMetric.Metric.F1)
+            val sample =
+                SingleTurnSample(
+                    reference = csv,
+                    response = csv,
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
+        }
+
+    @Test
+    fun dataCompyRowModeMatchesUsingOnlySharedColumns() =
+        runBlocking {
+            val reference =
+                """
+                id,name
+                1,Alice
+                2,Bob
+                """.trimIndent()
+            val response =
+                """
+                id,name,age
+                1,Alice,30
+                2,Bob,40
+                """.trimIndent()
+            val metric = DataCompyScoreMetric(mode = DataCompyScoreMetric.Mode.ROWS, metric = DataCompyScoreMetric.Metric.F1)
+            val sample =
+                SingleTurnSample(
+                    reference = reference,
+                    response = response,
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
+        }
+
+    @Test
+    fun dataCompyRowModeReturnsZeroWhenNoSharedColumns() =
+        runBlocking {
+            val reference =
+                """
+                id,name
+                1,Alice
+                """.trimIndent()
+            val response =
+                """
+                age,city
+                30,Tokyo
+                """.trimIndent()
+            val metric = DataCompyScoreMetric(mode = DataCompyScoreMetric.Mode.ROWS, metric = DataCompyScoreMetric.Metric.F1)
+            val sample =
+                SingleTurnSample(
+                    reference = reference,
+                    response = response,
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(0.0, score)
+        }
+
+    @Test
+    fun looksLikeImageContextClassifiesHttpUrlsByExtensionOnly() {
+        assertTrue("https://example.com/cat.jpg".looksLikeImageContext())
+        assertTrue("https://example.com/cat.png?size=large".looksLikeImageContext())
+        assertTrue(!"https://example.com/docs/index.html".looksLikeImageContext())
+    }
+
+    @Test
+    fun multiModalRelevanceTreatsNonImageHttpUrlAsTextContext() =
+        runBlocking {
+            val metric = MultiModalRelevanceMetric()
+            val sample =
+                SingleTurnSample(
+                    userInput = "Explain how nuclear fusion powers the sun",
+                    response = "Nuclear fusion powers the sun by combining hydrogen into helium.",
+                    retrievedContexts = listOf("https://example.com/docs/solar-fusion.html"),
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
+        }
+
+    @Test
     fun multiModalRelevanceMatchesFixture() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
@@ -130,6 +223,35 @@ class Tier4AdvancedFixtureTest {
                     )
                 }.exceptionOrNull()
             assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
+    fun sqlSemanticEquivalenceValidatesRequiredReference() =
+        runBlocking {
+            val err =
+                runCatching {
+                    SqlSemanticEquivalenceMetric().singleTurnAscore(
+                        SingleTurnSample(
+                            response = "SELECT 1",
+                            reference = "",
+                        ),
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is IllegalArgumentException)
+        }
+
+    @Test
+    fun sqlSemanticEquivalenceNormalizesBareBooleanWhereLiteral() =
+        runBlocking {
+            val metric = SqlSemanticEquivalenceMetric()
+            val sample =
+                SingleTurnSample(
+                    response = "SELECT id FROM users WHERE true;",
+                    reference = "SELECT id FROM users WHERE 1;",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
         }
 
     @Test

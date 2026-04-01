@@ -37,8 +37,7 @@ class SqlSemanticEquivalenceMetric(
         }
 
         if (left.selectColumns != right.selectColumns) {
-            score -=
-                if (left.selectColumns.containsAll(right.selectColumns) && right.selectColumns.containsAll(left.selectColumns)) 0.0 else 0.2
+            score -= 0.2
         }
 
         if (left.groupByColumns != right.groupByColumns) {
@@ -112,8 +111,8 @@ class SqlSemanticEquivalenceMetric(
         sql
             .lowercase()
             .replace(Regex("\\s+"), " ")
-            .replace(" true", " 1")
-            .replace(" false", " 0")
+            .replace(TRUE_LITERAL_REGEX, "1")
+            .replace(FALSE_LITERAL_REGEX, "0")
             .trim()
 
     private fun extractColumns(
@@ -143,8 +142,8 @@ class SqlSemanticEquivalenceMetric(
     private fun normalizeWhere(whereClause: String): String =
         whereClause
             .replace(Regex("\\s+"), " ")
-            .replace(" true", " 1")
-            .replace(" false", " 0")
+            .replace(TRUE_LITERAL_REGEX, "1")
+            .replace(FALSE_LITERAL_REGEX, "0")
             .replace(" = 1", " =1")
             .replace(" = 0", " =0")
             .trim()
@@ -167,6 +166,8 @@ class SqlSemanticEquivalenceMetric(
         val ORDER_BY_PATTERN = Regex("\\border\\s+by\\b\\s+(.*?)(?:\\blimit\\b|$)")
         val AGG_PATTERN = Regex("\\b(sum|count|avg|min|max)\\s*\\(")
         val TOKEN_PATTERN = Regex("[a-zA-Z0-9_]+")
+        val TRUE_LITERAL_REGEX = Regex("\\btrue\\b")
+        val FALSE_LITERAL_REGEX = Regex("\\bfalse\\b")
         const val EQUIVALENCE_THRESHOLD = 0.75
     }
 }

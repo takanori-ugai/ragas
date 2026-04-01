@@ -74,7 +74,10 @@ class DataCompyScoreMetric(
         reference: CsvTable,
         response: CsvTable,
     ): Int {
-        val columns = reference.header.union(response.header)
+        val columns = reference.header.intersect(response.header)
+        if (columns.isEmpty()) {
+            return 0
+        }
         val maxRows = max(reference.rows.size, response.rows.size)
         var count = 0
         for (idx in 0 until maxRows) {
@@ -129,43 +132,43 @@ class DataCompyScoreMetric(
     }
 
     private fun parseCsv(text: String): CsvTable? {
-        val lines = splitCsvLines(text)
-        if (lines.isEmpty()) {
+        val records = parseCsvRecords(text) ?: return null
+        if (records.isEmpty()) {
             return null
         }
 
-        val header = parseCsvLine(lines.first()) ?: return null
+        val header = records.first().map { it.trim() }
         if (header.isEmpty()) {
             return null
         }
 
         val rows =
-            lines
+            records
                 .drop(1)
+                .filterNot { record -> record.all { it.isBlank() } }
                 .mapNotNull { line ->
-                    val parsed = parseCsvLine(line) ?: return null
+                    val parsed = line.map { it.trim() }
                     val normalized = parsed + List((header.size - parsed.size).coerceAtLeast(0)) { "" }
                     header.zip(normalized.take(header.size)).toMap()
                 }
         return CsvTable(header = header.toSet(), rows = rows)
     }
 
-    private fun splitCsvLines(text: String): List<String> =
-        text
-            .trim()
-            .split(Regex("\\r?\\n"))
-            .map { it.trimEnd() }
-            .filter { it.isNotBlank() }
+    private fun parseCsvRecords(text: String): List<List<String>>? {
+        val input = text.trim()
+        if (input.isEmpty()) {
+            return emptyList()
+        }
 
-    private fun parseCsvLine(line: String): List<String>? {
-        val cells = mutableListOf<String>()
+        val records = mutableListOf<List<String>>()
+        var row = mutableListOf<String>()
         val cell = StringBuilder()
         var inQuotes = false
         var i = 0
-        while (i < line.length) {
-            val ch = line[i]
+        while (i < input.length) {
+            val ch = input[i]
             when {
-                ch == '"' && inQuotes && i + 1 < line.length && line[i + 1] == '"' -> {
+                ch == '"' && inQuotes && i + 1 < input.length && input[i + 1] == '"' -> {
                     cell.append('"')
                     i += 1
                 }
@@ -175,7 +178,17 @@ class DataCompyScoreMetric(
                 }
 
                 ch == ',' && !inQuotes -> {
-                    cells += cell.toString().trim()
+                    row += cell.toString()
+                    cell.clear()
+                }
+
+                (ch == '\n' || ch == '\r') && !inQuotes -> {
+                    if (ch == '\r' && i + 1 < input.length && input[i + 1] == '\n') {
+                        i += 1
+                    }
+                    row += cell.toString()
+                    records += row
+                    row = mutableListOf()
                     cell.clear()
                 }
 
@@ -189,8 +202,11 @@ class DataCompyScoreMetric(
         if (inQuotes) {
             return null
         }
-        cells += cell.toString().trim()
-        return cells
+        if (cell.isNotEmpty() || row.isNotEmpty()) {
+            row += cell.toString()
+            records += row
+        }
+        return records
     }
 
     private data class CsvTable(

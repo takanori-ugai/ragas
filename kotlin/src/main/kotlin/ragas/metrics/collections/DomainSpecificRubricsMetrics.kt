@@ -37,16 +37,22 @@ open class DomainSpecificRubricsMetric(
         normalizedRubrics = normalizeRubrics(selectedRubrics)
     }
 
-    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any =
-        computeRubricScore(
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+        val userInput = sample.userInput.orEmpty().trim()
+        val response = sample.response.orEmpty().trim()
+        require(userInput.isNotBlank()) { "user_input is missing. Please provide a question to evaluate against." }
+        require(response.isNotBlank()) { "response is missing. Please provide a response to evaluate." }
+
+        return computeRubricScore(
             rubrics = normalizedRubrics,
-            userInput = sample.userInput.orEmpty(),
-            response = sample.response.orEmpty(),
+            userInput = userInput,
+            response = response,
             reference = sample.reference,
             retrievedContexts = sample.retrievedContexts,
             referenceContexts = sample.referenceContexts,
             withReference = withReference,
         )
+    }
 }
 
 class RubricsScoreWithoutReferenceMetric(

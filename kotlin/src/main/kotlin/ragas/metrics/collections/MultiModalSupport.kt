@@ -6,7 +6,7 @@ internal fun String.looksLikeImageContext(): Boolean {
         return true
     }
     if (value.startsWith("http://") || value.startsWith("https://")) {
-        return IMAGE_EXTENSIONS.any { ext -> value.substringBefore('?').endsWith(ext) } || true
+        return IMAGE_EXTENSIONS.any { ext -> value.substringBefore('?').endsWith(ext) }
     }
     return IMAGE_EXTENSIONS.any { ext -> value.endsWith(ext) }
 }

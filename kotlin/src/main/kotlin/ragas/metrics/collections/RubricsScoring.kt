@@ -109,9 +109,14 @@ private fun computeResponseQuality(
     val quality =
         if (withReference) {
             val referenceAlignment = referenceAlignmentScore(responseText, reference.orEmpty())
-            (0.65 * referenceAlignment) + (0.20 * questionRelevance) + (0.10 * contextSupport) + (0.05 * clarity)
+            (WITH_REFERENCE_ALIGNMENT_WEIGHT * referenceAlignment) +
+                (WITH_REFERENCE_QUESTION_WEIGHT * questionRelevance) +
+                (WITH_REFERENCE_CONTEXT_WEIGHT * contextSupport) +
+                (WITH_REFERENCE_CLARITY_WEIGHT * clarity)
         } else {
-            (0.55 * questionRelevance) + (0.30 * contextSupport) + (0.15 * clarity)
+            (REFERENCE_FREE_QUESTION_WEIGHT * questionRelevance) +
+                (REFERENCE_FREE_CONTEXT_WEIGHT * contextSupport) +
+                (REFERENCE_FREE_CLARITY_WEIGHT * clarity)
         }
 
     return clamp01(quality)
@@ -138,10 +143,14 @@ private fun referenceAlignmentScore(
             else -> responseNumbers.intersect(referenceNumbers).size.toDouble() / referenceNumbers.size.toDouble()
         }
 
+    // Coarse contradiction signal: penalize when only one side contains a negation cue.
+    // This intentionally does not attempt deep semantic contradiction detection.
     val negationMismatch = NEGATION_REGEX.containsMatchIn(response.lowercase()) xor NEGATION_REGEX.containsMatchIn(reference.lowercase())
-    val contradictionPenalty = if (negationMismatch) 0.85 else 1.0
+    val contradictionPenalty = if (negationMismatch) NEGATION_MISMATCH_PENALTY else 1.0
 
-    return clamp01(((0.8 * lexical) + (0.2 * numberAlignment)) * contradictionPenalty)
+    return clamp01(
+        ((REFERENCE_ALIGNMENT_LEXICAL_WEIGHT * lexical) + (REFERENCE_ALIGNMENT_NUMBER_WEIGHT * numberAlignment)) * contradictionPenalty,
+    )
 }
 
 private fun contextSupportScore(
@@ -163,7 +172,8 @@ private fun contextSupportScore(
 
 private fun clarityScore(responseTokens: Set<String>): Double {
     val size = responseTokens.size.toDouble()
-    return clamp01((size / 24.0).coerceAtLeast(0.2))
+    // 24 meaningful tokens is treated as a "fully clear" response for this heuristic.
+    return clamp01((size / CLARITY_FULL_CREDIT_TOKEN_COUNT).coerceAtLeast(CLARITY_MIN_SCORE))
 }
 
 private fun lexicalF1(
@@ -184,3 +194,19 @@ private fun meaningfulTokens(text: String): Set<String> =
     tokenize(text)
         .filter { token -> token.length > 2 && token !in COMMON_STOP_WORDS }
         .toSet()
+
+private const val WITH_REFERENCE_ALIGNMENT_WEIGHT = 0.65
+private const val WITH_REFERENCE_QUESTION_WEIGHT = 0.20
+private const val WITH_REFERENCE_CONTEXT_WEIGHT = 0.10
+private const val WITH_REFERENCE_CLARITY_WEIGHT = 0.05
+
+private const val REFERENCE_FREE_QUESTION_WEIGHT = 0.55
+private const val REFERENCE_FREE_CONTEXT_WEIGHT = 0.30
+private const val REFERENCE_FREE_CLARITY_WEIGHT = 0.15
+
+private const val REFERENCE_ALIGNMENT_LEXICAL_WEIGHT = 0.8
+private const val REFERENCE_ALIGNMENT_NUMBER_WEIGHT = 0.2
+private const val NEGATION_MISMATCH_PENALTY = 0.85
+
+private const val CLARITY_FULL_CREDIT_TOKEN_COUNT = 24.0
+private const val CLARITY_MIN_SCORE = 0.2

@@ -19,12 +19,20 @@ class InstanceSpecificRubricsMetric(
         require(!sampleRubrics.isNullOrEmpty()) {
             "rubrics must be provided for instance-specific evaluation"
         }
+        val userInput =
+            requireNotNull(sample.userInput?.takeIf { it.isNotBlank() }) {
+                "user_input must be provided for instance-specific evaluation"
+            }
+        val response =
+            requireNotNull(sample.response?.takeIf { it.isNotBlank() }) {
+                "response must be provided for instance-specific evaluation"
+            }
         val normalizedRubrics = normalizeRubrics(sampleRubrics)
 
         return computeRubricScore(
             rubrics = normalizedRubrics,
-            userInput = sample.userInput.orEmpty(),
-            response = sample.response.orEmpty(),
+            userInput = userInput,
+            response = response,
             reference = sample.reference,
             retrievedContexts = sample.retrievedContexts,
             referenceContexts = sample.referenceContexts,

@@ -14,4 +14,10 @@ fun tier4CollectionMetrics(): List<Metric> =
         MultiModalFaithfulnessMetric(),
     )
 
-fun advancedRubricsTier4Metrics(): List<Metric> = tier4CollectionMetrics()
+fun advancedRubricsTier4Metrics(): List<Metric> =
+    listOf(
+        DomainSpecificRubricsMetric(),
+        RubricsScoreWithoutReferenceMetric(),
+        RubricsScoreWithReferenceMetric(),
+        InstanceSpecificRubricsMetric(),
+    )

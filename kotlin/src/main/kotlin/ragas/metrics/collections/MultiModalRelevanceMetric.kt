@@ -42,7 +42,7 @@ class MultiModalRelevanceMetric(
                     userInput.lowercase().contains("picture")
             val imageResponse =
                 response.lowercase().contains("image") || response.lowercase().contains("photo") || response.lowercase().contains("picture")
-            return if (imageQuestion && imageResponse && questionRelevance >= 0.2) 1.0 else 0.0
+            return if (imageQuestion && imageResponse && questionRelevance >= IMAGE_ONLY_QUESTION_RELEVANCE_MIN) 1.0 else 0.0
         }
 
         val imageAnchor =
@@ -52,13 +52,29 @@ class MultiModalRelevanceMetric(
                 if (response.lowercase().contains("image") || response.lowercase().contains("photo") ||
                     response.lowercase().contains("picture")
                 ) {
-                    0.2
+                    IMAGE_ANCHOR_WITH_VISUAL_CUE
                 } else {
-                    0.1
+                    IMAGE_ANCHOR_WITHOUT_VISUAL_CUE
                 }
             }
 
-        val score = (0.55 * questionRelevance) + (0.35 * textSupport) + (0.10 * imageAnchor)
-        return if (score >= 0.28) 1.0 else 0.0
+        val score =
+            (QUESTION_RELEVANCE_WEIGHT * questionRelevance) +
+                (TEXT_SUPPORT_WEIGHT * textSupport) +
+                (IMAGE_ANCHOR_WEIGHT * imageAnchor)
+        return if (score >= RELEVANCE_PASS_THRESHOLD) 1.0 else 0.0
+    }
+
+    private companion object {
+        // Heuristic blend tuned to prioritize direct question relevance and textual grounding,
+        // while still giving a small boost when image context is explicitly acknowledged.
+        const val QUESTION_RELEVANCE_WEIGHT = 0.55
+        const val TEXT_SUPPORT_WEIGHT = 0.35
+        const val IMAGE_ANCHOR_WEIGHT = 0.10
+        const val RELEVANCE_PASS_THRESHOLD = 0.28
+
+        const val IMAGE_ONLY_QUESTION_RELEVANCE_MIN = 0.2
+        const val IMAGE_ANCHOR_WITH_VISUAL_CUE = 0.2
+        const val IMAGE_ANCHOR_WITHOUT_VISUAL_CUE = 0.1
     }
 }
