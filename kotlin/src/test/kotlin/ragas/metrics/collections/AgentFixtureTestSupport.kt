@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import ragas.metrics.collections.tier4CollectionMetrics
 import ragas.model.AiMessage
 import ragas.model.ConversationMessage
 import ragas.model.HumanMessage
@@ -29,6 +30,18 @@ internal object AgentFixtureTestSupport {
             "bleu_score",
             "rouge_score",
             "semantic_similarity",
+        )
+
+    private val EXPECTED_TIER4_METRIC_NAMES =
+        setOf(
+            "domain_specific_rubrics",
+            "rubrics_score_without_reference",
+            "rubrics_score_with_reference",
+            "instance_specific_rubrics",
+            "sql_semantic_equivalence",
+            "data_compare_score",
+            "multi_modal_relevance",
+            "multi_modal_faithfulness",
         )
 
     fun readFixture(resourcePath: String): JsonElement =
@@ -107,5 +120,10 @@ internal object AgentFixtureTestSupport {
         requiredMetricNames.forEach { name ->
             assertTrue(name in names, "tier3 registry missing metric: $name")
         }
+    }
+
+    fun assertTier4MetricRegistryMatchesExpected() {
+        val names = tier4CollectionMetrics().map { metric -> metric.name }.toSet()
+        assertEquals(EXPECTED_TIER4_METRIC_NAMES, names)
     }
 }

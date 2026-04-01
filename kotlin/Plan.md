@@ -289,12 +289,12 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`BleuScoreMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`RougeScoreMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` (`SemanticSimilarityMetric`) | Partial |
-| Tier-4 | `../src/ragas/metrics/collections/domain_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/DomainSpecificRubricsMetrics.kt` (`DomainSpecificRubricsMetric`, `RubricsScoreWithReferenceMetric`, `RubricsScoreWithoutReferenceMetric`) | Planned |
-| Tier-4 | `../src/ragas/metrics/collections/instance_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/InstanceSpecificRubricsMetric.kt` (`InstanceSpecificRubricsMetric`) | Planned |
-| Tier-4 | `../src/ragas/metrics/collections/sql_semantic_equivalence/metric.py` | `src/main/kotlin/ragas/metrics/collections/SqlSemanticEquivalenceMetric.kt` (`SqlSemanticEquivalenceMetric`) | Planned |
-| Tier-4 | `../src/ragas/metrics/collections/datacompy_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/DataCompyScoreMetric.kt` (`DataCompyScoreMetric`) | Planned |
-| Tier-4 | `../src/ragas/metrics/collections/multi_modal_relevance/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalRelevanceMetric.kt` (`MultiModalRelevanceMetric`) | Planned |
-| Tier-4 | `../src/ragas/metrics/collections/multi_modal_faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalFaithfulnessMetric.kt` (`MultiModalFaithfulnessMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/domain_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/DomainSpecificRubricsMetrics.kt` (`DomainSpecificRubricsMetric`, `RubricsScoreWithReferenceMetric`, `RubricsScoreWithoutReferenceMetric`) | Done |
+| Tier-4 | `../src/ragas/metrics/collections/instance_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/InstanceSpecificRubricsMetric.kt` (`InstanceSpecificRubricsMetric`) | Done |
+| Tier-4 | `../src/ragas/metrics/collections/sql_semantic_equivalence/metric.py` | `src/main/kotlin/ragas/metrics/collections/SqlSemanticEquivalenceMetric.kt` (`SqlSemanticEquivalenceMetric`) | Done |
+| Tier-4 | `../src/ragas/metrics/collections/datacompy_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/DataCompyScoreMetric.kt` (`DataCompyScoreMetric`) | Done |
+| Tier-4 | `../src/ragas/metrics/collections/multi_modal_relevance/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalRelevanceMetric.kt` (`MultiModalRelevanceMetric`) | Done |
+| Tier-4 | `../src/ragas/metrics/collections/multi_modal_faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalFaithfulnessMetric.kt` (`MultiModalFaithfulnessMetric`) | Done |
 
 - Exit criteria:
   - Parity claims are backed by repeatable tests and explicit documentation.
@@ -331,6 +331,5 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Port Tier-4 `domain_specific_rubrics` and `instance_specific_rubrics` with fixture-driven parity tests.
-2. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
-3. Evaluate optional LLM-backed Tier-2 parity adapters for agent-goal/topic adherence metrics.
+1. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
+2. Evaluate optional LLM-backed Tier-2 parity adapters for agent-goal/topic adherence metrics.

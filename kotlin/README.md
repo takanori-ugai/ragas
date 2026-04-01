@@ -7,6 +7,8 @@ This module provides:
 - default single-turn metrics
 - WS3 Tier-1 collection metric accessor (`tier1Metrics()`)
 - WS3 Tier-2 agent/tool-call + workflow metric accessor (`tier2Metrics()`)
+- WS3 Tier-3 answer-quality metric accessor (`tier3Metrics()`)
+- WS3 Tier-4 rubrics metric accessor (`tier4Metrics()`)
 - prompt subsystem (Python-style prompt framing + persistence)
 - LangChain4j LLM/embedding adapters
 - CLI scaffold for runtime status and backend listing
