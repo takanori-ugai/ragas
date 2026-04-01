@@ -183,7 +183,11 @@ class FactualCorrectnessMetric(
             numerator / denominator
         }
 
-    private fun meaningfulTokens(text: String): List<String> = tokenize(text).filter { token -> token.length > 2 && token !in COMMON_STOP_WORDS }
+    private fun meaningfulTokens(text: String): List<String> =
+        tokenize(text).filter { token ->
+            token.length > 2 &&
+                token !in COMMON_STOP_WORDS
+        }
 
     private fun numberTokens(text: String): Set<String> = NUMBER_TOKEN_REGEX.findAll(text.lowercase()).map { it.value }.toSet()
 
@@ -340,7 +344,8 @@ class TopicAdherenceMetric(
         }
     }
 
-    private fun topicTokenSet(text: String): Set<String> = tokenize(normalizeTopic(text)).filter { token -> token !in COMMON_STOP_WORDS }.toSet()
+    private fun topicTokenSet(text: String): Set<String> =
+        tokenize(normalizeTopic(text)).filter { token -> token !in COMMON_STOP_WORDS }.toSet()
 
     private fun hasSufficientTopicOverlap(
         left: Set<String>,

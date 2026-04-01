@@ -64,7 +64,9 @@ class SemanticSimilarityFixtureTest {
         assertTrue(runCatching { SemanticSimilarityMetric(threshold = -0.1) }.exceptionOrNull() is IllegalArgumentException)
         assertTrue(runCatching { SemanticSimilarityMetric(threshold = 1.1) }.exceptionOrNull() is IllegalArgumentException)
         assertTrue(runCatching { SemanticSimilarityMetric(threshold = Double.NaN) }.exceptionOrNull() is IllegalArgumentException)
-        assertTrue(runCatching { SemanticSimilarityMetric(threshold = Double.POSITIVE_INFINITY) }.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(
+            runCatching { SemanticSimilarityMetric(threshold = Double.POSITIVE_INFINITY) }.exceptionOrNull() is IllegalArgumentException,
+        )
     }
 
     @Test
