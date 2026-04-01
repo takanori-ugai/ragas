@@ -11,6 +11,7 @@ import ragas.llms.BaseRagasLlm
 import ragas.llms.CachedRagasLlm
 import ragas.metrics.Metric
 import ragas.metrics.collections.agentToolCallTier2Metrics
+import ragas.metrics.collections.answerQualityTier3Metrics
 import ragas.metrics.collections.retrievalGroundednessTier1Metrics
 import ragas.metrics.defaults.defaultSingleTurnMetrics
 import ragas.model.EvaluationDataset
@@ -65,6 +66,8 @@ fun defaultMetrics(): List<Metric> = defaultSingleTurnMetrics()
 fun tier1Metrics(): List<Metric> = retrievalGroundednessTier1Metrics()
 
 fun tier2Metrics(): List<Metric> = agentToolCallTier2Metrics()
+
+fun tier3Metrics(): List<Metric> = answerQualityTier3Metrics()
 
 fun withCache(
     llm: BaseRagasLlm,

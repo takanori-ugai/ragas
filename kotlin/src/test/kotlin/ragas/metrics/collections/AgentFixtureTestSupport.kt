@@ -59,6 +59,10 @@ internal object AgentFixtureTestSupport {
         assertTrue(abs(score - expected) < 1e-9, "metric=$metricName expected=$expected actual=$score")
     }
 
+    /**
+     * Asserts that [score] falls within the expected band.
+     * Bands: perfect (1.0), high (>= 2/3), partial (>= 1/3), low (< 1/3).
+     */
     fun assertScoreBand(
         score: Double,
         expectedBand: String,

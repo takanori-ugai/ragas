@@ -1,6 +1,6 @@
 # RAGAS Kotlin Full-Parity Completion Plan
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## Goal
 
@@ -137,6 +137,72 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Test: `src/test/kotlin/ragas/metrics/collections/AgentToolCallFixtureTest.kt`
     - Test: `src/test/kotlin/ragas/metrics/collections/AgentWorkflowFixtureTest.kt`
     - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Started WS3 Tier-3 answer-quality ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `AnswerAccuracyMetric`
+      - `AnswerCorrectnessMetric` (weighted factuality + similarity heuristic path)
+      - `answerQualityTier3Metrics()` accessor
+    - API coverage update:
+      - `src/main/kotlin/ragas/PublicApi.kt`
+      - public `tier3Metrics()` accessor
+  - Added Tier-3 fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_answer_quality_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/AnswerQualityFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-3 with factual/topic ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt`
+      - `FactualCorrectnessMetric` (precision/recall/F1 modes; decomposition-level knobs)
+      - `TopicAdherenceMetric` (precision/recall/F1 modes)
+    - Extended Tier-3 accessor:
+      - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `answerQualityTier3Metrics()` now includes factual/topic metrics
+  - Added Tier-3 factual/topic fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_factual_topic_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/FactualAndTopicFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-3 with noise/summary ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt`
+      - `NoiseSensitivityMetric` (relevant/irrelevant mode)
+      - `SummaryScoreMetric` (optional length penalty + coefficient)
+    - Extended Tier-3 accessor:
+      - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `answerQualityTier3Metrics()` now includes noise/summary metrics
+  - Added Tier-3 noise/summary fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_noise_summary_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/NoiseAndSummaryFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-3 with quoted/chrf ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt`
+      - `QuotedSpansAlignmentMetric` (quote span extraction + source containment checks)
+      - `ChrfScoreMetric` (character n-gram F-score)
+    - Extended Tier-3 accessor:
+      - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `answerQualityTier3Metrics()` now includes quoted/chrf metrics
+  - Added Tier-3 quoted/chrf fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_quoted_chrf_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/QuotedAndChrfFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-3 with BLEU/ROUGE ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt`
+      - `BleuScoreMetric`
+      - `RougeScoreMetric` (fmeasure/precision/recall modes, rouge1/rougeL support)
+    - Extended Tier-3 accessor:
+      - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `answerQualityTier3Metrics()` now includes BLEU/ROUGE metrics
+  - Added Tier-3 BLEU/ROUGE fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_bleu_rouge_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/BleuAndRougeFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-3 with semantic-similarity port in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt`
+      - `SemanticSimilarityMetric` (cosine-style token-vector similarity with optional threshold)
+    - Extended Tier-3 accessor:
+      - `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`
+      - `answerQualityTier3Metrics()` now includes semantic similarity
+  - Added Tier-3 semantic-similarity fixture baseline and conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_semantic_similarity_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/SemanticSimilarityFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -191,6 +257,44 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - [ ] Add cross-language golden fixtures where behavior must be numerically/structurally aligned.
 - [ ] Update `PARITY_MATRIX.md`, `MIGRATION.md`, and `README.md` per milestone.
 - [ ] Add release checklist for parity claims.
+- WS9 parity map (full WS3 metrics module coverage):
+  - Status legend:
+    - `Done`: Kotlin target is implemented and covered by fixture/conformance tests.
+    - `Partial`: Kotlin target exists but implementation semantics are intentionally simplified vs Python.
+    - `Planned`: Kotlin target module is not implemented yet.
+
+| Tier | Python file | Kotlin target | Status |
+| --- | --- | --- | --- |
+| Tier-1 | `../src/ragas/metrics/collections/context_relevance/metric.py` | `src/main/kotlin/ragas/metrics/collections/ContextRelevanceMetric.kt` (`ContextRelevanceMetric`) | Done |
+| Tier-1 | `../src/ragas/metrics/collections/response_groundedness/metric.py` | `src/main/kotlin/ragas/metrics/collections/ResponseGroundednessMetric.kt` (`ResponseGroundednessMetric`) | Done |
+| Tier-1 | `../src/ragas/metrics/collections/context_precision/metric.py` | `src/main/kotlin/ragas/metrics/collections/ContextPrecisionCollectionMetrics.kt` (`ContextPrecisionWithReferenceMetric`, `ContextPrecisionWithoutReferenceMetric`, `ContextPrecisionCollectionMetric`, `ContextUtilizationMetric`) | Done |
+| Tier-1 | `../src/ragas/metrics/_context_precision.py` (`IDBasedContextPrecision`) | `src/main/kotlin/ragas/metrics/collections/EntityAndIdRetrievalMetrics.kt` (`IdBasedContextPrecisionMetric`) | Done |
+| Tier-1 | `../src/ragas/metrics/collections/context_entity_recall/metric.py` | `src/main/kotlin/ragas/metrics/collections/EntityAndIdRetrievalMetrics.kt` (`ContextEntityRecallMetric`) | Done |
+| Tier-2 | `../src/ragas/metrics/collections/tool_call_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallAccuracyMetric`) | Done |
+| Tier-2 | `../src/ragas/metrics/collections/tool_call_f1/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallF1Metric`) | Done |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Partial |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Partial |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerAccuracyMetric.kt` (`AnswerAccuracyMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerCorrectnessMetric.kt` (`AnswerCorrectnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualCorrectnessMetric.kt` (`FactualCorrectnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseSensitivityMetric.kt` (`NoiseSensitivityMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/TopicAdherenceMetric.kt` (`TopicAdherenceMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedSpansAlignmentMetric.kt` (`QuotedSpansAlignmentMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/SummaryScoreMetric.kt` (`SummaryScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/chrf_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/ChrfScoreMetric.kt` (`ChrfScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuScoreMetric.kt` (`BleuScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/RougeScoreMetric.kt` (`RougeScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` (`SemanticSimilarityMetric`) | Partial |
+| Tier-4 | `../src/ragas/metrics/collections/domain_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/DomainSpecificRubricsMetrics.kt` (`DomainSpecificRubricsMetric`, `RubricsScoreWithReferenceMetric`, `RubricsScoreWithoutReferenceMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/instance_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/InstanceSpecificRubricsMetric.kt` (`InstanceSpecificRubricsMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/sql_semantic_equivalence/metric.py` | `src/main/kotlin/ragas/metrics/collections/SqlSemanticEquivalenceMetric.kt` (`SqlSemanticEquivalenceMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/datacompy_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/DataCompyScoreMetric.kt` (`DataCompyScoreMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/multi_modal_relevance/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalRelevanceMetric.kt` (`MultiModalRelevanceMetric`) | Planned |
+| Tier-4 | `../src/ragas/metrics/collections/multi_modal_faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalFaithfulnessMetric.kt` (`MultiModalFaithfulnessMetric`) | Planned |
 - Exit criteria:
   - Parity claims are backed by repeatable tests and explicit documentation.
 
@@ -226,6 +330,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Add WS9 parity map document (Python file -> Kotlin target + status) for WS3 Tier-2 and Tier-1 modules.
+1. Port Tier-4 `domain_specific_rubrics` and `instance_specific_rubrics` with fixture-driven parity tests.
 2. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
 3. Evaluate optional LLM-backed Tier-2 parity adapters for agent-goal/topic adherence metrics.
