@@ -27,7 +27,8 @@ class EntityAndIdRetrievalFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                assertBand(score, obj.getValue("expected_band").jsonPrimitive.content, metric.name)
+                val expected = obj.getValue("expected_score").jsonPrimitive.double
+                assertFixtureScore(score, expected, metric.name)
             }
         }
 
@@ -51,17 +52,12 @@ class EntityAndIdRetrievalFixtureTest {
             }
         }
 
-    private fun assertBand(
+    private fun assertFixtureScore(
         score: Double,
-        band: String,
+        expected: Double,
         metricName: String,
     ) {
-        when (band) {
-            "high" -> assertTrue(score >= 0.60, "metric=$metricName expected high but score=$score")
-            "partial" -> assertTrue(score in 0.10..0.80, "metric=$metricName expected partial but score=$score")
-            "low" -> assertTrue(score <= 0.30, "metric=$metricName expected low but score=$score")
-            else -> error("Unsupported band '$band'")
-        }
+        assertTrue(abs(score - expected) < 1e-9, "metric=$metricName expected=$expected actual=$score")
     }
 
     private fun readFixture() =

@@ -76,20 +76,22 @@ abstract class BaseContextPrecisionMetric(
             }
         }
 
-        return numerator / verdicts.size.toDouble()
+        return numerator / cumulativeHits.coerceAtLeast(1).toDouble()
     }
 
     private fun meaningfulTokens(text: String): Set<String> =
         tokenSet(text).filter { token -> token.length > 2 && token !in STOP_WORDS }.toSet()
 
     private fun entityTokens(text: String): Set<String> =
-        Regex("\\b[A-Z][A-Za-z0-9-]*\\b")
+        ENTITY_TOKEN_REGEX
             .findAll(text)
             .map { match -> match.value.lowercase() }
             .filter { token -> token !in STOP_WORDS }
             .toSet()
 
     private companion object {
+        val ENTITY_TOKEN_REGEX = Regex("\\b[A-Z][A-Za-z0-9-]*\\b")
+
         val STOP_WORDS =
             setOf(
                 "a",
@@ -123,17 +125,21 @@ abstract class BaseContextPrecisionMetric(
     }
 }
 
-class ContextPrecisionWithReferenceMetric :
+open class ContextPrecisionWithReferenceMetric(
+    name: String = "context_precision_with_reference",
+) : 
     BaseContextPrecisionMetric(
-        name = "context_precision_with_reference",
+        name = name,
         requiredColumns = setOf("user_input", "retrieved_contexts", "reference"),
     ) {
     override fun answerText(sample: SingleTurnSample): String = sample.reference.orEmpty()
 }
 
-class ContextPrecisionWithoutReferenceMetric :
+open class ContextPrecisionWithoutReferenceMetric(
+    name: String = "context_precision_without_reference",
+) :
     BaseContextPrecisionMetric(
-        name = "context_precision_without_reference",
+        name = name,
         requiredColumns = setOf("user_input", "retrieved_contexts", "response"),
     ) {
     override val matchThreshold: Double = 0.20
@@ -141,20 +147,6 @@ class ContextPrecisionWithoutReferenceMetric :
     override fun answerText(sample: SingleTurnSample): String = sample.response.orEmpty()
 }
 
-class ContextPrecisionCollectionMetric :
-    BaseContextPrecisionMetric(
-        name = "context_precision",
-        requiredColumns = setOf("user_input", "retrieved_contexts", "reference"),
-    ) {
-    override fun answerText(sample: SingleTurnSample): String = sample.reference.orEmpty()
-}
+class ContextPrecisionCollectionMetric : ContextPrecisionWithReferenceMetric(name = "context_precision")
 
-class ContextUtilizationMetric :
-    BaseContextPrecisionMetric(
-        name = "context_utilization",
-        requiredColumns = setOf("user_input", "retrieved_contexts", "response"),
-    ) {
-    override val matchThreshold: Double = 0.20
-
-    override fun answerText(sample: SingleTurnSample): String = sample.response.orEmpty()
-}
+class ContextUtilizationMetric : ContextPrecisionWithoutReferenceMetric(name = "context_utilization")

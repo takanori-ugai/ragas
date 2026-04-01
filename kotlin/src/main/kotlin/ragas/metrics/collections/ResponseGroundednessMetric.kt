@@ -15,34 +15,6 @@ class ResponseGroundednessMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
-    private val stopWords =
-        setOf(
-            "a",
-            "an",
-            "and",
-            "are",
-            "as",
-            "at",
-            "be",
-            "by",
-            "for",
-            "from",
-            "has",
-            "in",
-            "is",
-            "it",
-            "its",
-            "of",
-            "on",
-            "or",
-            "that",
-            "the",
-            "to",
-            "was",
-            "were",
-            "with",
-        )
-
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }
@@ -57,14 +29,15 @@ class ResponseGroundednessMetric :
 
         val normalizedResponse = normalizeForContainment(response)
         val normalizedContext = normalizeForContainment(mergedContext)
-        if (normalizedResponse == normalizedContext || normalizedResponse in normalizedContext) {
+        val phraseMatch = " $normalizedResponse " in " $normalizedContext "
+        if (normalizedResponse == normalizedContext || phraseMatch) {
             return 1.0
         }
 
         val contextTokenSet = tokenSet(mergedContext)
         val responseTokens =
             tokenSet(response)
-                .filter { token -> token !in stopWords && token.length > 2 }
+                .filter { token -> token !in STOP_WORDS && token.length > 2 }
                 .toSet()
 
         if (responseTokens.isEmpty()) {
@@ -74,10 +47,10 @@ class ResponseGroundednessMetric :
         val supported = responseTokens.intersect(contextTokenSet).size.toDouble()
         var score = supported / responseTokens.size.toDouble()
 
-        val contextCapitalized = extractCapitalizedTokens(mergedContext)
         val unsupportedCapitalized =
             extractCapitalizedTokens(response)
-                .count { token -> token !in contextCapitalized }
+                .filter { token -> token !in STOP_WORDS && token.length > 2 }
+                .count { token -> token !in contextTokenSet }
         if (unsupportedCapitalized > 0) {
             score *= (1.0 - (0.45 * unsupportedCapitalized.coerceAtMost(2)))
         }
@@ -100,14 +73,47 @@ class ResponseGroundednessMetric :
             .trim()
 
     private fun extractCapitalizedTokens(text: String): Set<String> =
-        Regex("\\b[A-Z][A-Za-z0-9-]*\\b")
+        CAPITALIZED_TOKEN_REGEX
             .findAll(text)
             .map { match -> match.value.lowercase() }
             .toSet()
 
     private fun extractNumericTokens(text: String): Set<String> =
-        Regex("\\b\\d+[A-Za-z]*\\b")
+        NUMERIC_TOKEN_REGEX
             .findAll(text)
             .map { match -> match.value.lowercase() }
             .toSet()
+
+    private companion object {
+        val CAPITALIZED_TOKEN_REGEX = Regex("\\b[A-Z][A-Za-z0-9-]*\\b")
+        val NUMERIC_TOKEN_REGEX = Regex("\\b\\d+[A-Za-z]*\\b")
+
+        val STOP_WORDS =
+            setOf(
+                "a",
+                "an",
+                "and",
+                "are",
+                "as",
+                "at",
+                "be",
+                "by",
+                "for",
+                "from",
+                "has",
+                "in",
+                "is",
+                "it",
+                "its",
+                "of",
+                "on",
+                "or",
+                "that",
+                "the",
+                "to",
+                "was",
+                "were",
+                "with",
+            )
+    }
 }

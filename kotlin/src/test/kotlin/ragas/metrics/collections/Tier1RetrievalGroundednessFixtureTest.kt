@@ -2,10 +2,12 @@ package ragas.metrics.collections
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -25,7 +27,7 @@ class Tier1RetrievalGroundednessFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                assertBand(score, obj.getValue("expected_band").jsonPrimitive.content, metric.name)
+                assertFixtureScore(score, obj.getValue("expected_score").jsonPrimitive.double, metric.name)
             }
         }
 
@@ -44,7 +46,7 @@ class Tier1RetrievalGroundednessFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                assertBand(score, obj.getValue("expected_band").jsonPrimitive.content, metric.name)
+                assertFixtureScore(score, obj.getValue("expected_score").jsonPrimitive.double, metric.name)
             }
         }
 
@@ -59,17 +61,12 @@ class Tier1RetrievalGroundednessFixtureTest {
         assertTrue("context_entity_recall" in names)
     }
 
-    private fun assertBand(
+    private fun assertFixtureScore(
         score: Double,
-        band: String,
+        expected: Double,
         metricName: String,
     ) {
-        when (band) {
-            "high" -> assertTrue(score >= 0.50, "metric=$metricName expected high but score=$score")
-            "partial" -> assertTrue(score in 0.20..0.80, "metric=$metricName expected partial but score=$score")
-            "low" -> assertTrue(score <= 0.45, "metric=$metricName expected low but score=$score")
-            else -> error("Unsupported band '$band'")
-        }
+        assertTrue(abs(score - expected) < 1e-9, "metric=$metricName expected=$expected actual=$score")
     }
 
     private fun readFixture() =

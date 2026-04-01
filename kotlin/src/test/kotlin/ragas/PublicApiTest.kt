@@ -32,6 +32,13 @@ class PublicApiTest {
         val result = evaluate(dataset = dataset)
         assertTrue(result.scores.first().containsKey("answer_relevancy"))
         assertEquals(4, defaultMetrics().size)
+        val tier1Names = tier1Metrics().map { metric -> metric.name }.toSet()
+        assertTrue("context_relevance" in tier1Names)
+        assertTrue("response_groundedness" in tier1Names)
+        assertTrue("context_precision_with_reference" in tier1Names)
+        assertTrue("context_precision_without_reference" in tier1Names)
+        assertTrue("id_based_context_precision" in tier1Names)
+        assertTrue("context_entity_recall" in tier1Names)
         assertEquals("0.0.1", VERSION)
     }
 

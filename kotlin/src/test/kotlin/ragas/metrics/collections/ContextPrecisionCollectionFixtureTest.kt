@@ -2,6 +2,7 @@ package ragas.metrics.collections
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -27,7 +28,8 @@ class ContextPrecisionCollectionFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                assertBand(score, obj.getValue("expected_band").jsonPrimitive.content, metric.name)
+                val expected = obj.getValue("expected_scores").jsonObject.getValue(metric.name).jsonPrimitive.double
+                assertFixtureScore(score, expected, metric.name)
             }
         }
 
@@ -47,7 +49,8 @@ class ContextPrecisionCollectionFixtureTest {
                     )
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-                assertBand(score, obj.getValue("expected_band").jsonPrimitive.content, metric.name)
+                val expected = obj.getValue("expected_scores").jsonObject.getValue(metric.name).jsonPrimitive.double
+                assertFixtureScore(score, expected, metric.name)
             }
         }
 
@@ -75,17 +78,12 @@ class ContextPrecisionCollectionFixtureTest {
             assertTrue(abs(wrappedWithoutReference.toDouble() - baseWithoutReference.toDouble()) < 1e-12)
         }
 
-    private fun assertBand(
+    private fun assertFixtureScore(
         score: Double,
-        band: String,
+        expected: Double,
         metricName: String,
     ) {
-        when (band) {
-            "high" -> assertTrue(score >= 0.65, "metric=$metricName expected high but score=$score")
-            "partial" -> assertTrue(score in 0.45..1.0, "metric=$metricName expected partial but score=$score")
-            "low" -> assertTrue(score <= 0.40, "metric=$metricName expected low but score=$score")
-            else -> error("Unsupported band '$band'")
-        }
+        assertTrue(abs(score - expected) < 1e-9, "metric=$metricName expected=$expected actual=$score")
     }
 
     private fun readFixture() =

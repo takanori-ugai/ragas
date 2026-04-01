@@ -1,5 +1,7 @@
 {
-  "source_test": "tests/e2e/metrics_migration/test_context_precision_migration.py",
+  "source_tests": [
+    "tests/e2e/metrics_migration/test_context_precision_migration.py"
+  ],
   "cases": [
     {
       "user_input": "What is the capital of France?",
@@ -9,7 +11,11 @@
         "Paris is the capital and largest city of France, with a population of over 2 million people.",
         "Berlin is the capital of Germany and has a rich historical background."
       ],
-      "expected_band": "partial"
+      "expected_band": "partial",
+      "expected_scores": {
+        "context_precision_with_reference": 1.0,
+        "context_precision_without_reference": 1.0
+      }
     },
     {
       "user_input": "Who developed the theory of relativity?",
@@ -20,7 +26,11 @@
         "Einstein published his special theory of relativity in 1905 and general relativity in 1915.",
         "Isaac Newton developed the laws of motion and universal gravitation."
       ],
-      "expected_band": "partial"
+      "expected_band": "partial",
+      "expected_scores": {
+        "context_precision_with_reference": 1.0,
+        "context_precision_without_reference": 1.0
+      }
     },
     {
       "user_input": "What is photosynthesis?",
@@ -31,7 +41,11 @@
         "During photosynthesis, chlorophyll in plant leaves absorbs light energy to drive the reaction.",
         "Plants also undergo cellular respiration to break down glucose for energy."
       ],
-      "expected_band": "high"
+      "expected_band": "high",
+      "expected_scores": {
+        "context_precision_with_reference": 1.0,
+        "context_precision_without_reference": 1.0
+      }
     }
   ]
 }

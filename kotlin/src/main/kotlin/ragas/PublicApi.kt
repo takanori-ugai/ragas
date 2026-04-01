@@ -10,6 +10,7 @@ import ragas.embeddings.CachedRagasEmbedding
 import ragas.llms.BaseRagasLlm
 import ragas.llms.CachedRagasLlm
 import ragas.metrics.Metric
+import ragas.metrics.collections.retrievalGroundednessTier1Metrics
 import ragas.metrics.defaults.defaultSingleTurnMetrics
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
@@ -59,6 +60,8 @@ suspend fun aevaluate(
     )
 
 fun defaultMetrics(): List<Metric> = defaultSingleTurnMetrics()
+
+fun tier1Metrics(): List<Metric> = retrievalGroundednessTier1Metrics()
 
 fun withCache(
     llm: BaseRagasLlm,

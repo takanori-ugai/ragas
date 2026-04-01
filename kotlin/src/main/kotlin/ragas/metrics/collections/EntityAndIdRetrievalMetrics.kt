@@ -57,18 +57,10 @@ class ContextEntityRecallMetric :
             return 0.0
         }
 
-        val contextEntities = extractEntities(contexts.joinToString("\n"))
+        val mergedContexts = contexts.joinToString("\n")
+        val contextEntities = extractEntities(mergedContexts)
         val overlap = referenceEntities.intersect(contextEntities)
-        var score = overlap.size.toDouble() / referenceEntities.size.toDouble()
-
-        val referenceNumericEntities = extractNumericEntities(reference)
-        if (referenceNumericEntities.isNotEmpty()) {
-            val contextNumericEntities = extractNumericEntities(contexts.joinToString("\n"))
-            val numericCoverage =
-                referenceNumericEntities.intersect(contextNumericEntities).size.toDouble() /
-                    referenceNumericEntities.size.toDouble()
-            score *= (0.4 + (0.6 * numericCoverage))
-        }
+        val score = overlap.size.toDouble() / referenceEntities.size.toDouble()
 
         return clamp01(score)
     }
@@ -76,19 +68,9 @@ class ContextEntityRecallMetric :
     private fun extractEntities(text: String): Set<String> {
         val entities = linkedSetOf<String>()
 
-        Regex("\\b\\d{4}\\b").findAll(text).forEach { match ->
-            entities += normalizeEntity(match.value)
-        }
+        entities += extractNumericEntities(text)
 
-        Regex("\\b\\d+(?:st|nd|rd|th)\\b").findAll(text).forEach { match ->
-            entities += normalizeEntity(match.value)
-        }
-
-        Regex("\\b\\d{1,3}(?:,\\d{3})+\\b").findAll(text).forEach { match ->
-            entities += normalizeEntity(match.value)
-        }
-
-        Regex("\\b(?:[A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)\\b").findAll(text).forEach { match ->
+        ENTITY_PHRASE_REGEX.findAll(text).forEach { match ->
             val value = normalizeEntity(match.value)
             if (value.length >= 3 && value !in STOP_ENTITY_WORDS) {
                 entities += value
@@ -105,9 +87,9 @@ class ContextEntityRecallMetric :
 
     private fun extractNumericEntities(text: String): Set<String> {
         val entities = linkedSetOf<String>()
-        Regex("\\b\\d{4}\\b").findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
-        Regex("\\b\\d+(?:st|nd|rd|th)\\b").findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
-        Regex("\\b\\d{1,3}(?:,\\d{3})+\\b").findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
+        YEAR_REGEX.findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
+        ORDINAL_NUMBER_REGEX.findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
+        THOUSANDS_NUMBER_REGEX.findAll(text).forEach { match -> entities += normalizeEntity(match.value) }
         return entities
     }
 
@@ -115,10 +97,17 @@ class ContextEntityRecallMetric :
         entity
             .trim()
             .lowercase()
-            .replace(Regex("[^\\p{L}\\p{N}, ]"), "")
-            .replace(Regex("\\s+"), " ")
+            .replace(NON_ENTITY_CHARS_REGEX, "")
+            .replace(WHITESPACE_REGEX, " ")
 
     private companion object {
+        val YEAR_REGEX = Regex("\\b\\d{4}\\b")
+        val ORDINAL_NUMBER_REGEX = Regex("\\b\\d+(?:st|nd|rd|th)\\b")
+        val THOUSANDS_NUMBER_REGEX = Regex("\\b\\d{1,3}(?:,\\d{3})+\\b")
+        val ENTITY_PHRASE_REGEX = Regex("\\b(?:[A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)\\b")
+        val NON_ENTITY_CHARS_REGEX = Regex("[^\\p{L}\\p{N}, ]")
+        val WHITESPACE_REGEX = Regex("\\s+")
+
         val STOP_ENTITY_WORDS =
             setOf(
                 "the",
