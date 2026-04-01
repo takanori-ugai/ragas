@@ -173,10 +173,16 @@ class DynamicFewShotPrompt(
         fun load(path: String): DynamicFewShotPrompt {
             val file = File(path)
             require(file.exists()) { "Prompt file not found: $path" }
-            val saved = compactJson.decodeFromString(SavedDynamicPrompt.serializer(), file.readText())
+            val saved =
+                compactJson.decodeFromString(
+                    SavedDynamicPrompt.serializer(),
+                    file.readText(),
+                )
             if (saved.ragasVersion != VERSION) {
                 logger.warn {
-                    "Prompt was saved with Ragas v${saved.ragasVersion}, but current runtime is v$VERSION. There might be incompatibilities."
+                    "Prompt was saved with Ragas v${saved.ragasVersion}, " +
+                        "but current runtime is v$VERSION. " +
+                        "There might be incompatibilities."
                 }
             }
             val loaded =

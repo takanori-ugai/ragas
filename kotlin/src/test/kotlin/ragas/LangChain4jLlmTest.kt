@@ -44,7 +44,8 @@ class LangChain4jLlmTest {
                 listOf(
                     PromptContentPart.Text("What is in this image?"),
                     PromptContentPart.ImageDataUri(
-                        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+                        "data:image/png;base64," +
+                            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
                     ),
                     PromptContentPart.ImageUrl("https://example.com/image.png"),
                 )

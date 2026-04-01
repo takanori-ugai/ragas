@@ -57,9 +57,7 @@ class StructuredOutputParser<T>(
 
     fun parse(rawText: String): T {
         val trimmed = rawText.trim()
-        if (trimmed.isEmpty()) {
-            throw IllegalArgumentException("Structured output is empty.")
-        }
+        require(trimmed.isNotEmpty()) { "Structured output is empty." }
 
         return runCatching {
             json.decodeFromString(serializer, trimmed)

@@ -1,9 +1,11 @@
 package ragas.runtime
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.math.pow
 
+@Suppress("TooGenericExceptionCaught")
 suspend fun <T> retryAsync(
     runConfig: RunConfig,
     block: suspend () -> T,
@@ -13,7 +15,9 @@ suspend fun <T> retryAsync(
     while (attempt < runConfig.maxRetries) {
         try {
             return block()
-        } catch (error: Throwable) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
             attempt += 1
             if (!runConfig.shouldRetry(error) || attempt >= runConfig.maxRetries) {
                 throw error

@@ -52,11 +52,11 @@ class TracingIntegrationTest {
         val runId = memory.events.first().runId
         val lfTrace = langfuse.getTrace(runId)
         assertTrue(lfTrace != null)
-        assertTrue(lfTrace!!.endTimeMs != null)
+        assertTrue(lfTrace.endTimeMs != null)
 
         val mlRun = mlflow.getRun(runId)
         assertTrue(mlRun != null)
-        assertEquals("FINISHED", mlRun!!.status)
+        assertEquals("FINISHED", mlRun.status)
         assertTrue(mlRun.metrics.isNotEmpty())
     }
 

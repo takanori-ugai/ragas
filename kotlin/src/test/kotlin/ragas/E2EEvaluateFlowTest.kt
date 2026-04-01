@@ -233,7 +233,7 @@ private class InitFailingMetric :
 
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
-        throw IllegalStateException("init failed")
+        error("init failed")
     }
 
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any = 0.0

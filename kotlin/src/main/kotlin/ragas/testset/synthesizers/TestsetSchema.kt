@@ -44,11 +44,10 @@ data class Testset(
                 data.map { row ->
                     val synthesizer = row["synthesizer_name"]?.toString() ?: "unknown"
                     val sample =
-                        if (row["user_input"] is List<*>) {
-                            throw IllegalArgumentException(
-                                "Multi-turn deserialization is not implemented for fromList() yet.",
-                            )
-                        } else {
+                        run {
+                            require(row["user_input"] !is List<*>) {
+                                "Multi-turn deserialization is not implemented for fromList() yet."
+                            }
                             SingleTurnSample(
                                 userInput = row["user_input"]?.toString(),
                                 response = row["response"]?.toString(),

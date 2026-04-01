@@ -37,6 +37,6 @@ class TracingSelfSuppressionTest {
 
         assertTrue(thrown === root)
         // Suppressed exceptions should be empty because we didn't add it (it was the same instance)
-        assertTrue(thrown?.suppressedExceptions?.isEmpty() ?: false)
+        assertTrue(thrown.suppressedExceptions.isEmpty())
     }
 }
