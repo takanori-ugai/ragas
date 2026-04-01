@@ -1,5 +1,7 @@
 package ragas.llms
 
+import dev.langchain4j.data.message.ImageContent
+import dev.langchain4j.data.message.TextContent
 import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
@@ -34,39 +36,7 @@ class LangChain4jLlm(
         n: Int,
         temperature: Double?,
         stop: List<String>?,
-    ): LlmResult =
-        coroutineScope {
-            require(n > 0) { "n must be greater than zero." }
-
-            val jobs =
-                (0 until n).map {
-                    async {
-                        withTimeout(runConfig.timeoutSeconds * 1_000) {
-                            withContext(Dispatchers.IO) {
-                                val requestBuilder =
-                                    ChatRequest
-                                        .builder()
-                                        .messages(UserMessage.from(prompt))
-                                if (temperature != null) {
-                                    requestBuilder.temperature(temperature)
-                                }
-                                if (!stop.isNullOrEmpty()) {
-                                    requestBuilder.stopSequences(stop)
-                                }
-                                val response = model.chat(requestBuilder.build())
-                                val text = response.aiMessage().text()
-                                val finish = response.finishReason()?.name
-                                LlmGeneration(
-                                    text = applyStop(text, stop),
-                                    finishReason = finish,
-                                )
-                            }
-                        }
-                    }
-                }
-
-            LlmResult(generations = jobs.awaitAll())
-        }
+    ): LlmResult = generateContent(listOf(PromptContentPart.Text(prompt)), n, temperature, stop)
 
     override suspend fun generateNumericValue(prompt: String): Double? =
         withTimeout(runConfig.timeoutSeconds * 1_000) {
@@ -94,10 +64,49 @@ class LangChain4jLlm(
         n: Int,
         temperature: Double?,
         stop: List<String>?,
-    ): LlmResult {
-        val textPrompt = content.joinToString(separator = "\n") { part -> part.toPromptText() }
-        return generateText(prompt = textPrompt, n = n, temperature = temperature, stop = stop)
-    }
+    ): LlmResult =
+        coroutineScope {
+            require(n > 0) { "n must be greater than zero." }
+
+            val langchain4jContent =
+                content.map { part ->
+                    when (part) {
+                        is PromptContentPart.Text -> TextContent.from(part.text)
+                        is PromptContentPart.ImageDataUri -> ImageContent.from(part.dataUri)
+                        is PromptContentPart.ImageUrl -> ImageContent.from(part.url)
+                    }
+                }
+            val userMessage = UserMessage.from(langchain4jContent)
+
+            val jobs =
+                (0 until n).map {
+                    async {
+                        withTimeout(runConfig.timeoutSeconds * 1_000) {
+                            withContext(Dispatchers.IO) {
+                                val requestBuilder =
+                                    ChatRequest
+                                        .builder()
+                                        .messages(userMessage)
+                                if (temperature != null) {
+                                    requestBuilder.temperature(temperature)
+                                }
+                                if (!stop.isNullOrEmpty()) {
+                                    requestBuilder.stopSequences(stop)
+                                }
+                                val response = model.chat(requestBuilder.build())
+                                val text = response.aiMessage().text()
+                                val finish = response.finishReason()?.name
+                                LlmGeneration(
+                                    text = applyStop(text, stop),
+                                    finishReason = finish,
+                                )
+                            }
+                        }
+                    }
+                }
+
+            LlmResult(generations = jobs.awaitAll())
+        }
 
     private fun applyStop(
         text: String,

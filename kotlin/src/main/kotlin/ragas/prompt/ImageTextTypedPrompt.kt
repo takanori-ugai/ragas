@@ -57,7 +57,7 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         return parts
     }
 
-    override fun format(input: InputT?): String = toContent(input).joinToString(separator = "\n") { it.toPromptText() }
+    override suspend fun format(input: InputT?): String = toContent(input).joinToString(separator = "\n") { it.toPromptText() }
 
     override suspend fun generate(
         llm: BaseRagasLlm,

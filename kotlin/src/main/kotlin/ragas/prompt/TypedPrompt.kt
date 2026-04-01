@@ -13,6 +13,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ragas.embeddings.BaseRagasEmbedding
 import ragas.llms.BaseRagasLlm
+import java.util.Collections
+import java.util.IdentityHashMap
 
 @Serializable
 data class TypedPromptExample<InputT, OutputT>(
@@ -51,6 +53,8 @@ class StructuredOutputParser<T>(
     private val serializer: KSerializer<T>,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
+    private val maxDescriptorDepth = 32
+
     fun parse(rawText: String): T {
         val trimmed = rawText.trim()
         if (trimmed.isEmpty()) {
@@ -66,58 +70,83 @@ class StructuredOutputParser<T>(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    fun expectedShapeDescription(): String = describeDescriptor(serializer.descriptor)
+    fun expectedShapeDescription(): String =
+        describeDescriptor(
+            descriptor = serializer.descriptor,
+            active =
+                Collections.newSetFromMap(
+                    IdentityHashMap<SerialDescriptor, Boolean>(),
+                ),
+            depth = 0,
+        )
 
     @OptIn(ExperimentalSerializationApi::class)
-    private fun describeDescriptor(descriptor: SerialDescriptor): String =
-        when (descriptor.kind) {
-            PrimitiveKind.BOOLEAN -> {
-                "boolean"
-            }
-
-            PrimitiveKind.BYTE,
-            PrimitiveKind.SHORT,
-            PrimitiveKind.INT,
-            PrimitiveKind.LONG,
-            PrimitiveKind.FLOAT,
-            PrimitiveKind.DOUBLE,
-            PrimitiveKind.CHAR,
-            -> {
-                "number"
-            }
-
-            PrimitiveKind.STRING -> {
-                "string"
-            }
-
-            StructureKind.LIST -> {
-                "[${describeDescriptor(descriptor.getElementDescriptor(0))}]"
-            }
-
-            StructureKind.MAP -> {
-                "{key: ${describeDescriptor(descriptor.getElementDescriptor(1))}}"
-            }
-
-            StructureKind.CLASS,
-            StructureKind.OBJECT,
-            -> {
-                val fields =
-                    (0 until descriptor.elementsCount).joinToString(", ") { index ->
-                        val name = descriptor.getElementName(index)
-                        val type = describeDescriptor(descriptor.getElementDescriptor(index))
-                        "\"$name\": $type"
-                    }
-                "{$fields}"
-            }
-
-            is PolymorphicKind -> {
-                "polymorphic"
-            }
-
-            else -> {
-                "json"
-            }
+    private fun describeDescriptor(
+        descriptor: SerialDescriptor,
+        active: MutableSet<SerialDescriptor>,
+        depth: Int,
+    ): String {
+        if (depth >= maxDescriptorDepth) {
+            return "json"
         }
+        if (!active.add(descriptor)) {
+            return "recursive"
+        }
+
+        return try {
+            when (descriptor.kind) {
+                PrimitiveKind.BOOLEAN -> {
+                    "boolean"
+                }
+
+                PrimitiveKind.BYTE,
+                PrimitiveKind.SHORT,
+                PrimitiveKind.INT,
+                PrimitiveKind.LONG,
+                PrimitiveKind.FLOAT,
+                PrimitiveKind.DOUBLE,
+                -> {
+                    "number"
+                }
+
+                PrimitiveKind.CHAR,
+                PrimitiveKind.STRING,
+                -> {
+                    "string"
+                }
+
+                StructureKind.LIST -> {
+                    "[${describeDescriptor(descriptor.getElementDescriptor(0), active, depth + 1)}]"
+                }
+
+                StructureKind.MAP -> {
+                    "{key: ${describeDescriptor(descriptor.getElementDescriptor(1), active, depth + 1)}}"
+                }
+
+                StructureKind.CLASS,
+                StructureKind.OBJECT,
+                -> {
+                    val fields =
+                        (0 until descriptor.elementsCount).joinToString(", ") { index ->
+                            val name = descriptor.getElementName(index)
+                            val type = describeDescriptor(descriptor.getElementDescriptor(index), active, depth + 1)
+                            "\"$name\": $type"
+                        }
+                    "{$fields}"
+                }
+
+                is PolymorphicKind -> {
+                    "polymorphic"
+                }
+
+                else -> {
+                    "json"
+                }
+            }
+        } finally {
+            active.remove(descriptor)
+        }
+    }
 
     private fun extractFirstJsonValue(text: String): String {
         val start = text.indexOfFirst { it == '{' || it == '[' }
@@ -178,7 +207,7 @@ abstract class BasePrompt<InputT, OutputT>(
 ) {
     private val parser = StructuredOutputParser(outputSerializer)
 
-    open fun format(input: InputT?): String = render(input = input, examples = model.examples)
+    open suspend fun format(input: InputT?): String = render(input = input, examples = model.examples)
 
     protected fun render(
         input: InputT?,
@@ -341,44 +370,42 @@ open class DynamicFewShotTypedPrompt<InputT, OutputT>(
         require(maxSimilarExamples > 0) { "maxSimilarExamples must be greater than 0." }
     }
 
-    override fun format(input: InputT?): String {
-        val selected = selectExamplesBlocking(input)
+    override suspend fun format(input: InputT?): String {
+        val selected = selectExamples(input)
         return render(input = input, examples = selected)
     }
 
-    private fun selectExamplesBlocking(input: InputT?): List<TypedPromptExample<InputT, OutputT>> {
+    private suspend fun selectExamples(input: InputT?): List<TypedPromptExample<InputT, OutputT>> {
         if (model.examples.isEmpty()) {
             return emptyList()
         }
         val embeddingModel = embeddings ?: return model.examples.take(maxSimilarExamples)
         val queryText = input?.let { compactJson.encodeToString(inputSerializer, it) } ?: "(None)"
 
-        return kotlinx.coroutines.runBlocking {
-            val queryVector = embeddingModel.embedText(queryText)
-            val exampleVectors =
-                cacheMutex.withLock {
-                    if (cachedExampleVectors != null && cachedEmbeddingsModel === embeddingModel) {
-                        cachedExampleVectors!!
-                    } else {
-                        val exampleTexts =
-                            model.examples.map { example ->
-                                compactJson.encodeToString(inputSerializer, example.input)
-                            }
-                        val vectors = embeddingModel.embedTexts(exampleTexts)
-                        cachedExampleVectors = vectors
-                        cachedEmbeddingsModel = embeddingModel
-                        vectors
-                    }
+        val queryVector = embeddingModel.embedText(queryText)
+        val exampleVectors =
+            cacheMutex.withLock {
+                if (cachedExampleVectors != null && cachedEmbeddingsModel === embeddingModel) {
+                    cachedExampleVectors!!
+                } else {
+                    val exampleTexts =
+                        model.examples.map { example ->
+                            compactJson.encodeToString(inputSerializer, example.input)
+                        }
+                    val vectors = embeddingModel.embedTexts(exampleTexts)
+                    cachedExampleVectors = vectors
+                    cachedEmbeddingsModel = embeddingModel
+                    vectors
                 }
+            }
 
-            model.examples
-                .zip(exampleVectors)
-                .map { (example, vector) ->
-                    example to cosineSimilarity(queryVector, vector)
-                }.sortedByDescending { (_, score) -> score }
-                .take(maxSimilarExamples)
-                .map { (example) -> example }
-        }
+        return model.examples
+            .zip(exampleVectors)
+            .map { (example, vector) ->
+                example to cosineSimilarity(queryVector, vector)
+            }.sortedByDescending { (_, score) -> score }
+            .take(maxSimilarExamples)
+            .map { (example) -> example }
     }
 
     private fun cosineSimilarity(
