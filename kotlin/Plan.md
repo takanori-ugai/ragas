@@ -99,6 +99,26 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
   3. Text-quality/translation metrics
   4. Domain/rubric-specific metrics
 - [ ] Align score semantics and edge-case handling with Python golden fixtures.
+- Progress note (2026-04-01):
+  - Started WS3 Tier-1 retrieval/groundedness ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/ContextRelevanceMetric.kt`
+    - `src/main/kotlin/ragas/metrics/collections/ResponseGroundednessMetric.kt`
+    - `src/main/kotlin/ragas/metrics/collections/ContextPrecisionCollectionMetrics.kt`
+    - `src/main/kotlin/ragas/metrics/collections/EntityAndIdRetrievalMetrics.kt`
+    - `src/main/kotlin/ragas/metrics/collections/Tier1Metrics.kt`
+  - Added fixture baseline derived from Python migration tests:
+    - `tests/e2e/metrics_migration/test_context_relevance_migration.py`
+    - `tests/e2e/metrics_migration/test_response_groundedness_migration.py`
+    - `tests/e2e/metrics_migration/test_context_precision_migration.py`
+    - `tests/e2e/metrics_migration/test_context_entity_recall_migration.py`
+    - `src/ragas/metrics/_context_precision.py::IDBasedContextPrecision`
+    - Kotlin fixture: `src/test/resources/fixtures/metrics/ws3_tier1_retrieval_groundedness_fixture.json`
+    - Kotlin fixture: `src/test/resources/fixtures/metrics/ws3_tier1_context_precision_fixture.json`
+    - Kotlin fixture: `src/test/resources/fixtures/metrics/ws3_tier1_entity_id_fixture.json`
+  - Added fixture-band conformance coverage:
+    - `src/test/kotlin/ragas/metrics/collections/Tier1RetrievalGroundednessFixtureTest.kt`
+    - `src/test/kotlin/ragas/metrics/collections/ContextPrecisionCollectionFixtureTest.kt`
+    - `src/test/kotlin/ragas/metrics/collections/EntityAndIdRetrievalFixtureTest.kt`
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -188,6 +208,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Start WS3 Tier-1 metric ports using existing Python fixtures as baseline.
+1. Start WS3 Tier-2 ports for agent/tool-call metrics with fixture-backed score-band parity tests.
 2. Add WS9 parity map document (Python file -> Kotlin target + status).
 3. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
