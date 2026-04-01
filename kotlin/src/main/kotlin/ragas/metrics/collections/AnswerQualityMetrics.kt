@@ -1,7 +1,7 @@
 package ragas.metrics.collections
 
 import ragas.metrics.BaseMetric
-import ragas.metrics.Metric
+import ragas.metrics.COMMON_STOP_WORDS
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
@@ -57,12 +57,22 @@ class AnswerAccuracyMetric(
                 responseTokens.intersect(questionTokens).size.toDouble() / questionTokens.size.toDouble()
             }
 
-        var score = (0.65 * lexicalF1) + (0.25 * numberAlignment) + (0.10 * questionCoverage)
+        var score =
+            (LEXICAL_F1_WEIGHT * lexicalF1) +
+                (NUMBER_ALIGNMENT_WEIGHT * numberAlignment) +
+                (QUESTION_COVERAGE_WEIGHT * questionCoverage)
         if (referenceNumbers.isNotEmpty() && responseNumbers.isNotEmpty() && responseNumbers.intersect(referenceNumbers).isEmpty()) {
-            score *= 0.2
+            score *= DISJOINT_NUMBER_PENALTY
         }
 
         return clamp01(score)
+    }
+
+    private companion object {
+        const val LEXICAL_F1_WEIGHT = 0.65
+        const val NUMBER_ALIGNMENT_WEIGHT = 0.25
+        const val QUESTION_COVERAGE_WEIGHT = 0.10
+        const val DISJOINT_NUMBER_PENALTY = 0.2
     }
 }
 
@@ -98,7 +108,7 @@ class AnswerCorrectnessMetric(
             if (weights[1] == 0.0) {
                 0.0
             } else {
-                semanticSimilarityScore(response, reference)
+                lexicalSimilarityScore(response, reference)
             }
 
         val weightSum = weights[0] + weights[1]
@@ -152,7 +162,7 @@ class AnswerCorrectnessMetric(
         return clamp01(fbeta * contradictionPenalty)
     }
 
-    private fun semanticSimilarityScore(
+    private fun lexicalSimilarityScore(
         response: String,
         reference: String,
     ): Double {
@@ -233,21 +243,6 @@ class AnswerCorrectnessMetric(
     }
 }
 
-fun answerQualityTier3Metrics(): List<Metric> =
-    listOf(
-        AnswerAccuracyMetric(),
-        AnswerCorrectnessMetric(),
-        FactualCorrectnessMetric(),
-        TopicAdherenceMetric(),
-        NoiseSensitivityMetric(),
-        SummaryScoreMetric(),
-        QuotedSpansAlignmentMetric(),
-        ChrfScoreMetric(),
-        BleuScoreMetric(),
-        RougeScoreMetric(),
-        SemanticSimilarityMetric(),
-    )
-
 private fun normalizeText(text: String): String =
     text
         .lowercase()
@@ -266,7 +261,7 @@ private fun harmonicMean(
 
 private fun meaningfulTokenSet(text: String): Set<String> =
     tokenize(text)
-        .filter { token -> token.length > 2 && token !in STOP_WORDS }
+        .filter { token -> token.length > 2 && token !in ANSWER_QUALITY_STOP_WORDS }
         .toSet()
 
 private fun numericTokenSet(text: String): Set<String> =
@@ -297,37 +292,16 @@ private fun numberAlignmentScore(
 
 private val NUMERIC_TOKEN_REGEX = Regex("\\b\\d+(?:[.,]\\d+)?\\b")
 
-private val STOP_WORDS =
-    setOf(
-        "the",
-        "and",
-        "for",
-        "with",
-        "that",
-        "this",
-        "from",
-        "into",
-        "about",
-        "your",
-        "you",
-        "are",
-        "was",
-        "were",
-        "been",
-        "have",
-        "has",
-        "had",
-        "will",
-        "would",
-        "could",
-        "should",
-        "what",
-        "when",
-        "where",
-        "which",
-        "who",
-        "whom",
-        "whose",
-        "why",
-        "how",
-    )
+private val ANSWER_QUALITY_STOP_WORDS =
+    COMMON_STOP_WORDS +
+        setOf(
+            "what",
+            "when",
+            "where",
+            "which",
+            "who",
+            "whom",
+            "whose",
+            "why",
+            "how",
+        )

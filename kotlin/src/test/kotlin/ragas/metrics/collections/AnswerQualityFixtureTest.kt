@@ -7,7 +7,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class AnswerQualityFixtureTest {
@@ -96,19 +95,7 @@ class AnswerQualityFixtureTest {
 
     @Test
     fun tier3MetricListIncludesAnswerQualityPorts() {
-        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
-        assertEquals(11, names.size)
-        assertTrue("answer_accuracy" in names)
-        assertTrue("answer_correctness" in names)
-        assertTrue("factual_correctness" in names)
-        assertTrue("topic_adherence" in names)
-        assertTrue("noise_sensitivity" in names)
-        assertTrue("summary_score" in names)
-        assertTrue("quoted_spans_alignment" in names)
-        assertTrue("chrf_score" in names)
-        assertTrue("bleu_score" in names)
-        assertTrue("rouge_score" in names)
-        assertTrue("semantic_similarity" in names)
+        AgentFixtureTestSupport.assertTier3MetricRegistryMatchesExpected()
     }
 
     private companion object {

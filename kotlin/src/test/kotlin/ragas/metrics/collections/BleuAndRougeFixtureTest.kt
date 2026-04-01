@@ -7,8 +7,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class BleuAndRougeFixtureTest {
     @Test
@@ -72,11 +70,11 @@ class BleuAndRougeFixtureTest {
 
     @Test
     fun tier3MetricListIncludesBleuAndRougePorts() {
-        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
-        assertEquals(11, names.size)
-        assertTrue("bleu_score" in names)
-        assertTrue("rouge_score" in names)
-        assertTrue("semantic_similarity" in names)
+        AgentFixtureTestSupport.assertTier3MetricRegistryIncludes(
+            "bleu_score",
+            "rouge_score",
+            "semantic_similarity",
+        )
     }
 
     private companion object {

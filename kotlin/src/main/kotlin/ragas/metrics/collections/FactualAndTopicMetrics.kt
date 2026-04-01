@@ -1,6 +1,7 @@
 package ragas.metrics.collections
 
 import ragas.metrics.BaseMetric
+import ragas.metrics.COMMON_STOP_WORDS
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
 import ragas.metrics.MultiTurnMetric
@@ -68,15 +69,19 @@ class FactualCorrectnessMetric(
                 referenceClaims.map { claim -> isClaimSupported(claim, responseClaims) }.toBooleanArray()
             }
 
-        val tp = responseSupported.count { it }
-        val fp = responseSupported.count { !it }
-        val fn = if (mode == Mode.PRECISION) 0 else referenceSupported.count { !it }
+        val precision = safeDivide(responseSupported.count { it }.toDouble(), responseSupported.size.toDouble())
+        val recall =
+            if (mode == Mode.PRECISION) {
+                0.0
+            } else {
+                safeDivide(referenceSupported.count { it }.toDouble(), referenceSupported.size.toDouble())
+            }
 
         val score =
             when (mode) {
-                Mode.PRECISION -> safeDivide(tp.toDouble(), (tp + fp).toDouble())
-                Mode.RECALL -> safeDivide(tp.toDouble(), (tp + fn).toDouble())
-                Mode.F1 -> fBeta(tp = tp, fp = fp, fn = fn, beta = beta)
+                Mode.PRECISION -> precision
+                Mode.RECALL -> recall
+                Mode.F1 -> fBeta(precision = precision, recall = recall, beta = beta)
             }
 
         return round(clamp01(score) * 100.0) / 100.0
@@ -157,13 +162,10 @@ class FactualCorrectnessMetric(
     }
 
     private fun fBeta(
-        tp: Int,
-        fp: Int,
-        fn: Int,
+        precision: Double,
+        recall: Double,
         beta: Double,
     ): Double {
-        val precision = safeDivide(tp.toDouble(), (tp + fp).toDouble())
-        val recall = safeDivide(tp.toDouble(), (tp + fn).toDouble())
         if (precision + recall == 0.0) {
             return 0.0
         }
@@ -181,7 +183,7 @@ class FactualCorrectnessMetric(
             numerator / denominator
         }
 
-    private fun meaningfulTokens(text: String): List<String> = tokenize(text).filter { token -> token.length > 2 && token !in STOP_WORDS }
+    private fun meaningfulTokens(text: String): List<String> = tokenize(text).filter { token -> token.length > 2 && token !in COMMON_STOP_WORDS }
 
     private fun numberTokens(text: String): Set<String> = NUMBER_TOKEN_REGEX.findAll(text.lowercase()).map { it.value }.toSet()
 
@@ -189,31 +191,6 @@ class FactualCorrectnessMetric(
         val SENTENCE_SPLIT_REGEX = Regex("[.!?]+")
         val CLAIM_SPLIT_REGEX = Regex("\\b(?:and|but|while|whereas|although)\\b|,")
         val NUMBER_TOKEN_REGEX = Regex("\\b\\d+(?:[.,]\\d+)?\\b")
-        val STOP_WORDS =
-            setOf(
-                "the",
-                "and",
-                "for",
-                "with",
-                "that",
-                "this",
-                "from",
-                "into",
-                "about",
-                "your",
-                "you",
-                "are",
-                "was",
-                "were",
-                "been",
-                "have",
-                "has",
-                "had",
-                "will",
-                "would",
-                "could",
-                "should",
-            )
         val GENERIC_FACT_WORDS =
             setOf(
                 "answer",
@@ -299,13 +276,12 @@ class TopicAdherenceMetric(
                 return@forEachIndexed
             }
             val content = message.content
-            val normalizedContent = normalizeTopic(content)
-            val contentTokens = tokenize(normalizedContent).toSet()
+            val contentTokens = topicTokenSet(content)
 
             var matchedReference = false
             referenceTopics.forEach { topic ->
-                val topicTokens = tokenize(topic).toSet()
-                if (topicTokens.isNotEmpty() && topicTokens.intersect(contentTokens).isNotEmpty()) {
+                val topicTokens = topicTokenSet(topic)
+                if (hasSufficientTopicOverlap(topicTokens, contentTokens)) {
                     extracted += ExtractedTopic(topic = topic, turnIndex = index)
                     matchedReference = true
                 }
@@ -353,15 +329,34 @@ class TopicAdherenceMetric(
         topic: String,
         referenceTopics: List<String>,
     ): Boolean {
-        val topicTokens = tokenize(topic).toSet()
+        val topicTokens = topicTokenSet(topic)
         if (topicTokens.isEmpty()) {
             return false
         }
 
         return referenceTopics.any { ref ->
-            val refTokens = tokenize(ref).toSet()
-            refTokens.isNotEmpty() && topicTokens.intersect(refTokens).isNotEmpty()
+            val refTokens = topicTokenSet(ref)
+            hasSufficientTopicOverlap(topicTokens, refTokens)
         }
+    }
+
+    private fun topicTokenSet(text: String): Set<String> = tokenize(normalizeTopic(text)).filter { token -> token !in COMMON_STOP_WORDS }.toSet()
+
+    private fun hasSufficientTopicOverlap(
+        left: Set<String>,
+        right: Set<String>,
+    ): Boolean {
+        if (left.isEmpty() || right.isEmpty()) {
+            return false
+        }
+        val overlap = left.intersect(right).size.toDouble()
+        if (overlap < MIN_TOPIC_TOKEN_OVERLAP) {
+            return false
+        }
+
+        val leftCoverage = overlap / left.size.toDouble()
+        val rightCoverage = overlap / right.size.toDouble()
+        return leftCoverage >= MIN_TOPIC_OVERLAP_RATIO || rightCoverage >= MIN_TOPIC_OVERLAP_RATIO
     }
 
     private fun inferOutOfScopeTopic(content: String): String? {
@@ -397,6 +392,8 @@ class TopicAdherenceMetric(
     )
 
     private companion object {
+        const val MIN_TOPIC_TOKEN_OVERLAP = 1.0
+        const val MIN_TOPIC_OVERLAP_RATIO = 0.5
         val REFUSAL_PATTERNS =
             listOf(
                 Regex("\\b(can'?t|cannot|won'?t|unable|refuse|decline|sorry)\\b"),

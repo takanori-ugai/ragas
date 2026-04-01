@@ -18,6 +18,12 @@ class SemanticSimilarityMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    init {
+        require(threshold == null || (threshold.isFinite() && threshold in 0.0..1.0)) {
+            "threshold must be a finite value in [0.0, 1.0], got $threshold"
+        }
+    }
+
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty().ifBlank { " " }
         val response = sample.response.orEmpty().ifBlank { " " }

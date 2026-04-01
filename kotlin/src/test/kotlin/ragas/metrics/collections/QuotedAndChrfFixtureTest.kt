@@ -8,7 +8,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class QuotedAndChrfFixtureTest {
     @Test
@@ -84,14 +83,42 @@ class QuotedAndChrfFixtureTest {
         }
 
     @Test
+    fun apostrophesInsideWordsAreNotTreatedAsQuoteDelimiters() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    response = "It's called 'Alpha Beta' in the report.",
+                    retrievedContexts = listOf("The report mentions alpha beta as the codename."),
+                )
+            val metric = QuotedSpansAlignmentMetric(casefold = true, minSpanWords = 2)
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
+        }
+
+    @Test
+    fun chrfShortExactMatchIsPerfect() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "hi",
+                    response = "hi",
+                )
+            val metric = ChrfScoreMetric()
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score)
+        }
+
+    @Test
     fun tier3MetricListIncludesQuotedAndChrfPorts() {
-        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
-        assertEquals(11, names.size)
-        assertTrue("quoted_spans_alignment" in names)
-        assertTrue("chrf_score" in names)
-        assertTrue("bleu_score" in names)
-        assertTrue("rouge_score" in names)
-        assertTrue("semantic_similarity" in names)
+        AgentFixtureTestSupport.assertTier3MetricRegistryIncludes(
+            "quoted_spans_alignment",
+            "chrf_score",
+            "bleu_score",
+            "rouge_score",
+            "semantic_similarity",
+        )
     }
 
     private companion object {

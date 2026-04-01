@@ -31,30 +31,23 @@ class BleuScoreMetric(
             return 0.0
         }
 
-        val referenceSentences = reference.split(". ").map { it.trim() }.filter { it.isNotBlank() }
-        val responseSentences = response.split(". ").map { it.trim() }.filter { it.isNotBlank() }
-        if (referenceSentences.isEmpty() || responseSentences.isEmpty()) {
+        val refTokens = tokenize(reference)
+        val respTokens = tokenize(response)
+        if (refTokens.isEmpty() || respTokens.isEmpty()) {
             return 0.0
         }
 
-        val pairCount = minOf(referenceSentences.size, responseSentences.size)
-        var referenceLength = 0
-        var responseLength = 0
-        val clippedCounts = IntArray(maxOrder)
-        val totalCounts = IntArray(maxOrder)
+        val referenceLength = refTokens.size
+        val responseLength = respTokens.size
+        val effectiveOrder = minOf(maxOrder, referenceLength, responseLength)
+        val clippedCounts = IntArray(effectiveOrder)
+        val totalCounts = IntArray(effectiveOrder)
 
-        for (i in 0 until pairCount) {
-            val refTokens = tokenize(referenceSentences[i])
-            val respTokens = tokenize(responseSentences[i])
-            referenceLength += refTokens.size
-            responseLength += respTokens.size
-
-            for (n in 1..maxOrder) {
-                val respNgrams = ngramCounts(respTokens, n)
-                val refNgrams = ngramCounts(refTokens, n)
-                totalCounts[n - 1] += respNgrams.values.sum()
-                clippedCounts[n - 1] += respNgrams.entries.sumOf { (ngram, count) -> minOf(count, refNgrams[ngram] ?: 0) }
-            }
+        for (n in 1..effectiveOrder) {
+            val respNgrams = ngramCounts(respTokens, n)
+            val refNgrams = ngramCounts(refTokens, n)
+            totalCounts[n - 1] = respNgrams.values.sum()
+            clippedCounts[n - 1] = respNgrams.entries.sumOf { (ngram, count) -> minOf(count, refNgrams[ngram] ?: 0) }
         }
 
         if (responseLength == 0) {
@@ -62,7 +55,7 @@ class BleuScoreMetric(
         }
 
         val precisions =
-            (0 until maxOrder).map { i ->
+            (0 until effectiveOrder).map { i ->
                 val clipped = clippedCounts[i].toDouble()
                 val total = totalCounts[i].toDouble()
                 if (total == 0.0) {

@@ -278,16 +278,16 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerAccuracyMetric.kt` (`AnswerAccuracyMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerCorrectnessMetric.kt` (`AnswerCorrectnessMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualCorrectnessMetric.kt` (`FactualCorrectnessMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseSensitivityMetric.kt` (`NoiseSensitivityMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/TopicAdherenceMetric.kt` (`TopicAdherenceMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedSpansAlignmentMetric.kt` (`QuotedSpansAlignmentMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/SummaryScoreMetric.kt` (`SummaryScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/chrf_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/ChrfScoreMetric.kt` (`ChrfScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuScoreMetric.kt` (`BleuScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/RougeScoreMetric.kt` (`RougeScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerCorrectnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`FactualCorrectnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`NoiseSensitivityMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`TopicAdherenceMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`QuotedSpansAlignmentMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`SummaryScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/chrf_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`ChrfScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`BleuScoreMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`RougeScoreMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` (`SemanticSimilarityMetric`) | Partial |
 | Tier-4 | `../src/ragas/metrics/collections/domain_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/DomainSpecificRubricsMetrics.kt` (`DomainSpecificRubricsMetric`, `RubricsScoreWithReferenceMetric`, `RubricsScoreWithoutReferenceMetric`) | Planned |
 | Tier-4 | `../src/ragas/metrics/collections/instance_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/InstanceSpecificRubricsMetric.kt` (`InstanceSpecificRubricsMetric`) | Planned |
@@ -295,6 +295,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-4 | `../src/ragas/metrics/collections/datacompy_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/DataCompyScoreMetric.kt` (`DataCompyScoreMetric`) | Planned |
 | Tier-4 | `../src/ragas/metrics/collections/multi_modal_relevance/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalRelevanceMetric.kt` (`MultiModalRelevanceMetric`) | Planned |
 | Tier-4 | `../src/ragas/metrics/collections/multi_modal_faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/collections/MultiModalFaithfulnessMetric.kt` (`MultiModalFaithfulnessMetric`) | Planned |
+
 - Exit criteria:
   - Parity claims are backed by repeatable tests and explicit documentation.
 

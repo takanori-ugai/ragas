@@ -7,7 +7,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SemanticSimilarityFixtureTest {
@@ -61,10 +60,16 @@ class SemanticSimilarityFixtureTest {
         }
 
     @Test
+    fun semanticSimilarityValidatesThresholdBoundsAndFiniteness() {
+        assertTrue(runCatching { SemanticSimilarityMetric(threshold = -0.1) }.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(runCatching { SemanticSimilarityMetric(threshold = 1.1) }.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(runCatching { SemanticSimilarityMetric(threshold = Double.NaN) }.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(runCatching { SemanticSimilarityMetric(threshold = Double.POSITIVE_INFINITY) }.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
     fun tier3MetricListIncludesSemanticSimilarityPort() {
-        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
-        assertEquals(11, names.size)
-        assertTrue("semantic_similarity" in names)
+        AgentFixtureTestSupport.assertTier3MetricRegistryIncludes("semantic_similarity")
     }
 
     private companion object {

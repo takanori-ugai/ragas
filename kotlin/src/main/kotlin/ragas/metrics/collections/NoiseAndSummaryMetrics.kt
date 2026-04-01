@@ -1,6 +1,7 @@
 package ragas.metrics.collections
 
 import ragas.metrics.BaseMetric
+import ragas.metrics.COMMON_STOP_WORDS
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
@@ -31,8 +32,8 @@ class NoiseSensitivityMetric(
             return 0.0
         }
 
-        val gtStatements = decomposeStatements(reference, userInput)
-        val ansStatements = decomposeStatements(response, userInput)
+        val gtStatements = decomposeStatements(reference)
+        val ansStatements = decomposeStatements(response)
         if (gtStatements.isEmpty() || ansStatements.isEmpty()) {
             return 0.0
         }
@@ -70,12 +71,8 @@ class NoiseSensitivityMetric(
         contexts: List<String>,
     ): List<List<Boolean>> = statements.map { statement -> contexts.map { ctx -> statementFaithful(statement, ctx) } }
 
-    private fun decomposeStatements(
-        text: String,
-        question: String,
-    ): List<String> {
-        val questionTerms = tokenize(question).toSet()
-        return text
+    private fun decomposeStatements(text: String): List<String> =
+        text
             .split(SENTENCE_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -85,27 +82,17 @@ class NoiseSensitivityMetric(
                     .map { it.trim() }
                     .filter { it.isNotBlank() }
                     .map { clause ->
-                        val tokens = tokenize(clause).filter { it !in STOP_WORDS }
-                        val prioritized =
-                            if (questionTerms.isEmpty()) {
-                                tokens
-                            } else {
-                                tokens.sortedByDescending { token ->
-                                    token in
-                                        questionTerms
-                                }
-                            }
-                        prioritized.joinToString(" ").ifBlank { clause }
+                        val tokens = tokenize(clause).filter { it !in COMMON_STOP_WORDS }
+                        tokens.joinToString(" ").ifBlank { clause }
                     }
             }
-    }
 
     private fun statementFaithful(
         statement: String,
         context: String,
     ): Boolean {
-        val stmtTokens = tokenize(statement).filter { it.length > 2 && it !in STOP_WORDS }.toSet()
-        val ctxTokens = tokenize(context).filter { it.length > 2 && it !in STOP_WORDS }.toSet()
+        val stmtTokens = tokenize(statement).filter { it.length > 2 && it !in COMMON_STOP_WORDS }.toSet()
+        val ctxTokens = tokenize(context).filter { it.length > 2 && it !in COMMON_STOP_WORDS }.toSet()
         if (stmtTokens.isEmpty() || ctxTokens.isEmpty()) {
             return false
         }
@@ -127,31 +114,6 @@ class NoiseSensitivityMetric(
         val SENTENCE_SPLIT_REGEX = Regex("[.!?]+")
         val CLAUSE_SPLIT_REGEX = Regex("\\b(?:and|but|while|whereas|although)\\b|,")
         val NUMBER_REGEX = Regex("\\b\\d+(?:[.,]\\d+)?\\b")
-        val STOP_WORDS =
-            setOf(
-                "the",
-                "and",
-                "for",
-                "with",
-                "that",
-                "this",
-                "from",
-                "into",
-                "about",
-                "your",
-                "you",
-                "are",
-                "was",
-                "were",
-                "been",
-                "have",
-                "has",
-                "had",
-                "will",
-                "would",
-                "could",
-                "should",
-            )
     }
 }
 
@@ -202,7 +164,7 @@ class SummaryScoreMetric(
 
         val tokenCounts =
             tokenize(text)
-                .filter { token -> token.length >= 5 && token !in STOP_WORDS }
+                .filter { token -> token.length >= 5 && token !in COMMON_STOP_WORDS }
                 .groupingBy { it }
                 .eachCount()
                 .toList()
@@ -244,35 +206,10 @@ class SummaryScoreMetric(
     private fun computeConcisenessScore(
         text: String,
         summary: String,
-    ): Double = 1.0 - (minOf(summary.length, text.length).toDouble() / (text.length.toDouble() + 1e-10))
+    ): Double = 1.0 - (minOf(summary.length, text.length).toDouble() / text.length.toDouble())
 
     private companion object {
         val KEYPHRASE_REGEX =
             Regex("\\b(?:[A-Z][a-zA-Z0-9-]*(?:\\s+[A-Z][a-zA-Z0-9-]*)*|\\d{4}|\\$\\d+(?:[.,]\\d+)?\\s*(?:trillion|billion|million)?)\\b")
-        val STOP_WORDS =
-            setOf(
-                "the",
-                "and",
-                "for",
-                "with",
-                "that",
-                "this",
-                "from",
-                "into",
-                "about",
-                "your",
-                "you",
-                "are",
-                "was",
-                "were",
-                "been",
-                "have",
-                "has",
-                "had",
-                "will",
-                "would",
-                "could",
-                "should",
-            )
     }
 }

@@ -68,7 +68,9 @@ class QuotedSpansAlignmentMetric(
 
     private companion object {
         val QUOTE_REGEX =
-            Regex("[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](.*?)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]")
+            Regex(
+                "(?<![\\p{L}\\p{N}])[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](.*?)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](?![\\p{L}\\p{N}])",
+            )
         val WHITESPACE_REGEX = Regex("\\s+")
     }
 }
@@ -101,13 +103,15 @@ class ChrfScoreMetric(
             return 0.0
         }
 
+        val maxComparableOrder = minOf(charOrder, normalizedRef.length, normalizedResp.length)
+        if (maxComparableOrder == 0) {
+            return 0.0
+        }
+
         val fScores =
-            (1..charOrder).map { n ->
+            (1..maxComparableOrder).map { n ->
                 val refNgrams = charNgramCounts(normalizedRef, n)
                 val respNgrams = charNgramCounts(normalizedResp, n)
-                if (refNgrams.isEmpty() || respNgrams.isEmpty()) {
-                    return@map 0.0
-                }
 
                 val overlap =
                     respNgrams.entries.sumOf { (ngram, countResp) ->

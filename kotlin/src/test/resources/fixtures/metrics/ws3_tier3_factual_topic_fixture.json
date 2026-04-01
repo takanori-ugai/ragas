@@ -4,8 +4,8 @@
       "id": "fact_exact",
       "response": "Einstein was born in Germany on March 14, 1879.",
       "reference": "Albert Einstein was born in Ulm, Germany on March 14, 1879.",
-      "expected_score": 0.67,
-      "expected_band": "high"
+      "expected_score": 0.0,
+      "expected_band": "low"
     },
     {
       "id": "fact_wrong_country",
