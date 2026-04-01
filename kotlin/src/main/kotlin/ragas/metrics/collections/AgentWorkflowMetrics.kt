@@ -159,8 +159,14 @@ private fun isGoalAchieved(
     val precision = overlap.size.toDouble() / arrivedTokens.size.toDouble()
     val jaccard = overlap.size.toDouble() / desiredTokens.union(arrivedTokens).size.toDouble()
 
-    return recall >= 0.5 || (recall >= 0.4 && precision >= 0.4) || jaccard >= 0.33
+    return recall >= MIN_RECALL_THRESHOLD ||
+        (recall >= MIN_COMBINED_THRESHOLD && precision >= MIN_COMBINED_THRESHOLD) ||
+        jaccard >= MIN_JACCARD_THRESHOLD
 }
+
+private const val MIN_RECALL_THRESHOLD = 0.5
+private const val MIN_COMBINED_THRESHOLD = 0.4
+private const val MIN_JACCARD_THRESHOLD = 0.33
 
 private fun normalizeGoalTokens(text: String): Set<String> =
     tokenize(text)

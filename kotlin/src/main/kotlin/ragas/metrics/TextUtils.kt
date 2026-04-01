@@ -2,6 +2,32 @@ package ragas.metrics
 
 private val tokenPattern = Regex("[\\p{L}\\p{M}\\p{N}]+")
 
+val COMMON_STOP_WORDS =
+    setOf(
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "into",
+        "about",
+        "your",
+        "you",
+        "are",
+        "was",
+        "were",
+        "been",
+        "have",
+        "has",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+    )
+
 fun tokenize(text: String): List<String> = tokenPattern.findAll(text.lowercase()).map { match -> match.value }.toList()
 
 fun tokenSet(text: String): Set<String> = tokenize(text).toSet()

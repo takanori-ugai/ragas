@@ -12,9 +12,25 @@ import ragas.model.HumanMessage
 import ragas.model.ToolCall
 import ragas.model.ToolMessage
 import kotlin.math.abs
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 internal object AgentFixtureTestSupport {
+    private val EXPECTED_TIER3_METRIC_NAMES =
+        setOf(
+            "answer_accuracy",
+            "answer_correctness",
+            "factual_correctness",
+            "topic_adherence",
+            "noise_sensitivity",
+            "summary_score",
+            "quoted_spans_alignment",
+            "chrf_score",
+            "bleu_score",
+            "rouge_score",
+            "semantic_similarity",
+        )
+
     fun readFixture(resourcePath: String): JsonElement =
         Json.parseToJsonElement(
             requireNotNull(AgentFixtureTestSupport::class.java.classLoader.getResourceAsStream(resourcePath)) {
@@ -59,6 +75,10 @@ internal object AgentFixtureTestSupport {
         assertTrue(abs(score - expected) < 1e-9, "metric=$metricName expected=$expected actual=$score")
     }
 
+    /**
+     * Asserts that [score] falls within the expected band.
+     * Bands: perfect (1.0), high (>= 2/3), partial (>= 1/3), low (< 1/3).
+     */
     fun assertScoreBand(
         score: Double,
         expectedBand: String,
@@ -75,5 +95,17 @@ internal object AgentFixtureTestSupport {
             band == expectedBand,
             "metric=$metricName expectedBand=$expectedBand actualBand=$band score=$score",
         )
+    }
+
+    fun assertTier3MetricRegistryMatchesExpected() {
+        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
+        assertEquals(EXPECTED_TIER3_METRIC_NAMES, names)
+    }
+
+    fun assertTier3MetricRegistryIncludes(vararg requiredMetricNames: String) {
+        val names = answerQualityTier3Metrics().map { metric -> metric.name }.toSet()
+        requiredMetricNames.forEach { name ->
+            assertTrue(name in names, "tier3 registry missing metric: $name")
+        }
     }
 }
