@@ -8,11 +8,30 @@ This file defines the intended stable entrypoints under package `ragas`.
 - `ragas.evaluate(...)`
 - `ragas.aevaluate(...)`
 - `ragas.defaultMetrics()`
+- `ragas.tier1Metrics()`
+- `ragas.tier2Metrics()`
+- `ragas.tier3Metrics()`
+- `ragas.tier4Metrics()`
 - `ragas.geneticOptimizer()`
 - `ragas.dspyOptimizer(cache?)`
 - `ragas.withCache(llm, cache)`
 - `ragas.withCache(embedding, cache)`
 - `ragas.backendRegistry()`
+
+## Stable Supporting Contracts
+
+- Prompt typing stack under `ragas.prompt`:
+  - `BasePrompt`, `TypedPrompt`, `FewShotTypedPrompt`, `DynamicFewShotTypedPrompt`
+  - `FewShotPydanticPrompt`, `DynamicFewShotPydanticPrompt`
+  - `ImageTextTypedPrompt`, `PromptContentPart`
+- Evaluation parity hooks under `ragas.evaluation`:
+  - `EvaluationCallback`, `EvaluationEvent`
+  - `TokenUsage`, `CostEstimate`
+  - `TokenUsageParser`, `CostParser`
+- Optimizer prompt-object contracts under `ragas.optimizers`:
+  - `OptimizerPrompt`, `PromptObjectEvaluator`, `OptimizerOutcome`
+- Metric prompt optimization contract under `ragas.metrics.primitives`:
+  - `OptimizableMetricPrompt`
 
 ## Stability Goal
 

@@ -7,6 +7,9 @@ import ragas.backends.BackendRegistry
 import ragas.cache.CacheBackend
 import ragas.embeddings.BaseRagasEmbedding
 import ragas.embeddings.CachedRagasEmbedding
+import ragas.evaluation.CostParser
+import ragas.evaluation.EvaluationCallback
+import ragas.evaluation.TokenUsageParser
 import ragas.llms.BaseRagasLlm
 import ragas.llms.CachedRagasLlm
 import ragas.metrics.Metric
@@ -21,6 +24,7 @@ import ragas.model.Sample
 import ragas.optimizers.DspyOptimizer
 import ragas.optimizers.GeneticOptimizer
 import ragas.optimizers.Optimizer
+import ragas.runtime.Executor
 import ragas.runtime.RunConfig
 import ragas.evaluation.aevaluate as aevaluateInternal
 import ragas.evaluation.evaluate as evaluateInternal
@@ -35,6 +39,11 @@ fun evaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    columnMap: Map<String, String> = emptyMap(),
+    tokenUsageParser: TokenUsageParser? = null,
+    costParser: CostParser? = null,
+    executorObserver: ((Executor) -> Unit)? = null,
 ): EvaluationResult =
     evaluateInternal(
         dataset = dataset,
@@ -44,6 +53,11 @@ fun evaluate(
         runConfig = runConfig,
         raiseExceptions = raiseExceptions,
         batchSize = batchSize,
+        callbacks = callbacks,
+        columnMap = columnMap,
+        tokenUsageParser = tokenUsageParser,
+        costParser = costParser,
+        executorObserver = executorObserver,
     )
 
 suspend fun aevaluate(
@@ -54,6 +68,11 @@ suspend fun aevaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    columnMap: Map<String, String> = emptyMap(),
+    tokenUsageParser: TokenUsageParser? = null,
+    costParser: CostParser? = null,
+    executorObserver: ((Executor) -> Unit)? = null,
 ): EvaluationResult =
     aevaluateInternal(
         dataset = dataset,
@@ -63,6 +82,11 @@ suspend fun aevaluate(
         runConfig = runConfig,
         raiseExceptions = raiseExceptions,
         batchSize = batchSize,
+        callbacks = callbacks,
+        columnMap = columnMap,
+        tokenUsageParser = tokenUsageParser,
+        costParser = costParser,
+        executorObserver = executorObserver,
     )
 
 fun defaultMetrics(): List<Metric> = defaultSingleTurnMetrics()

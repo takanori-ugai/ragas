@@ -5,13 +5,19 @@ Kotlin port of the Ragas evaluation toolkit.
 This module provides:
 - evaluation pipeline (`evaluate` / `aevaluate`)
 - default single-turn metrics
-- WS3 Tier-1 collection metric accessor (`tier1Metrics()`)
-- WS3 Tier-2 agent/tool-call + workflow metric accessor (`tier2Metrics()`)
-- WS3 Tier-3 answer-quality metric accessor (`tier3Metrics()`)
-- WS3 Tier-4 rubrics + advanced metric accessor (`tier4Metrics()`)
-- prompt subsystem (Python-style prompt framing + persistence)
-- early WS7 optimizer prompt-object wiring (`OptimizerPrompt.Text` / `OptimizerPrompt.MultiModal`)
-- optimizer facades (`geneticOptimizer()`, `dspyOptimizer()`) with DSPy-style adapter + cache path
+- WS3 metric collection accessors:
+  - `tier1Metrics()` retrieval/groundedness family
+  - `tier2Metrics()` agent/tool-call + workflow family
+  - `tier3Metrics()` answer-quality/translation family
+  - `tier4Metrics()` rubrics/advanced + multimodal family
+- prompt subsystem:
+  - `SimplePrompt` + dynamic few-shot + persistence/adapt
+  - typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry loop)
+  - multimodal typed prompts (`ImageTextTypedPrompt`) with `PromptContentPart` text/image parts
+- optimizer prompt-object flows:
+  - `OptimizerPrompt.Text` / `OptimizerPrompt.MultiModal`
+  - metric primitive integration via `OptimizableMetricPrompt`
+  - public optimizer facades: `geneticOptimizer()`, `dspyOptimizer(cache?)`
 - LangChain4j LLM/embedding adapters
 - CLI scaffold for runtime status and backend listing
 

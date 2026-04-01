@@ -24,6 +24,7 @@ import java.util.WeakHashMap
 private const val EVALUATION_DESC = "Evaluating"
 private val metricLocks: MutableMap<Metric, Mutex> = Collections.synchronizedMap(WeakHashMap())
 
+@Suppress("LongMethod", "TooGenericExceptionCaught")
 suspend fun aevaluate(
     dataset: EvaluationDataset<out Sample>,
     metrics: List<Metric>? = null,
@@ -32,23 +33,56 @@ suspend fun aevaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    columnMap: Map<String, String> = emptyMap(),
+    tokenUsageParser: TokenUsageParser? = null,
+    costParser: CostParser? = null,
+    executorObserver: ((Executor) -> Unit)? = null,
 ): EvaluationResult {
-    val selectedMetrics = metrics ?: defaultMetricsForDataset(dataset)
+    val remappedDataset = remapDataset(dataset, columnMap)
+    val selectedMetrics = metrics ?: defaultMetricsForDataset(remappedDataset)
     require(selectedMetrics.isNotEmpty()) { "Provide at least one metric for evaluation." }
 
-    validateRequiredColumns(dataset, selectedMetrics)
-    validateSupportedMetrics(dataset, selectedMetrics)
+    validateRequiredColumns(remappedDataset, selectedMetrics)
+    validateSupportedMetrics(remappedDataset, selectedMetrics)
+
+    callbacks.forEach { callback ->
+        callback.onEvent(
+            EvaluationEvent.RunStarted(
+                sampleCount = remappedDataset.samples.size,
+                metricNames = selectedMetrics.map { metric -> metric.name },
+            ),
+        )
+    }
 
     val llmChanged = mutableListOf<MetricWithLlm>()
     val embeddingsChanged = mutableListOf<MetricWithEmbeddings>()
     val acquiredLocks = mutableListOf<Mutex>()
+    val usageLock = Any()
+    var usagePromptTokens = 0
+    var usageCompletionTokens = 0
 
     lockMetrics(selectedMetrics, acquiredLocks)
 
     try {
+        val effectiveLlm =
+            if (llm != null && (tokenUsageParser != null || costParser != null)) {
+                TrackingRagasLlm(
+                    delegate = llm,
+                    tokenUsageParser = tokenUsageParser ?: { _, _ -> null },
+                ) { usage ->
+                    synchronized(usageLock) {
+                        usagePromptTokens += usage.promptTokens
+                        usageCompletionTokens += usage.completionTokens
+                    }
+                }
+            } else {
+                llm
+            }
+
         selectedMetrics.forEach { metric ->
-            if (metric is MetricWithLlm && metric.llm == null && llm != null) {
-                metric.llm = llm
+            if (metric is MetricWithLlm && metric.llm == null && effectiveLlm != null) {
+                metric.llm = effectiveLlm
                 llmChanged += metric
             }
             if (metric is MetricWithEmbeddings && metric.embeddings == null && embeddings != null) {
@@ -65,20 +99,42 @@ suspend fun aevaluate(
                 runConfig = runConfig,
                 batchSize = batchSize,
             )
+        executorObserver?.invoke(executor)
+        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.ExecutorReady(executor)) }
 
-        dataset.samples.forEachIndexed { rowIndex, sample ->
+        remappedDataset.samples.forEachIndexed { rowIndex, sample ->
             selectedMetrics.forEach { metric ->
                 val metricName = metric.name
                 when {
                     sample is SingleTurnSample && metric is SingleTurnMetric -> {
                         executor.submit(name = "$metricName-$rowIndex") {
-                            metric.singleTurnAscore(sample)
+                            val value = metric.singleTurnAscore(sample)
+                            callbacks.forEach { callback ->
+                                callback.onEvent(
+                                    EvaluationEvent.MetricComputed(
+                                        rowIndex = rowIndex,
+                                        metricName = metricName,
+                                        value = value,
+                                    ),
+                                )
+                            }
+                            value
                         }
                     }
 
                     sample is MultiTurnSample && metric is MultiTurnMetric -> {
                         executor.submit(name = "$metricName-$rowIndex") {
-                            metric.multiTurnAscore(sample)
+                            val value = metric.multiTurnAscore(sample)
+                            callbacks.forEach { callback ->
+                                callback.onEvent(
+                                    EvaluationEvent.MetricComputed(
+                                        rowIndex = rowIndex,
+                                        metricName = metricName,
+                                        value = value,
+                                    ),
+                                )
+                            }
+                            value
                         }
                     }
                 }
@@ -88,18 +144,45 @@ suspend fun aevaluate(
         val flatResults = executor.aresults()
         val rowScores = mutableListOf<Map<String, Any?>>()
         var cursor = 0
-        repeat(dataset.samples.size) {
+        repeat(remappedDataset.samples.size) { rowIndex ->
             val row = linkedMapOf<String, Any?>()
             selectedMetrics.forEach { metric ->
                 row[metric.name] = flatResults[cursor++]
             }
             rowScores += row
+            callbacks.forEach { callback ->
+                callback.onEvent(
+                    EvaluationEvent.RowCompleted(
+                        rowIndex = rowIndex,
+                        scores = row,
+                    ),
+                )
+            }
         }
 
-        return EvaluationResult(
-            scores = rowScores,
-            dataset = dataset,
-        )
+        val result =
+            EvaluationResult(
+                scores = rowScores,
+                dataset = remappedDataset,
+            )
+
+        if (tokenUsageParser != null || costParser != null) {
+            val usage =
+                TokenUsage(
+                    promptTokens = usagePromptTokens,
+                    completionTokens = usageCompletionTokens,
+                )
+            callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.TokenUsageComputed(usage)) }
+            val cost = costParser?.invoke(usage)
+            if (cost != null) {
+                callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.CostComputed(cost)) }
+            }
+        }
+        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.RunCompleted(result)) }
+        return result
+    } catch (error: Throwable) {
+        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.RunFailed(error)) }
+        throw error
     } finally {
         llmChanged.forEach { metric -> metric.llm = null }
         embeddingsChanged.forEach { metric -> metric.embeddings = null }
@@ -115,6 +198,11 @@ fun evaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    columnMap: Map<String, String> = emptyMap(),
+    tokenUsageParser: TokenUsageParser? = null,
+    costParser: CostParser? = null,
+    executorObserver: ((Executor) -> Unit)? = null,
 ): EvaluationResult =
     runBlocking {
         aevaluate(
@@ -125,8 +213,165 @@ fun evaluate(
             runConfig = runConfig,
             raiseExceptions = raiseExceptions,
             batchSize = batchSize,
+            callbacks = callbacks,
+            columnMap = columnMap,
+            tokenUsageParser = tokenUsageParser,
+            costParser = costParser,
+            executorObserver = executorObserver,
         )
     }
+
+private fun remapDataset(
+    dataset: EvaluationDataset<out Sample>,
+    columnMap: Map<String, String>,
+): EvaluationDataset<out Sample> {
+    if (columnMap.isEmpty()) {
+        return dataset
+    }
+    val normalizedMap =
+        columnMap.mapKeys { (target, _) -> normalizeColumnName(target) }.mapValues { (_, source) -> normalizeColumnName(source) }
+    val remappedSamples =
+        dataset.samples.map { sample ->
+            when (sample) {
+                is SingleTurnSample -> remapSingleTurnSample(sample, normalizedMap)
+                is MultiTurnSample -> remapMultiTurnSample(sample, normalizedMap)
+            }
+        }
+    return EvaluationDataset(remappedSamples)
+}
+
+private fun remapSingleTurnSample(
+    sample: SingleTurnSample,
+    columnMap: Map<String, String>,
+): SingleTurnSample {
+    val values = mutableMapOf<String, Any?>()
+    SINGLE_TURN_COLUMNS.forEach { column -> values[column] = readSingleTurnField(sample, column) }
+    columnMap.forEach { (target, source) ->
+        val targetValue = values[target]
+        val sourceValue = values[source]
+        if (isNullOrEmptyValue(targetValue) && !isNullOrEmptyValue(sourceValue)) {
+            values[target] = sourceValue
+        }
+    }
+    return SingleTurnSample(
+        userInput = values["user_input"] as String?,
+        retrievedContexts = values["retrieved_contexts"] as List<String>?,
+        referenceContexts = values["reference_contexts"] as List<String>?,
+        retrievedContextIds = values["retrieved_context_ids"] as List<String>?,
+        referenceContextIds = values["reference_context_ids"] as List<String>?,
+        response = values["response"] as String?,
+        multiResponses = values["multi_responses"] as List<String>?,
+        reference = values["reference"] as String?,
+        rubrics = values["rubrics"] as Map<String, String>?,
+        personaName = values["persona_name"] as String?,
+        queryStyle = values["query_style"] as String?,
+        queryLength = values["query_length"] as String?,
+    )
+}
+
+private fun remapMultiTurnSample(
+    sample: MultiTurnSample,
+    columnMap: Map<String, String>,
+): MultiTurnSample {
+    val values = mutableMapOf<String, Any?>()
+    MULTI_TURN_COLUMNS.forEach { column -> values[column] = readMultiTurnField(sample, column) }
+    columnMap.forEach { (target, source) ->
+        val targetValue = values[target]
+        val sourceValue = values[source]
+        if (isNullOrEmptyValue(targetValue) && !isNullOrEmptyValue(sourceValue)) {
+            values[target] = sourceValue
+        }
+    }
+    return MultiTurnSample(
+        userInput = values["user_input"] as List<ragas.model.ConversationMessage>,
+        reference = values["reference"] as String?,
+        referenceToolCalls = values["reference_tool_calls"] as List<ragas.model.ToolCall>?,
+        rubrics = values["rubrics"] as Map<String, String>?,
+        referenceTopics = values["reference_topics"] as List<String>?,
+    )
+}
+
+private fun readSingleTurnField(
+    sample: SingleTurnSample,
+    column: String,
+): Any? =
+    when (column) {
+        "user_input" -> sample.userInput
+        "retrieved_contexts" -> sample.retrievedContexts
+        "reference_contexts" -> sample.referenceContexts
+        "retrieved_context_ids" -> sample.retrievedContextIds
+        "reference_context_ids" -> sample.referenceContextIds
+        "response" -> sample.response
+        "multi_responses" -> sample.multiResponses
+        "reference" -> sample.reference
+        "rubrics" -> sample.rubrics
+        "persona_name" -> sample.personaName
+        "query_style" -> sample.queryStyle
+        "query_length" -> sample.queryLength
+        else -> null
+    }
+
+private fun readMultiTurnField(
+    sample: MultiTurnSample,
+    column: String,
+): Any? =
+    when (column) {
+        "user_input" -> sample.userInput
+        "reference" -> sample.reference
+        "reference_tool_calls" -> sample.referenceToolCalls
+        "rubrics" -> sample.rubrics
+        "reference_topics" -> sample.referenceTopics
+        else -> null
+    }
+
+private fun normalizeColumnName(name: String): String {
+    val normalized = name.trim().lowercase()
+    return COLUMN_ALIASES[normalized] ?: normalized
+}
+
+private fun isNullOrEmptyValue(value: Any?): Boolean =
+    when (value) {
+        null -> true
+        is String -> value.isBlank()
+        is Collection<*> -> value.isEmpty()
+        is Map<*, *> -> value.isEmpty()
+        else -> false
+    }
+
+private val SINGLE_TURN_COLUMNS =
+    setOf(
+        "user_input",
+        "retrieved_contexts",
+        "reference_contexts",
+        "retrieved_context_ids",
+        "reference_context_ids",
+        "response",
+        "multi_responses",
+        "reference",
+        "rubrics",
+        "persona_name",
+        "query_style",
+        "query_length",
+    )
+
+private val MULTI_TURN_COLUMNS =
+    setOf(
+        "user_input",
+        "reference",
+        "reference_tool_calls",
+        "rubrics",
+        "reference_topics",
+    )
+
+private val COLUMN_ALIASES =
+    mapOf(
+        "question" to "user_input",
+        "query" to "user_input",
+        "answer" to "response",
+        "ground_truth" to "reference",
+        "groundtruth" to "reference",
+        "contexts" to "retrieved_contexts",
+    )
 
 private fun validateRequiredColumns(
     dataset: EvaluationDataset<out Sample>,

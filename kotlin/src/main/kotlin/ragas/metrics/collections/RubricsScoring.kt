@@ -9,7 +9,8 @@ internal val DEFAULT_REFERENCE_FREE_RUBRICS: Map<String, String> =
     mapOf(
         "score1_description" to "The response is entirely incorrect and fails to address any aspect of the user input.",
         "score2_description" to
-            "The response contains partial accuracy but includes major errors or significant omissions that affect its relevance to the user input.",
+            "The response contains partial accuracy but includes major errors or " +
+            "significant omissions that affect its relevance to the user input.",
         "score3_description" to
             "The response is mostly accurate but lacks clarity, thoroughness, or minor details needed to fully address the user input.",
         "score4_description" to

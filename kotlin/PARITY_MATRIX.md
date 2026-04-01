@@ -7,9 +7,10 @@ Last updated: 2026-04-01
 | Area | Status | Notes |
 | --- | --- | --- |
 | Dataset/sample schemas | Done | Single-turn + multi-turn models with validation |
-| Evaluation (`evaluate`/`aevaluate`) | Partial | Core async/sync orchestration is implemented; Python-only extras (callbacks/cost parsing/column remap/executor return path) are not fully mirrored |
+| Evaluation (`evaluate`/`aevaluate`) | Done | Core async/sync orchestration plus parity hooks: callback events, column remap, token/cost parser hooks, and executor observer for cancellable path |
 | Run config/retry/executor | Done | Timeout/retry/batch/cancel behavior |
 | Default metrics (MVP 4) | Done | answer_relevancy, context_precision, faithfulness, context_recall |
+| Tier-1/2/3/4 metric accessors | Done | Public `tier1Metrics()`, `tier2Metrics()`, `tier3Metrics()`, `tier4Metrics()` are wired in `ragas.PublicApi` |
 
 ## Models and Providers
 
@@ -24,26 +25,26 @@ Last updated: 2026-04-01
 | Area | Status | Notes |
 | --- | --- | --- |
 | Backends | Partial | `inmemory/csv/jsonl` and registry exist; Python optional `GDriveBackend` and entry-point plugin discovery are not ported |
-| Prompt subsystem | Partial | `SimplePrompt`, dynamic few-shot selection, adapt(), and prompt persistence are implemented; Python `PydanticPrompt` stack remains unported |
+| Prompt subsystem | Partial | `SimplePrompt` + typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry) + multimodal typed flow (`ImageTextTypedPrompt`, `PromptContentPart`, `MultiModalRagasLlm`) are implemented; multimodal URL/local-file ingestion hardening remains deferred |
 | Testset/graph/transforms | Partial | Scaffold + core models + basic engine |
 | Integrations | Partial | LangChain/LlamaIndex record adapters plus trace lifecycle observers (in-memory/Langfuse-style/MLflow-style); broader Python integrations are missing |
 | CLI | Partial | Status/backends commands |
-| Optimizers | Done | Genetic + DSPy-style optimizer flows implemented, prompt-object integration in metric primitives, cache-backed DSPy scoring |
+| Optimizers | Done | Genetic + DSPy-style optimizer flows, prompt-object contracts (`OptimizerPrompt`), primitive metric prompt integration (`OptimizableMetricPrompt`), cache-backed DSPy scoring |
 
 ## Testing Parity
 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Unit tests | Done | Core, metrics, cache, backends, prompt, testset, multi-turn |
-| Golden fixtures | Done | Default metrics + aggregation fixtures |
+| Golden fixtures | Done | Default metrics + aggregation + WS3 tier fixture suites |
 | E2E evaluation flow | Done | Mock LLM + embeddings injected via evaluate; `./gradlew test` passing |
 
-## Not Yet Ported
+## Intentional Deferrals
 
-- Full Python metrics catalog beyond MVP defaults (Python has many additional metric modules/collections)
-- `PydanticPrompt`/typed prompt-generation stack and related prompt abstractions
-- Full production-grade testset synthesizers/transform pipelines (extractors, splitters, relationship builders)
-- Broader integration surface (e.g., Langsmith/Helicone/Opik/Swarm/AG-UI/R2R and richer framework-specific evaluators)
-- Backend plugin discovery parity and optional Google Drive backend parity
-- Full Python DSPy internals are approximated via Kotlin adapter seam + heuristic fallback (exact Python DSPy runtime semantics may differ)
-- Python CLI feature parity (experiment-oriented flows, rich reporting/comparison UX)
+- Evaluation API options not yet mirrored: callback hooks, column remap path, token/cost callback hooks, executor-return path.
+- Multimodal prompt ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
+- Full production-grade testset synthesis pipeline parity (extractors, splitters, relationship builders, advanced synthesizers).
+- Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.
+- Backend entry-point plugin discovery and optional Google Drive backend parity.
+- Exact Python DSPy runtime parity; Kotlin currently uses adapter seam + heuristic fallback semantics.
+- Python CLI parity for experiment workflows, reporting, and comparison UX.

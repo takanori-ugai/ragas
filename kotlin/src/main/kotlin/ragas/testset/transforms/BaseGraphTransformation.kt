@@ -2,6 +2,7 @@ package ragas.testset.transforms
 
 import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
+import ragas.testset.graph.Relationship
 
 val defaultFilter: (Node) -> Boolean = { true }
 
@@ -84,3 +85,34 @@ abstract class Splitter(
         }
     }
 }
+
+abstract class RelationshipBuilder(
+    override val name: String,
+    override val filterNodes: (Node) -> Boolean = defaultFilter,
+) : BaseGraphTransformation {
+    abstract suspend fun build(kg: KnowledgeGraph): List<Relationship>
+
+    override suspend fun transform(kg: KnowledgeGraph): List<Relationship> = build(kg)
+
+    override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> =
+        listOf(
+            suspend {
+                val built = build(kg)
+                synchronized(kg) {
+                    built.forEach { relationship ->
+                        if (!kg.hasRelationship(relationship)) {
+                            kg.relationships += relationship
+                        }
+                    }
+                }
+            },
+        )
+}
+
+private fun KnowledgeGraph.hasRelationship(candidate: Relationship): Boolean =
+    relationships.any { existing ->
+        existing.type == candidate.type &&
+            existing.sourceId == candidate.sourceId &&
+            existing.targetId == candidate.targetId &&
+            existing.properties == candidate.properties
+    }
