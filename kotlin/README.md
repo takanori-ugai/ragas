@@ -6,6 +6,7 @@ This module provides:
 - evaluation pipeline (`evaluate` / `aevaluate`)
 - default single-turn metrics
 - WS3 Tier-1 collection metric accessor (`tier1Metrics()`)
+- WS3 Tier-2 agent/tool-call + workflow metric accessor (`tier2Metrics()`)
 - prompt subsystem (Python-style prompt framing + persistence)
 - LangChain4j LLM/embedding adapters
 - CLI scaffold for runtime status and backend listing

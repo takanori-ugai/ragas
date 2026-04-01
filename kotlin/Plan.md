@@ -119,6 +119,24 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - `src/test/kotlin/ragas/metrics/collections/Tier1RetrievalGroundednessFixtureTest.kt`
     - `src/test/kotlin/ragas/metrics/collections/ContextPrecisionCollectionFixtureTest.kt`
     - `src/test/kotlin/ragas/metrics/collections/EntityAndIdRetrievalFixtureTest.kt`
+  - Started WS3 Tier-2 agent/tool-call ports in Kotlin:
+    - `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt`
+      - `ToolCallAccuracyMetric` (strict/relaxed-order compatible path)
+      - `ToolCallF1Metric`
+    - `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt`
+      - `AgentGoalAccuracyWithReferenceMetric`
+      - `AgentGoalAccuracyWithoutReferenceMetric`
+      - `AgentWorkflowCompletionMetric`
+    - `src/main/kotlin/ragas/metrics/collections/Tier2Metrics.kt`
+      - `agentToolCallTier2Metrics()` accessor
+    - `src/main/kotlin/ragas/PublicApi.kt`
+      - public `tier2Metrics()` accessor
+  - Added Tier-2 fixture baseline and score-band conformance coverage:
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier2_agent_tool_call_fixture.json`
+    - Fixture: `src/test/resources/fixtures/metrics/ws3_tier2_agent_workflow_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/AgentToolCallFixtureTest.kt`
+    - Test: `src/test/kotlin/ragas/metrics/collections/AgentWorkflowFixtureTest.kt`
+    - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -208,6 +226,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Start WS3 Tier-2 ports for agent/tool-call metrics with fixture-backed score-band parity tests.
-2. Add WS9 parity map document (Python file -> Kotlin target + status).
-3. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
+1. Add WS9 parity map document (Python file -> Kotlin target + status) for WS3 Tier-2 and Tier-1 modules.
+2. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
+3. Evaluate optional LLM-backed Tier-2 parity adapters for agent-goal/topic adherence metrics.

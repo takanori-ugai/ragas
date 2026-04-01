@@ -39,6 +39,12 @@ class PublicApiTest {
         assertTrue("context_precision_without_reference" in tier1Names)
         assertTrue("id_based_context_precision" in tier1Names)
         assertTrue("context_entity_recall" in tier1Names)
+        val tier2Names = tier2Metrics().map { metric -> metric.name }.toSet()
+        assertTrue("tool_call_accuracy" in tier2Names)
+        assertTrue("tool_call_f1" in tier2Names)
+        assertTrue("agent_goal_accuracy_with_reference" in tier2Names)
+        assertTrue("agent_goal_accuracy_without_reference" in tier2Names)
+        assertTrue("agent_workflow_completion" in tier2Names)
         assertEquals("0.0.1", VERSION)
     }
 
