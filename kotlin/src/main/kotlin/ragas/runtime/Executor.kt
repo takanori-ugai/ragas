@@ -139,6 +139,7 @@ class Executor(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun runJob(job: Job): ResultEntry {
         if (isCancelled()) {
             return ResultEntry(job.index, null)
@@ -152,15 +153,22 @@ class Executor(
                     }
                 }
             ResultEntry(job.index, value)
-        } catch (error: Throwable) {
-            if (error is CancellationException) {
-                if (isCancelled()) {
-                    return ResultEntry(job.index, null)
-                }
-                if (error !is TimeoutCancellationException) {
-                    throw error
-                }
+        } catch (error: TimeoutCancellationException) {
+            if (isCancelled()) {
+                return ResultEntry(job.index, null)
             }
+            if (raiseExceptions) {
+                throw error
+            }
+            val jobLabel = "${job.index}${job.name?.let { " ($it)" } ?: ""}"
+            logger.warn(error) { "[$description] Job $jobLabel failed" }
+            ResultEntry(job.index, null)
+        } catch (error: CancellationException) {
+            if (isCancelled()) {
+                return ResultEntry(job.index, null)
+            }
+            throw error
+        } catch (error: Exception) {
             if (raiseExceptions) {
                 throw error
             }

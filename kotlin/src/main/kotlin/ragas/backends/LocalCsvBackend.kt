@@ -183,9 +183,7 @@ class LocalCsvBackend(
             chCode = reader.read()
         }
 
-        if (inQuotes) {
-            throw IllegalArgumentException("Malformed CSV: unterminated quoted field.")
-        }
+        require(!inQuotes) { "Malformed CSV: unterminated quoted field." }
         if (current.isNotEmpty() || row.isNotEmpty()) {
             row += current.toString()
             records += row

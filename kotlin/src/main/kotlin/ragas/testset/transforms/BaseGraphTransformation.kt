@@ -3,7 +3,7 @@ package ragas.testset.transforms
 import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
 
-fun defaultFilter(node: Node): Boolean = true
+val defaultFilter: (Node) -> Boolean = { true }
 
 interface BaseGraphTransformation {
     val name: String

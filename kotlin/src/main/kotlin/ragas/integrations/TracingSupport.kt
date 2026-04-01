@@ -8,6 +8,7 @@ import ragas.integrations.tracing.TraceObserver
 import ragas.model.EvaluationResult
 import java.util.UUID
 
+@Suppress("TooGenericExceptionCaught")
 internal inline fun traceEvaluation(
     framework: String,
     runName: String,
@@ -29,6 +30,33 @@ internal inline fun traceEvaluation(
                 metadata = metadata,
             ),
         )
+    }
+
+    fun notifyFailure(error: Throwable) {
+        val endMs = System.currentTimeMillis()
+        observers.forEach { observer ->
+            try {
+                observer.onEvent(
+                    RunFailed(
+                        runId = runId,
+                        framework = framework,
+                        runName = runName,
+                        timestampMs = endMs,
+                        durationMs = endMs - start,
+                        errorType = error::class.simpleName ?: "UnknownError",
+                        errorMessage = error.message.orEmpty(),
+                    ),
+                )
+            } catch (observerError: Exception) {
+                if (observerError !== error) {
+                    error.addSuppressed(observerError)
+                }
+            } catch (observerError: Error) {
+                if (observerError !== error) {
+                    error.addSuppressed(observerError)
+                }
+            }
+        }
     }
 
     return try {
@@ -64,27 +92,11 @@ internal inline fun traceEvaluation(
             )
         }
         result
-    } catch (error: Throwable) {
-        val endMs = System.currentTimeMillis()
-        observers.forEach { observer ->
-            try {
-                observer.onEvent(
-                    RunFailed(
-                        runId = runId,
-                        framework = framework,
-                        runName = runName,
-                        timestampMs = endMs,
-                        durationMs = endMs - start,
-                        errorType = error::class.simpleName ?: "UnknownError",
-                        errorMessage = error.message.orEmpty(),
-                    ),
-                )
-            } catch (observerError: Throwable) {
-                if (observerError !== error) {
-                    error.addSuppressed(observerError)
-                }
-            }
-        }
+    } catch (error: Exception) {
+        notifyFailure(error)
+        throw error
+    } catch (error: Error) {
+        notifyFailure(error)
         throw error
     }
 }
