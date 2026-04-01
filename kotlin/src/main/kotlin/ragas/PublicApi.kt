@@ -13,6 +13,7 @@ import ragas.metrics.Metric
 import ragas.metrics.collections.agentToolCallTier2Metrics
 import ragas.metrics.collections.answerQualityTier3Metrics
 import ragas.metrics.collections.retrievalGroundednessTier1Metrics
+import ragas.metrics.collections.tier4CollectionMetrics
 import ragas.metrics.defaults.defaultSingleTurnMetrics
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
@@ -68,6 +69,8 @@ fun tier1Metrics(): List<Metric> = retrievalGroundednessTier1Metrics()
 fun tier2Metrics(): List<Metric> = agentToolCallTier2Metrics()
 
 fun tier3Metrics(): List<Metric> = answerQualityTier3Metrics()
+
+fun tier4Metrics(): List<Metric> = tier4CollectionMetrics()
 
 fun withCache(
     llm: BaseRagasLlm,

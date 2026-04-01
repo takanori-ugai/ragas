@@ -60,6 +60,16 @@ class PublicApiTest {
         assertTrue("bleu_score" in tier3Names)
         assertTrue("rouge_score" in tier3Names)
         assertTrue("semantic_similarity" in tier3Names)
+        val tier4Names = tier4Metrics().map { metric -> metric.name }.toSet()
+        assertEquals(8, tier4Names.size)
+        assertTrue("domain_specific_rubrics" in tier4Names)
+        assertTrue("rubrics_score_without_reference" in tier4Names)
+        assertTrue("rubrics_score_with_reference" in tier4Names)
+        assertTrue("instance_specific_rubrics" in tier4Names)
+        assertTrue("sql_semantic_equivalence" in tier4Names)
+        assertTrue("data_compare_score" in tier4Names)
+        assertTrue("multi_modal_relevance" in tier4Names)
+        assertTrue("multi_modal_faithfulness" in tier4Names)
         assertEquals("0.0.1", VERSION)
     }
 
