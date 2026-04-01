@@ -48,7 +48,7 @@ class EntityAndIdRetrievalFixtureTest {
 
                 val score = (metric.singleTurnAscore(sample) as Number).toDouble()
                 val expected = obj.getValue("expected").jsonPrimitive.double
-                assertTrue(abs(score - expected) < 1e-9, "expected=$expected actual=$score")
+                assertFixtureScore(score, expected, metric.name)
             }
         }
 
