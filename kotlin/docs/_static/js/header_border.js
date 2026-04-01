@@ -16,7 +16,6 @@ if (header_div && navbar_div) {
     const isNavbarHidden =
       navbar_div.hasAttribute("hidden") ||
       getComputedStyle(navbar_div).display === "none";
-    console.log("Navbar is hidden:", isNavbarHidden);
     header_div.style.borderBottom = isNavbarHidden ? border_css : "none";
     navbar_div.style.borderBottom = isNavbarHidden ? "none" : border_css;
   }

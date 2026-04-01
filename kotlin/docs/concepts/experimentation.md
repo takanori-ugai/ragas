@@ -237,7 +237,7 @@ async def evaluated_experiment(row):
     response = await my_system_function(row["input"])
     
     # Calculate metrics inline
-    factual_score = FactualCorrectness().score(
+    factual_score = await FactualCorrectness().ascore(
         response=response,
         reference=row["expected_output"]
     )

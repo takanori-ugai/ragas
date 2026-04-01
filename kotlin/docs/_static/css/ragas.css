@@ -65,7 +65,7 @@ div.cell_output th {
 }
 
 div.cell_output tbody tr:nth-child(odd) {
-  background: var(--backgound);
+  background: var(--background);
 }
 
 div.cell_output tbody tr:hover {

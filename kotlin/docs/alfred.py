@@ -34,7 +34,7 @@ fix the following grammar and spelling mistakes in the following text.
 Please keep the markdown format intact when reformating it. 
 Do not make any change to the parts of text that are for formating or additional metadata for the core text in markdown.
 The target audience for this is developers so keep the tone serious and to the point without any marketing terms. 
-The output text should me in .md format. 
+The output text should be in .md format. 
 
 text: {text}
 """

@@ -223,7 +223,7 @@ from ragas.metrics._factual_correctness import FactualCorrectness
 
 sample = SingleTurnSample(
     response="The Eiffel Tower is located in Paris.",
-    reference="The Eiffel Tower is located in Paris. I has a height of 1000ft."
+    reference="The Eiffel Tower is located in Paris. It has a height of 1000ft."
 )
 
 scorer = FactualCorrectness(llm = evaluator_llm)

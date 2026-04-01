@@ -9,6 +9,10 @@
 
 ## Running Documentation Locally
 
+Ragas documentation is built with **MkDocs** (`mkdocs.yml` in the repo root).
+The `docs/Makefile` and `docs/make.bat` files are legacy Sphinx scaffolding and
+are not part of the active docs workflow.
+
 1. Install documentation dependencies:
    ```bash
    uv sync --group docs --project ragas

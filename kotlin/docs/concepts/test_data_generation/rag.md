@@ -278,5 +278,5 @@ class EntityQuerySynthesizer(QuerySynthesizer):
         you may create singleturn or multiturn sample
         """
 
-        return SingleTurnSample(user_input=query, reference_contexs=contexts, reference=reference)
+        return SingleTurnSample(user_input=query, reference_contexts=contexts, reference=reference)
 ```
