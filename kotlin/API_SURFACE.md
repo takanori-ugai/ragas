@@ -8,6 +8,8 @@ This file defines the intended stable entrypoints under package `ragas`.
 - `ragas.evaluate(...)`
 - `ragas.aevaluate(...)`
 - `ragas.defaultMetrics()`
+- `ragas.geneticOptimizer()`
+- `ragas.dspyOptimizer(cache?)`
 - `ragas.withCache(llm, cache)`
 - `ragas.withCache(embedding, cache)`
 - `ragas.backendRegistry()`
@@ -21,4 +23,4 @@ When adding modules, prefer exposing user-facing access through these facades.
 
 - `evaluate/aevaluate` delegate to the internal evaluation engine.
 - If metrics are omitted, default single-turn metrics are used.
-- Integrations and advanced optimizers remain partial and may throw explicit unsupported errors.
+- Integrations remain partial; optimizer facades expose usable genetic + DSPy-style paths.

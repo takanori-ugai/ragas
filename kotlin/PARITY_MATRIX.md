@@ -1,6 +1,6 @@
 # RAGAS Python -> Kotlin Parity Matrix
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## Core Runtime
 
@@ -28,7 +28,7 @@ Last updated: 2026-03-31
 | Testset/graph/transforms | Partial | Scaffold + core models + basic engine |
 | Integrations | Partial | LangChain/LlamaIndex record adapters plus trace lifecycle observers (in-memory/Langfuse-style/MLflow-style); broader Python integrations are missing |
 | CLI | Partial | Status/backends commands |
-| Optimizers | Partial | Genetic scaffold + DSPy unsupported stub |
+| Optimizers | Done | Genetic + DSPy-style optimizer flows implemented, prompt-object integration in metric primitives, cache-backed DSPy scoring |
 
 ## Testing Parity
 
@@ -45,5 +45,5 @@ Last updated: 2026-03-31
 - Full production-grade testset synthesizers/transform pipelines (extractors, splitters, relationship builders)
 - Broader integration surface (e.g., Langsmith/Helicone/Opik/Swarm/AG-UI/R2R and richer framework-specific evaluators)
 - Backend plugin discovery parity and optional Google Drive backend parity
-- DSPy optimizer implementation and deeper optimizer wiring into metric prompt lifecycle
+- Full Python DSPy internals are approximated via Kotlin adapter seam + heuristic fallback (exact Python DSPy runtime semantics may differ)
 - Python CLI feature parity (experiment-oriented flows, rich reporting/comparison UX)

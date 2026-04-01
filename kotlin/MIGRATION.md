@@ -10,7 +10,7 @@
 
 - Python advanced prompt stack is reduced to `SimplePrompt` in Kotlin.
 - Kotlin provides concrete LangChain/LlamaIndex record adapters for evaluation, but advanced tracing hooks are not yet implemented.
-- Kotlin optimizers currently include `GeneticOptimizer` scaffold and `DspyOptimizer` stub.
+- Kotlin optimizers expose usable `GeneticOptimizer` and DSPy-style `DspyOptimizer` paths, with prompt-object (`OptimizerPrompt`) support and cache-backed DSPy scoring.
 
 ## Minimal Kotlin Evaluate Example
 

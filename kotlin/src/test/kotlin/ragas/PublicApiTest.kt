@@ -8,6 +8,8 @@ import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
+import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.GeneticOptimizer
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -116,6 +118,17 @@ class PublicApiTest {
     fun backendRegistryFacadeIsAvailable() {
         val names = backendRegistry().availableNames()
         assertTrue("inmemory" in names)
+    }
+
+    @Test
+    fun optimizerFacadesAreAvailable() {
+        val genetic = geneticOptimizer()
+        val dspy = dspyOptimizer()
+        val dspyWithCache = dspyOptimizer(InMemoryCacheBackend())
+
+        assertTrue(genetic is GeneticOptimizer)
+        assertTrue(dspy is DspyOptimizer)
+        assertTrue(dspyWithCache is DspyOptimizer)
     }
 }
 

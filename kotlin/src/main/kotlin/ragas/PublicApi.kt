@@ -18,6 +18,9 @@ import ragas.metrics.defaults.defaultSingleTurnMetrics
 import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.Sample
+import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.GeneticOptimizer
+import ragas.optimizers.Optimizer
 import ragas.runtime.RunConfig
 import ragas.evaluation.aevaluate as aevaluateInternal
 import ragas.evaluation.evaluate as evaluateInternal
@@ -83,3 +86,12 @@ fun withCache(
 ): BaseRagasEmbedding = CachedRagasEmbedding(embedding, cache)
 
 fun backendRegistry(): BackendRegistry = BACKEND_REGISTRY
+
+fun geneticOptimizer(): Optimizer = GeneticOptimizer()
+
+fun dspyOptimizer(cache: CacheBackend? = null): Optimizer =
+    if (cache == null) {
+        DspyOptimizer()
+    } else {
+        DspyOptimizer(cache = cache)
+    }

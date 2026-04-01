@@ -233,11 +233,45 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - Exit criteria:
   - Kotlin testset generation can replace Python flow for real-world synthesis scenarios.
 
-### WS7: Optimizer Parity `[ ]`
+### WS7: Optimizer Parity `[x]`
 
-- [ ] Implement DSPy optimizer path (optional dependency model, adapter layer, caching behavior).
-- [ ] Expand genetic optimizer from scaffold to Python-equivalent prompt optimization lifecycle.
-- [ ] Integrate optimizer outputs with metric prompt objects in typed prompt stack.
+- [x] Implement DSPy optimizer path (optional dependency model, adapter layer, caching behavior).
+- [x] Expand genetic optimizer from scaffold to Python-equivalent prompt optimization lifecycle.
+- [x] Integrate optimizer outputs with metric prompt objects in typed prompt stack.
+- [x] Wire early integration points so optimizers can consume typed/multimodal prompt objects.
+- Progress note (2026-04-01):
+  - Added prompt-object optimizer contracts in `src/main/kotlin/ragas/optimizers/Optimizer.kt`:
+    - `OptimizerPrompt.Text` and `OptimizerPrompt.MultiModal(List<PromptContentPart>)`
+    - `PromptObjectEvaluator`
+    - `OptimizerOutcome`
+  - Updated `src/main/kotlin/ragas/optimizers/GeneticOptimizer.kt` to optimize prompt objects directly:
+    - typed crossover/mutation for text prompts
+    - multimodal crossover/mutation across `PromptContentPart` lists
+    - compatibility metadata in optimizer outcome
+  - Kept string-based optimizer API compatibility by adapting legacy `optimize(...)` calls
+    through the new prompt-object path.
+  - Updated `src/main/kotlin/ragas/optimizers/DspyOptimizer.kt` to adopt the prompt-object
+    optimizer interface as the base for the implemented DSPy-style path.
+  - Added coverage in `src/test/kotlin/ragas/OptimizersTest.kt` for:
+    - typed prompt-object optimization
+    - multimodal prompt-object optimization
+  - Completed DSPy path in Kotlin:
+    - Added optional adapter seam via `src/main/kotlin/ragas/optimizers/DspyAdapter.kt`
+      with `ServiceLoader` discovery (`DspyAdapterLoader`) and heuristic fallback adapter.
+    - Implemented `src/main/kotlin/ragas/optimizers/DspyOptimizer.kt` candidate-compile loop
+      over prompt objects with cache-backed score memoization.
+    - Added top-level public API facades in `src/main/kotlin/ragas/PublicApi.kt`:
+      `geneticOptimizer()` and `dspyOptimizer(cache?)`.
+  - Integrated optimizer output application to metric prompt objects:
+    - Added `src/main/kotlin/ragas/metrics/primitives/PromptOptimization.kt`
+      (`OptimizableMetricPrompt`, outcome apply helper, optimize-and-apply helper).
+    - Updated `NumericMetric`, `DiscreteMetric`, and `RankingMetric` to store and consume
+      mutable `OptimizerPrompt` objects.
+  - Added coverage updates:
+    - `src/test/kotlin/ragas/OptimizersTest.kt` now validates DSPy optimization and cache behavior.
+    - `src/test/kotlin/ragas/metrics/primitives/StructuredFallbackTest.kt` validates
+      optimizer-to-metric prompt application path.
+    - `src/test/kotlin/ragas/PublicApiTest.kt` validates optimizer facades.
 - Exit criteria:
   - Both genetic and DSPy optimization workflows are usable in Kotlin with parity semantics.
 
@@ -331,5 +365,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Wire early WS7 optimizer integration points to consume typed/multimodal prompt objects.
-2. Evaluate optional LLM-backed Tier-2 parity adapters for agent-goal/topic adherence metrics.
+1. Close WS1 evaluator parity gaps by extending `evaluate/aevaluate` with Python-compatible hooks (callbacks/tracing, column remap, token-usage/cost callbacks, executor-return/cancellation path) plus focused parity tests.
+2. Complete WS9 documentation sync by reconciling `README.md`, `PARITY_MATRIX.md`, `MIGRATION.md`, and `API_SURFACE.md` with current `src` status (typed/multimodal prompts, Tier1-4 metric accessors, optimizer prompt-object flows) and explicitly listing intentional deferrals.
+3. Start WS6 production testset parity implementation: add extractor/splitter/relationship-builder modules and fixture-backed conformance tests for synthesized output structure/quality.
