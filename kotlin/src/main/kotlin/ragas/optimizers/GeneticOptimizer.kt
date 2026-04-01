@@ -66,11 +66,15 @@ class GeneticOptimizer : Optimizer {
         variantIndex: Int,
     ): OptimizerPrompt =
         when (source) {
-            is OptimizerPrompt.Text -> OptimizerPrompt.Text("${source.value}\n(variant $variantIndex)")
-            is OptimizerPrompt.MultiModal ->
+            is OptimizerPrompt.Text -> {
+                OptimizerPrompt.Text("${source.value}\n(variant $variantIndex)")
+            }
+
+            is OptimizerPrompt.MultiModal -> {
                 OptimizerPrompt.MultiModal(
                     source.content + PromptContentPart.Text("(variant $variantIndex)"),
                 )
+            }
         }
 
     private fun crossoverPrompt(
@@ -79,14 +83,21 @@ class GeneticOptimizer : Optimizer {
         random: Random,
     ): OptimizerPrompt =
         when {
-            parent1 is OptimizerPrompt.Text && parent2 is OptimizerPrompt.Text ->
+            parent1 is OptimizerPrompt.Text && parent2 is OptimizerPrompt.Text -> {
                 OptimizerPrompt.Text(crossoverText(parent1.value, parent2.value, random))
+            }
 
-            parent1 is OptimizerPrompt.MultiModal && parent2 is OptimizerPrompt.MultiModal ->
+            parent1 is OptimizerPrompt.MultiModal && parent2 is OptimizerPrompt.MultiModal -> {
                 crossoverMultiModal(parent1, parent2, random)
+            }
 
-            random.nextBoolean() -> parent1
-            else -> parent2
+            random.nextBoolean() -> {
+                parent1
+            }
+
+            else -> {
+                parent2
+            }
         }
 
     private fun crossoverText(

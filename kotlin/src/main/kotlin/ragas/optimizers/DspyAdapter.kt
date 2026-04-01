@@ -42,7 +42,9 @@ internal class HeuristicDspyAdapter : DspyAdapter {
         val base = prompt.content
         return listOf(
             OptimizerPrompt.MultiModal(base + ragas.prompt.PromptContentPart.Text("Think step-by-step, then answer with JSON only.")),
-            OptimizerPrompt.MultiModal(base + ragas.prompt.PromptContentPart.Text("Use retrieved context strictly and avoid unsupported claims.")),
+            OptimizerPrompt.MultiModal(
+                base + ragas.prompt.PromptContentPart.Text("Use retrieved context strictly and avoid unsupported claims."),
+            ),
             OptimizerPrompt.MultiModal(base + ragas.prompt.PromptContentPart.Text("Keep the answer concise and deterministic.")),
         )
     }

@@ -184,7 +184,9 @@ class OptimizersTest {
                             if ("concise" in projected.lowercase()) 1.0 else 0.1
                         }
 
-                        is OptimizerPrompt.Text -> 0.0
+                        is OptimizerPrompt.Text -> {
+                            0.0
+                        }
                     }
                 },
                 config = OptimizerConfig(iterations = 3, populationSize = 4, seed = 9),

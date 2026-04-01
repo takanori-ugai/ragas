@@ -1,16 +1,16 @@
-package ragas.examples.rag_eval
+package ragas.examples.rageval
 
 import kotlinx.coroutines.runBlocking
+import ragas.backends.LocalCsvBackend
+import ragas.backends.rowToJsonLine
 import ragas.experiment
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
 import ragas.metrics.MetricType
 import ragas.metrics.primitives.DiscreteMetric
-import ragas.runtime.RunConfig
-import ragas.backends.LocalCsvBackend
-import ragas.backends.rowToJsonLine
 import ragas.model.SingleTurnSample
+import ragas.runtime.RunConfig
 import java.io.File
 
 private data class EvalRow(
@@ -47,11 +47,15 @@ private fun loadDataset(rootDir: String = "evals"): List<EvalRow> {
         listOf(
             EvalRow(
                 question = "What is ragas 0.3",
-                gradingNotes = "- experimentation as the central pillar - provides abstraction for datasets, experiments and metrics - supports evals for RAG, LLM workflows and Agents",
+                gradingNotes =
+                    "- experimentation as the central pillar - provides abstraction for datasets, " +
+                        "experiments and metrics - supports evals for RAG, LLM workflows and Agents",
             ),
             EvalRow(
                 question = "how are experiment results stored in ragas 0.3?",
-                gradingNotes = "- configured using different backends like local, gdrive, etc - stored under experiments/ folder in the backend storage",
+                gradingNotes =
+                    "- configured using different backends like local, gdrive, etc - stored under " +
+                        "experiments/ folder in the backend storage",
             ),
             EvalRow(
                 question = "What metrics are supported in ragas 0.3?",
@@ -81,7 +85,9 @@ fun main() =
         val myMetric =
             DiscreteMetric(
                 name = "correctness",
-                prompt = "Check if the response covers the grading notes and return pass or fail. Response: {response} Grading Notes: {reference}",
+                prompt =
+                    "Check if the response covers the grading notes and return pass or fail. " +
+                        "Response: {response} Grading Notes: {reference}",
                 llm = llm,
                 allowedValues = listOf("pass", "fail"),
                 requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),

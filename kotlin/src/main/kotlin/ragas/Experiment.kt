@@ -32,24 +32,40 @@ class Experiment(
     companion object {
         internal fun resolveBackend(backend: Any?): BaseBackend =
             when (backend) {
-                is BaseBackend -> backend
-                is String -> BACKEND_REGISTRY.create(backend)
-                null -> throw IllegalArgumentException("Backend cannot be null.")
-                else ->
+                is BaseBackend -> {
+                    backend
+                }
+
+                is String -> {
+                    BACKEND_REGISTRY.create(backend)
+                }
+
+                null -> {
+                    throw IllegalArgumentException("Backend cannot be null.")
+                }
+
+                else -> {
                     throw IllegalArgumentException(
                         "Unsupported backend type: ${backend::class.qualifiedName}. Expected BaseBackend or String.",
                     )
+                }
             }
 
         private fun toRowMap(result: Any): Map<String, Any?> =
             when (result) {
-                is Map<*, *> ->
+                is Map<*, *> -> {
                     result.entries.associate { (key, value) ->
                         (key?.toString() ?: "null") to value
                     }
+                }
 
-                is Sample -> result.toMap()
-                else -> mapOf("value" to result)
+                is Sample -> {
+                    result.toMap()
+                }
+
+                else -> {
+                    mapOf("value" to result)
+                }
             }
     }
 }
@@ -250,7 +266,11 @@ private fun runGit(
             )
         }
 
-    val output = process.inputStream.bufferedReader().use { reader -> reader.readText() }.trim()
+    val output =
+        process.inputStream
+            .bufferedReader()
+            .use { reader -> reader.readText() }
+            .trim()
     val exitCode = process.waitFor()
     if (exitCode != 0) {
         throw IllegalStateException(

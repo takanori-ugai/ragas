@@ -1,4 +1,4 @@
-package ragas.examples.rag_eval
+package ragas.examples.rageval
 
 import ragas.backends.rowToJsonLine
 import java.io.File
@@ -256,13 +256,14 @@ class ExampleRag(
                     "query" to query,
                     "result" to result,
                     "num_documents" to documents.size,
-                    "traces" to traces.map { trace ->
-                        mapOf(
-                            "event_type" to trace.eventType,
-                            "component" to trace.component,
-                            "data" to trace.data,
-                        )
-                    },
+                    "traces" to
+                        traces.map { trace ->
+                            mapOf(
+                                "event_type" to trace.eventType,
+                                "component" to trace.component,
+                                "data" to trace.data,
+                            )
+                        },
                 ),
             )
         filepath.parentFile.mkdirs()

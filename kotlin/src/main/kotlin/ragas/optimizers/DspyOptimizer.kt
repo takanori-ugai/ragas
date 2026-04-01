@@ -109,8 +109,12 @@ class DspyOptimizer : Optimizer {
 
     private fun signatureForPrompt(prompt: OptimizerPrompt): String =
         when (prompt) {
-            is OptimizerPrompt.Text -> "text:${prompt.value}"
-            is OptimizerPrompt.MultiModal ->
+            is OptimizerPrompt.Text -> {
+                "text:${prompt.value}"
+            }
+
+            is OptimizerPrompt.MultiModal -> {
                 "multimodal:${prompt.asTextPrompt()}"
+            }
         }
 }
