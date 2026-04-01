@@ -16,6 +16,8 @@ import ragas.metrics.MetricType
 import ragas.metrics.MetricWithLlm
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
+import ragas.optimizers.OptimizerPrompt
+import ragas.optimizers.asTextPrompt
 import ragas.runtime.RunConfig
 
 class NumericMetric(
@@ -26,10 +28,13 @@ class NumericMetric(
     override val requiredColumns: Map<MetricType, Set<String>> = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
 ) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.CONTINUOUS),
     SingleTurnMetric,
-    MetricWithLlm {
-    private val template =
+    MetricWithLlm,
+    OptimizableMetricPrompt {
+    private var promptObject: OptimizerPrompt = OptimizerPrompt.Text(prompt)
+
+    private fun template(): PromptTemplate =
         PromptTemplate(
-            instructionTemplate = prompt,
+            instructionTemplate = promptObject.asTextPrompt(),
             outputSchema =
                 buildJsonObject {
                     put("type", "object")
@@ -52,7 +57,7 @@ class NumericMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val prompt =
-            template.render(
+            template().render(
                 mapOf(
                     "user_input" to sample.userInput.orEmpty(),
                     "response" to sample.response.orEmpty(),
@@ -81,6 +86,12 @@ class NumericMetric(
                 else -> numeric
             }
         return clamped
+    }
+
+    override fun optimizerPrompt(): OptimizerPrompt = promptObject
+
+    override fun applyOptimizerPrompt(prompt: OptimizerPrompt) {
+        promptObject = prompt
     }
 
     private fun parseJsonValue(raw: String): Double? =

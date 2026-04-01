@@ -17,6 +17,8 @@ import ragas.metrics.MetricType
 import ragas.metrics.MetricWithLlm
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
+import ragas.optimizers.OptimizerPrompt
+import ragas.optimizers.asTextPrompt
 import ragas.runtime.RunConfig
 
 class RankingMetric(
@@ -27,14 +29,17 @@ class RankingMetric(
     override val requiredColumns: Map<MetricType, Set<String>> = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
 ) : BaseMetric(name = name, requiredColumns = requiredColumns, outputType = MetricOutputType.RANKING),
     SingleTurnMetric,
-    MetricWithLlm {
+    MetricWithLlm,
+    OptimizableMetricPrompt {
     init {
         require(expectedSize > 0) { "expectedSize must be greater than 0" }
     }
 
-    private val template =
+    private var promptObject: OptimizerPrompt = OptimizerPrompt.Text(prompt)
+
+    private fun template(): PromptTemplate =
         PromptTemplate(
-            instructionTemplate = prompt,
+            instructionTemplate = promptObject.asTextPrompt(),
             outputSchema =
                 buildJsonObject {
                     put("type", "object")
@@ -65,7 +70,7 @@ class RankingMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val prompt =
-            template.render(
+            template().render(
                 mapOf(
                     "user_input" to sample.userInput.orEmpty(),
                     "response" to sample.response.orEmpty(),
@@ -85,6 +90,12 @@ class RankingMetric(
             }
 
         return parsed.take(expectedSize)
+    }
+
+    override fun optimizerPrompt(): OptimizerPrompt = promptObject
+
+    override fun applyOptimizerPrompt(prompt: OptimizerPrompt) {
+        promptObject = prompt
     }
 
     private suspend fun fallbackParse(

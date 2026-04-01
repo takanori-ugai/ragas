@@ -10,6 +10,8 @@ This module provides:
 - WS3 Tier-3 answer-quality metric accessor (`tier3Metrics()`)
 - WS3 Tier-4 rubrics + advanced metric accessor (`tier4Metrics()`)
 - prompt subsystem (Python-style prompt framing + persistence)
+- early WS7 optimizer prompt-object wiring (`OptimizerPrompt.Text` / `OptimizerPrompt.MultiModal`)
+- optimizer facades (`geneticOptimizer()`, `dspyOptimizer()`) with DSPy-style adapter + cache path
 - LangChain4j LLM/embedding adapters
 - CLI scaffold for runtime status and backend listing
 

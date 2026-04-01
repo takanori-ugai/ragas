@@ -11,6 +11,7 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PublicApiTest {
@@ -116,6 +117,17 @@ class PublicApiTest {
     fun backendRegistryFacadeIsAvailable() {
         val names = backendRegistry().availableNames()
         assertTrue("inmemory" in names)
+    }
+
+    @Test
+    fun optimizerFacadesAreAvailable() {
+        val genetic = geneticOptimizer()
+        val dspy = dspyOptimizer()
+        val dspyWithCache = dspyOptimizer(InMemoryCacheBackend())
+
+        assertNotNull(genetic)
+        assertNotNull(dspy)
+        assertNotNull(dspyWithCache)
     }
 }
 
