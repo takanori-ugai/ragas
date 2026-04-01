@@ -5,6 +5,7 @@ Kotlin port of the Ragas evaluation toolkit.
 This module provides:
 - evaluation pipeline (`evaluate` / `aevaluate`)
 - default single-turn metrics
+- WS3 Tier-1 collection metric accessor (`tier1Metrics()`)
 - prompt subsystem (Python-style prompt framing + persistence)
 - LangChain4j LLM/embedding adapters
 - CLI scaffold for runtime status and backend listing
