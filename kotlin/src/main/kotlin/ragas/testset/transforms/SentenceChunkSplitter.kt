@@ -3,6 +3,8 @@ package ragas.testset.transforms
 import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
 import ragas.testset.graph.Relationship
+import java.text.BreakIterator
+import java.util.Locale
 
 class SentenceChunkSplitter(
     override val name: String = "sentence_chunk_splitter",
@@ -21,11 +23,7 @@ class SentenceChunkSplitter(
         }
 
         val sentences =
-            sentenceRegex
-                .findAll(text)
-                .map { match -> match.value.trim() }
-                .filter { sentence -> sentence.isNotBlank() }
-                .toList()
+            splitSentences(text)
 
         if (sentences.isEmpty()) {
             return emptyList<Node>() to emptyList()
@@ -61,7 +59,84 @@ class SentenceChunkSplitter(
         return chunks to relationships
     }
 
+    private fun splitSentences(text: String): List<String> {
+        val iterator = BreakIterator.getSentenceInstance(Locale.ROOT)
+        iterator.setText(text)
+        val rawSentences = mutableListOf<String>()
+        var start = iterator.first()
+        var end = iterator.next()
+        while (end != BreakIterator.DONE) {
+            val sentence = text.substring(start, end).trim()
+            if (sentence.isNotBlank()) {
+                rawSentences += sentence
+            }
+            start = end
+            end = iterator.next()
+        }
+        if (rawSentences.isEmpty()) {
+            return emptyList()
+        }
+        return mergeLikelyFalseSplits(rawSentences)
+    }
+
+    private fun mergeLikelyFalseSplits(sentences: List<String>): List<String> {
+        val merged = mutableListOf<String>()
+        var index = 0
+        while (index < sentences.size) {
+            var current = sentences[index]
+            while (index + 1 < sentences.size && shouldMergeWithNext(current, sentences[index + 1])) {
+                current = "$current ${sentences[index + 1]}"
+                index += 1
+            }
+            merged += current
+            index += 1
+        }
+        return merged
+    }
+
+    private fun shouldMergeWithNext(
+        current: String,
+        next: String,
+    ): Boolean {
+        val trimmedCurrent = current.trim()
+        val trimmedNext = next.trim()
+        if (trimmedCurrent.isEmpty() || trimmedNext.isEmpty()) {
+            return false
+        }
+
+        if (trimmedCurrent in knownAbbreviations) {
+            return true
+        }
+
+        val nextFirstChar = trimmedNext.first()
+        if (nextFirstChar.isLowerCase()) {
+            return true
+        }
+
+        if (decimalTailRegex.containsMatchIn(trimmedCurrent) && nextFirstChar.isDigit()) {
+            return true
+        }
+
+        return false
+    }
+
     companion object {
-        private val sentenceRegex = Regex("[^.!?]+[.!?]?")
+        private val knownAbbreviations =
+            setOf(
+                "Mr.",
+                "Mrs.",
+                "Ms.",
+                "Dr.",
+                "Prof.",
+                "Sr.",
+                "Jr.",
+                "St.",
+                "Inc.",
+                "Ltd.",
+                "Co.",
+                "vs.",
+                "etc.",
+            )
+        private val decimalTailRegex = Regex("\\d\\.$")
     }
 }

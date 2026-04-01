@@ -41,7 +41,7 @@ Last updated: 2026-04-01
 
 ## Intentional Deferrals
 
-- Evaluation API options not yet mirrored: callback hooks, column remap path, token/cost callback hooks, executor-return path.
+- Evaluation API: remaining Python-specific ecosystem integrations are not yet mirrored.
 - Multimodal prompt ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
 - Full production-grade testset synthesis pipeline parity (extractors, splitters, relationship builders, advanced synthesizers).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.

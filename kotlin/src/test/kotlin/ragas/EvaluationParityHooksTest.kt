@@ -9,6 +9,7 @@ import ragas.evaluation.TokenUsage
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
+import ragas.llms.StructuredOutputRagasLlm
 import ragas.metrics.BaseMetric
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
@@ -47,6 +48,29 @@ class EvaluationParityHooksTest {
     }
 
     @Test
+    fun evaluateIgnoresIncompatibleColumnRemapTypeForSingleTurn() {
+        val dataset =
+            EvaluationDataset(
+                listOf(
+                    SingleTurnSample(
+                        userInput = "",
+                        retrievedContexts = listOf("ctx-1"),
+                        response = "answer",
+                    ),
+                ),
+            )
+
+        val result =
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(UserInputEchoMetric()),
+                columnMap = mapOf("user_input" to "retrieved_contexts"),
+            )
+
+        assertEquals("", result.scores.single()["user_input_echo"])
+    }
+
+    @Test
     fun evaluateEmitsCallbacksAndTokenCostHooks() {
         val events = mutableListOf<EvaluationEvent>()
         val callback = EvaluationCallback { event -> events += event }
@@ -74,6 +98,45 @@ class EvaluationParityHooksTest {
     }
 
     @Test
+    fun trackingWrapperDoesNotExposeStructuredCapabilityForNonStructuredDelegate() {
+        val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r")))
+        val result =
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(StructuredCapabilityMetric()),
+                llm = EchoLlm("plain"),
+                tokenUsageParser = { _, _ -> TokenUsage(promptTokens = 1, completionTokens = 1) },
+            )
+
+        assertEquals(false, result.scores.single()["structured_supported"])
+    }
+
+    @Test
+    fun trackingWrapperAccountsUsageForStructuredCalls() {
+        var parserCalls = 0
+        val events = mutableListOf<EvaluationEvent>()
+        val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r")))
+
+        val result =
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(StructuredDiscreteMetric()),
+                llm = StructuredEchoLlm(),
+                callbacks = listOf(EvaluationCallback { event -> events += event }),
+                tokenUsageParser = { _, _ ->
+                    parserCalls += 1
+                    TokenUsage(promptTokens = 2, completionTokens = 3)
+                },
+            )
+
+        assertEquals("ok", result.scores.single()["structured_discrete"])
+        assertEquals(1, parserCalls)
+        val usageEvents = events.filterIsInstance<EvaluationEvent.TokenUsageComputed>()
+        assertEquals(1, usageEvents.size)
+        assertEquals(5, usageEvents.single().usage.totalTokens)
+    }
+
+    @Test
     fun executorObserverCanCancelEvaluation() =
         runBlocking {
             val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r1"), SingleTurnSample(response = "r2")))
@@ -85,6 +148,7 @@ class EvaluationParityHooksTest {
                     dataset = dataset,
                     metrics = listOf(metric),
                     executorObserver = { executor ->
+                        // Assumes observer is called before metric jobs are submitted.
                         captured = executor
                         executor.cancel()
                     },
@@ -149,4 +213,53 @@ private class SlowMetric :
         delay(250)
         return 1.0
     }
+}
+
+private class StructuredCapabilityMetric :
+    BaseMetric(
+        name = "structured_supported",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.BINARY,
+    ),
+    SingleTurnMetric,
+    MetricWithLlm {
+    override var llm: BaseRagasLlm? = null
+
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any = checkNotNull(llm) is StructuredOutputRagasLlm
+}
+
+private class StructuredDiscreteMetric :
+    BaseMetric(
+        name = "structured_discrete",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.DISCRETE,
+    ),
+    SingleTurnMetric,
+    MetricWithLlm {
+    override var llm: BaseRagasLlm? = null
+
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+        val llmInstance = checkNotNull(llm)
+        val structured = llmInstance as? StructuredOutputRagasLlm ?: return ""
+        return structured.generateDiscreteValue("prompt: ${sample.response.orEmpty()}").orEmpty()
+    }
+}
+
+private class StructuredEchoLlm :
+    BaseRagasLlm,
+    StructuredOutputRagasLlm {
+    override var runConfig: RunConfig = RunConfig()
+
+    override suspend fun generateText(
+        prompt: String,
+        n: Int,
+        temperature: Double?,
+        stop: List<String>?,
+    ): LlmResult = LlmResult(generations = listOf(LlmGeneration("fallback")))
+
+    override suspend fun generateNumericValue(prompt: String): Double? = 1.0
+
+    override suspend fun generateDiscreteValue(prompt: String): String? = "ok"
+
+    override suspend fun generateRankingItems(prompt: String): List<String>? = listOf("a", "b")
 }

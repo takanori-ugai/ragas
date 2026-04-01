@@ -368,7 +368,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - [ ] Add release checklist for parity claims.
 - Intentional deferrals (tracked; not accidental gaps):
   - Multimodal ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
-  - Full production testset synthesis parity (extractors/splitters/relationship builders/advanced synthesizers).
+  - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
   - Broader integrations beyond current LangChain/LlamaIndex record adapters and trace observers.
   - Backend plugin discovery parity and optional Google Drive backend parity.
   - Exact Python DSPy internals parity (Kotlin keeps adapter seam + heuristic fallback).

@@ -156,9 +156,9 @@ class TestsetGenerator(
         return candidates
             .map { node ->
                 val content = node.getProperty("page_content").orEmpty()
-                val summary = node.getProperty("summary_llm_based").orEmpty()
-                val entities = node.getProperty("entities_regex").orEmpty()
-                val topic = node.getProperty("embedding_topic_tag").orEmpty()
+                val summary = nodeSummary(node)
+                val entities = nodeEntities(node)
+                val topic = nodeTopic(node)
                 val tokenStats = tokenStats(content)
                 val contentScore = (content.length.coerceAtMost(320) / 320.0)
                 val summaryBonus = if (summary.isNotBlank()) 0.25 else 0.0
@@ -190,8 +190,8 @@ class TestsetGenerator(
                 val left = chunksById[rel.sourceId] ?: return@mapNotNull null
                 val right = chunksById[rel.targetId] ?: return@mapNotNull null
                 val base = ((singleHopScores[left.id] ?: 0.0) + (singleHopScores[right.id] ?: 0.0)) / 2.0
-                val leftTopic = left.getProperty("embedding_topic_tag").orEmpty()
-                val rightTopic = right.getProperty("embedding_topic_tag").orEmpty()
+                val leftTopic = nodeTopic(left)
+                val rightTopic = nodeTopic(right)
                 val topicBridgeBonus =
                     if (leftTopic.isNotBlank() && rightTopic.isNotBlank() && leftTopic != rightTopic) {
                         0.1
@@ -199,7 +199,7 @@ class TestsetGenerator(
                         0.0
                     }
                 val summaryCoverageBonus =
-                    listOf(left.getProperty("summary_llm_based"), right.getProperty("summary_llm_based"))
+                    listOf(nodeSummary(left), nodeSummary(right))
                         .count { summary -> !summary.isNullOrBlank() } * 0.06
                 val edgeBonus =
                     when (rel.type) {
@@ -390,10 +390,10 @@ class TestsetGenerator(
         size: Int,
         random: Random,
     ): Int {
-        val totalWeight = (size * (size + 1)) / 2
-        var ticket = random.nextInt(totalWeight)
+        val totalWeight = (size.toLong() * (size + 1L)) / 2L
+        var ticket = random.nextLong(totalWeight)
         for (index in 0 until size) {
-            val weight = size - index
+            val weight = (size - index).toLong()
             if (ticket < weight) {
                 return index
             }
@@ -411,7 +411,7 @@ class TestsetGenerator(
         val tokens =
             text
                 .lowercase()
-                .split(Regex("[^a-z0-9]+"))
+                .split(Regex("[^\\p{L}\\p{N}]+"))
                 .filter { token -> token.length >= 3 }
         if (tokens.isEmpty()) {
             return TokenStats(total = 0, uniqueRatio = 0.0)
@@ -437,15 +437,15 @@ class TestsetGenerator(
     private fun generateSingleHopSamples(nodes: List<Node>): List<TestsetSample> =
         nodes.map { node ->
             val content = node.getProperty("page_content").orEmpty().trim()
-            val summary = node.getProperty("summary_llm_based").orEmpty().trim()
-            val entities = node.getProperty("entities_regex").orEmpty()
+            val summary = nodeSummary(node).trim()
+            val entities = nodeEntities(node)
             val primaryEntity =
                 entities
                     .split(',')
                     .firstOrNull()
                     ?.trim()
                     .orEmpty()
-            val topic = node.getProperty("embedding_topic_tag").orEmpty().trim()
+            val topic = nodeTopic(node).trim()
 
             val promptPlan =
                 buildSingleHopPromptPlan(
@@ -490,10 +490,10 @@ class TestsetGenerator(
                 return@mapNotNull null
             }
 
-            val leftSummary = left.getProperty("summary_llm_based").orEmpty().trim()
-            val rightSummary = right.getProperty("summary_llm_based").orEmpty().trim()
-            val leftTopic = left.getProperty("embedding_topic_tag").orEmpty().trim()
-            val rightTopic = right.getProperty("embedding_topic_tag").orEmpty().trim()
+            val leftSummary = nodeSummary(left).trim()
+            val rightSummary = nodeSummary(right).trim()
+            val leftTopic = nodeTopic(left).trim()
+            val rightTopic = nodeTopic(right).trim()
             val bridgeTopic = listOf(leftTopic, rightTopic).filter { it.isNotBlank() }.distinct().joinToString(" / ")
 
             val promptPlan =
@@ -617,6 +617,24 @@ class TestsetGenerator(
             else -> "LONG"
         }
     }
+
+    private fun nodeSummary(node: Node): String =
+        node
+            .getProperty("summary_llm_based")
+            ?.takeIf { value -> value.isNotBlank() }
+            ?: node.getProperty("source_document_summary").orEmpty()
+
+    private fun nodeEntities(node: Node): String =
+        node
+            .getProperty("entities_regex")
+            ?.takeIf { value -> value.isNotBlank() }
+            ?: node.getProperty("source_document_entities").orEmpty()
+
+    private fun nodeTopic(node: Node): String =
+        node
+            .getProperty("embedding_topic_tag")
+            ?.takeIf { value -> value.isNotBlank() }
+            ?: node.getProperty("source_document_topic").orEmpty()
 }
 
 fun emptyTransforms(): Transforms = SequenceTransforms(emptyList())

@@ -1,7 +1,6 @@
 package ragas.testset
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -27,7 +26,7 @@ class WS6CrossLanguageGoldenTest {
     @Test
     fun ws6CrossLanguageFixtureCalibratesShapePromptStyleAndGraphStats() =
         runBlocking {
-            val fixture = readFixture("ws6_cross_language_golden_fixture.json").jsonObject
+            val fixture = WS6TestFixtures.readFixture("ws6_cross_language_golden_fixture.json").jsonObject
             val documents = fixture.getValue("documents").jsonArray.map { item -> item.jsonPrimitive.content }
             val config = fixture.getValue("config").jsonObject
             val pythonReference = fixture.getValue("python_reference").jsonObject
@@ -140,11 +139,4 @@ class WS6CrossLanguageGoldenTest {
             assertTrue(overlapDensity >= graphReference.getValue("overlap_density_min").jsonPrimitive.double)
             assertTrue(overlapDensity <= graphReference.getValue("overlap_density_max").jsonPrimitive.double)
         }
-
-    private fun readFixture(name: String) =
-        Json.parseToJsonElement(
-            requireNotNull(javaClass.classLoader.getResourceAsStream("fixtures/testset/$name")) {
-                "Fixture not found on classpath: fixtures/testset/$name"
-            }.bufferedReader().use { it.readText() },
-        )
 }

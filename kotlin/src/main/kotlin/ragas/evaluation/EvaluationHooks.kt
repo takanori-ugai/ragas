@@ -1,6 +1,7 @@
 package ragas.evaluation
 
 import ragas.llms.BaseRagasLlm
+import ragas.llms.LlmGeneration
 import ragas.llms.LlmResult
 import ragas.llms.MultiModalRagasLlm
 import ragas.llms.StructuredOutputRagasLlm
@@ -65,12 +66,11 @@ sealed interface EvaluationEvent {
 typealias TokenUsageParser = (prompt: String, result: LlmResult) -> TokenUsage?
 typealias CostParser = (usage: TokenUsage) -> CostEstimate?
 
-internal class TrackingRagasLlm(
-    private val delegate: BaseRagasLlm,
+internal open class TrackingRagasLlm private constructor(
+    protected val delegate: BaseRagasLlm,
     private val tokenUsageParser: TokenUsageParser,
     private val onUsage: (TokenUsage) -> Unit,
 ) : BaseRagasLlm,
-    StructuredOutputRagasLlm,
     MultiModalRagasLlm {
     override var runConfig = delegate.runConfig
         set(value) {
@@ -87,21 +87,6 @@ internal class TrackingRagasLlm(
         val result = delegate.generateText(prompt, n, temperature, stop)
         onUsage(tokenUsageParser(prompt, result) ?: heuristicTokenUsage(prompt, result))
         return result
-    }
-
-    override suspend fun generateNumericValue(prompt: String): Double? {
-        val structured = delegate as? StructuredOutputRagasLlm ?: return null
-        return structured.generateNumericValue(prompt)
-    }
-
-    override suspend fun generateDiscreteValue(prompt: String): String? {
-        val structured = delegate as? StructuredOutputRagasLlm ?: return null
-        return structured.generateDiscreteValue(prompt)
-    }
-
-    override suspend fun generateRankingItems(prompt: String): List<String>? {
-        val structured = delegate as? StructuredOutputRagasLlm ?: return null
-        return structured.generateRankingItems(prompt)
     }
 
     override suspend fun generateContent(
@@ -122,6 +107,14 @@ internal class TrackingRagasLlm(
         return result
     }
 
+    protected fun onStructuredUsage(
+        prompt: String,
+        completion: String,
+    ) {
+        val result = LlmResult(generations = listOf(LlmGeneration(completion)))
+        onUsage(tokenUsageParser(prompt, result) ?: heuristicTokenUsage(prompt, result))
+    }
+
     private fun heuristicTokenUsage(
         prompt: String,
         result: LlmResult,
@@ -135,5 +128,53 @@ internal class TrackingRagasLlm(
         val promptTokens = countTokens(prompt)
         val completionTokens = result.generations.sumOf { generation -> countTokens(generation.text) }
         return TokenUsage(promptTokens = promptTokens, completionTokens = completionTokens)
+    }
+
+    companion object {
+        operator fun invoke(
+            delegate: BaseRagasLlm,
+            tokenUsageParser: TokenUsageParser,
+            onUsage: (TokenUsage) -> Unit,
+        ): TrackingRagasLlm =
+            if (delegate is StructuredOutputRagasLlm) {
+                TrackingStructuredRagasLlm(delegate, tokenUsageParser, onUsage)
+            } else {
+                TrackingRagasLlm(delegate, tokenUsageParser, onUsage)
+            }
+    }
+
+    private class TrackingStructuredRagasLlm(
+        delegate: BaseRagasLlm,
+        tokenUsageParser: TokenUsageParser,
+        onUsage: (TokenUsage) -> Unit,
+    ) : TrackingRagasLlm(delegate, tokenUsageParser, onUsage),
+        StructuredOutputRagasLlm {
+        private val structuredDelegate =
+            delegate as? StructuredOutputRagasLlm
+                ?: error("Delegate LLM does not support structured output.")
+
+        override suspend fun generateNumericValue(prompt: String): Double? {
+            val result = structuredDelegate.generateNumericValue(prompt)
+            if (result != null) {
+                onStructuredUsage(prompt, result.toString())
+            }
+            return result
+        }
+
+        override suspend fun generateDiscreteValue(prompt: String): String? {
+            val result = structuredDelegate.generateDiscreteValue(prompt)
+            if (result != null) {
+                onStructuredUsage(prompt, result)
+            }
+            return result
+        }
+
+        override suspend fun generateRankingItems(prompt: String): List<String>? {
+            val result = structuredDelegate.generateRankingItems(prompt)
+            if (result != null) {
+                onStructuredUsage(prompt, result.joinToString("\n"))
+            }
+            return result
+        }
     }
 }

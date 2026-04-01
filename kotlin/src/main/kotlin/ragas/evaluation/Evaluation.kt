@@ -46,15 +46,6 @@ suspend fun aevaluate(
     validateRequiredColumns(remappedDataset, selectedMetrics)
     validateSupportedMetrics(remappedDataset, selectedMetrics)
 
-    callbacks.forEach { callback ->
-        callback.onEvent(
-            EvaluationEvent.RunStarted(
-                sampleCount = remappedDataset.samples.size,
-                metricNames = selectedMetrics.map { metric -> metric.name },
-            ),
-        )
-    }
-
     val llmChanged = mutableListOf<MetricWithLlm>()
     val embeddingsChanged = mutableListOf<MetricWithEmbeddings>()
     val acquiredLocks = mutableListOf<Mutex>()
@@ -62,9 +53,18 @@ suspend fun aevaluate(
     var usagePromptTokens = 0
     var usageCompletionTokens = 0
 
-    lockMetrics(selectedMetrics, acquiredLocks)
-
     try {
+        callbacks.forEach { callback ->
+            callback.onEvent(
+                EvaluationEvent.RunStarted(
+                    sampleCount = remappedDataset.samples.size,
+                    metricNames = selectedMetrics.map { metric -> metric.name },
+                ),
+            )
+        }
+
+        lockMetrics(selectedMetrics, acquiredLocks)
+
         val effectiveLlm =
             if (llm != null && (tokenUsageParser != null || costParser != null)) {
                 TrackingRagasLlm(
@@ -249,23 +249,27 @@ private fun remapSingleTurnSample(
     columnMap.forEach { (target, source) ->
         val targetValue = values[target]
         val sourceValue = values[source]
-        if (isNullOrEmptyValue(targetValue) && !isNullOrEmptyValue(sourceValue)) {
+        if (
+            isNullOrEmptyValue(targetValue) &&
+            !isNullOrEmptyValue(sourceValue) &&
+            isCompatibleSingleTurnValue(target, sourceValue)
+        ) {
             values[target] = sourceValue
         }
     }
     return SingleTurnSample(
-        userInput = values["user_input"] as String?,
-        retrievedContexts = values["retrieved_contexts"] as List<String>?,
-        referenceContexts = values["reference_contexts"] as List<String>?,
-        retrievedContextIds = values["retrieved_context_ids"] as List<String>?,
-        referenceContextIds = values["reference_context_ids"] as List<String>?,
-        response = values["response"] as String?,
-        multiResponses = values["multi_responses"] as List<String>?,
-        reference = values["reference"] as String?,
-        rubrics = values["rubrics"] as Map<String, String>?,
-        personaName = values["persona_name"] as String?,
-        queryStyle = values["query_style"] as String?,
-        queryLength = values["query_length"] as String?,
+        userInput = asString(values["user_input"]),
+        retrievedContexts = asStringList(values["retrieved_contexts"]),
+        referenceContexts = asStringList(values["reference_contexts"]),
+        retrievedContextIds = asStringList(values["retrieved_context_ids"]),
+        referenceContextIds = asStringList(values["reference_context_ids"]),
+        response = asString(values["response"]),
+        multiResponses = asStringList(values["multi_responses"]),
+        reference = asString(values["reference"]),
+        rubrics = asStringMap(values["rubrics"]),
+        personaName = asString(values["persona_name"]),
+        queryStyle = asString(values["query_style"]),
+        queryLength = asString(values["query_length"]),
     )
 }
 
@@ -278,16 +282,20 @@ private fun remapMultiTurnSample(
     columnMap.forEach { (target, source) ->
         val targetValue = values[target]
         val sourceValue = values[source]
-        if (isNullOrEmptyValue(targetValue) && !isNullOrEmptyValue(sourceValue)) {
+        if (
+            isNullOrEmptyValue(targetValue) &&
+            !isNullOrEmptyValue(sourceValue) &&
+            isCompatibleMultiTurnValue(target, sourceValue)
+        ) {
             values[target] = sourceValue
         }
     }
     return MultiTurnSample(
-        userInput = values["user_input"] as List<ragas.model.ConversationMessage>,
-        reference = values["reference"] as String?,
-        referenceToolCalls = values["reference_tool_calls"] as List<ragas.model.ToolCall>?,
-        rubrics = values["rubrics"] as Map<String, String>?,
-        referenceTopics = values["reference_topics"] as List<String>?,
+        userInput = asConversationMessageList(values["user_input"]) ?: sample.userInput,
+        reference = asString(values["reference"]),
+        referenceToolCalls = asToolCallList(values["reference_tool_calls"]),
+        rubrics = asStringMap(values["rubrics"]),
+        referenceTopics = asStringList(values["reference_topics"]),
     )
 }
 
@@ -337,6 +345,85 @@ private fun isNullOrEmptyValue(value: Any?): Boolean =
         is Map<*, *> -> value.isEmpty()
         else -> false
     }
+
+private fun isCompatibleSingleTurnValue(
+    column: String,
+    value: Any?,
+): Boolean =
+    when (column) {
+        "user_input", "response", "reference", "persona_name", "query_style", "query_length" -> {
+            value is String
+        }
+
+        "retrieved_contexts", "reference_contexts", "retrieved_context_ids", "reference_context_ids", "multi_responses" -> {
+            isStringList(
+                value,
+            )
+        }
+
+        "rubrics" -> {
+            isStringMap(value)
+        }
+
+        else -> {
+            false
+        }
+    }
+
+private fun isCompatibleMultiTurnValue(
+    column: String,
+    value: Any?,
+): Boolean =
+    when (column) {
+        "user_input" -> isConversationMessageList(value)
+        "reference" -> value is String
+        "reference_tool_calls" -> isToolCallList(value)
+        "rubrics" -> isStringMap(value)
+        "reference_topics" -> isStringList(value)
+        else -> false
+    }
+
+private fun asString(value: Any?): String? = value as? String
+
+private fun asStringList(value: Any?): List<String>? {
+    val list = value as? List<*> ?: return null
+    if (!list.all { it is String }) {
+        return null
+    }
+    return list.map { item -> item as String }
+}
+
+private fun asConversationMessageList(value: Any?): List<ragas.model.ConversationMessage>? {
+    val list = value as? List<*> ?: return null
+    if (!list.all { it is ragas.model.ConversationMessage }) {
+        return null
+    }
+    return list.map { item -> item as ragas.model.ConversationMessage }
+}
+
+private fun asToolCallList(value: Any?): List<ragas.model.ToolCall>? {
+    val list = value as? List<*> ?: return null
+    if (!list.all { it is ragas.model.ToolCall }) {
+        return null
+    }
+    return list.map { item -> item as ragas.model.ToolCall }
+}
+
+private fun asStringMap(value: Any?): Map<String, String>? {
+    val map = value as? Map<*, *> ?: return null
+    if (!map.entries.all { entry -> entry.key is String && entry.value is String }) {
+        return null
+    }
+    return map.entries.associate { entry -> entry.key as String to entry.value as String }
+}
+
+private fun isStringList(value: Any?): Boolean = asStringList(value) != null
+
+private fun isConversationMessageList(value: Any?): Boolean = asConversationMessageList(value) != null
+
+private fun isToolCallList(value: Any?): Boolean = asToolCallList(value) != null
+
+private fun isStringMap(value: Any?): Boolean = asStringMap(value) != null
 
 private val SINGLE_TURN_COLUMNS =
     setOf(

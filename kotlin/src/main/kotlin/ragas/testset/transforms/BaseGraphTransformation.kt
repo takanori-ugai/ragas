@@ -114,5 +114,6 @@ private fun KnowledgeGraph.hasRelationship(candidate: Relationship): Boolean =
         existing.type == candidate.type &&
             existing.sourceId == candidate.sourceId &&
             existing.targetId == candidate.targetId &&
+            existing.bidirectional == candidate.bidirectional &&
             existing.properties == candidate.properties
     }

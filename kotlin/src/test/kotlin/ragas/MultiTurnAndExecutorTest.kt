@@ -43,6 +43,21 @@ class MultiTurnAndExecutorTest {
     }
 
     @Test
+    fun evaluateIgnoresIncompatibleColumnRemapTypeForMultiTurn() {
+        val sample = MultiTurnSample(userInput = emptyList(), reference = "Greeting")
+        val dataset = EvaluationDataset(listOf(sample))
+
+        val result =
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(ConversationLengthMetric()),
+                columnMap = mapOf("user_input" to "reference"),
+            )
+
+        assertEquals(0.0, result.scores.first()["conversation_length"])
+    }
+
+    @Test
     fun executorReturnsNullWhenRaiseExceptionsIsFalse() =
         runBlocking {
             val executor =

@@ -1,7 +1,7 @@
 package ragas.testset
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -28,7 +28,7 @@ class WS6EdgeCaseFixturesTest {
     @Test
     fun sparseOverlapFixtureConformance() =
         runBlocking {
-            val fixture = readFixture("ws6_sparse_overlap_fixture.json")
+            val fixture = WS6TestFixtures.readFixture("ws6_sparse_overlap_fixture.json")
             val run = executeFixture(fixture)
             val expected = fixture.jsonObject.getValue("expected").jsonObject
 
@@ -57,7 +57,7 @@ class WS6EdgeCaseFixturesTest {
     @Test
     fun longDocumentFixtureConformance() =
         runBlocking {
-            val fixture = readFixture("ws6_long_document_fixture.json")
+            val fixture = WS6TestFixtures.readFixture("ws6_long_document_fixture.json")
             val run = executeFixture(fixture)
             val expected = fixture.jsonObject.getValue("expected").jsonObject
 
@@ -85,7 +85,7 @@ class WS6EdgeCaseFixturesTest {
     @Test
     fun relationshipDensityFixtureConformance() =
         runBlocking {
-            val fixture = readFixture("ws6_relationship_density_fixture.json")
+            val fixture = WS6TestFixtures.readFixture("ws6_relationship_density_fixture.json")
             val run = executeFixture(fixture)
             val expected = fixture.jsonObject.getValue("expected").jsonObject
 
@@ -176,16 +176,9 @@ class WS6EdgeCaseFixturesTest {
             temperature = obj["temperature"]?.jsonPrimitive?.double ?: 0.8,
             singleHopCount = obj["single_hop_count"]?.jsonPrimitive?.int,
             multiHopCount = obj["multi_hop_count"]?.jsonPrimitive?.int,
-            enforceDocumentDiversity = obj["enforce_document_diversity"]?.jsonPrimitive?.content?.toBoolean() ?: true,
+            enforceDocumentDiversity = obj["enforce_document_diversity"]?.jsonPrimitive?.boolean ?: true,
             maxSingleHopPerDocument = obj["max_single_hop_per_document"]?.jsonPrimitive?.int ?: 2,
-            useRankBiasedSampling = obj["use_rank_biased_sampling"]?.jsonPrimitive?.content?.toBoolean() ?: true,
+            useRankBiasedSampling = obj["use_rank_biased_sampling"]?.jsonPrimitive?.boolean ?: true,
         )
     }
-
-    private fun readFixture(name: String) =
-        Json.parseToJsonElement(
-            requireNotNull(javaClass.classLoader.getResourceAsStream("fixtures/testset/$name")) {
-                "Fixture not found on classpath: fixtures/testset/$name"
-            }.bufferedReader().use { it.readText() },
-        )
 }
