@@ -168,7 +168,7 @@ class Executor(
                 return ResultEntry(job.index, null)
             }
             throw error
-        } catch (error: Exception) {
+        } catch (error: Throwable) {
             if (raiseExceptions) {
                 throw error
             }

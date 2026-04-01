@@ -27,7 +27,7 @@ interface BaseGraphTransformation {
 
 abstract class Extractor(
     override val name: String,
-    override val filterNodes: (Node) -> Boolean = ::defaultFilter,
+    override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
     abstract suspend fun extract(node: Node): Pair<String, String>
 
@@ -55,7 +55,7 @@ abstract class Extractor(
 
 abstract class Splitter(
     override val name: String,
-    override val filterNodes: (Node) -> Boolean = ::defaultFilter,
+    override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
     abstract suspend fun split(node: Node): Pair<List<Node>, List<ragas.testset.graph.Relationship>>
 

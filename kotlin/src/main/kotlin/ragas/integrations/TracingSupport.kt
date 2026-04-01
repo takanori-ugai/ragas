@@ -9,7 +9,7 @@ import ragas.model.EvaluationResult
 import java.util.UUID
 
 @Suppress("TooGenericExceptionCaught")
-internal inline fun traceEvaluation(
+internal fun traceEvaluation(
     framework: String,
     runName: String,
     tags: Map<String, String>,
@@ -47,11 +47,12 @@ internal inline fun traceEvaluation(
                         errorMessage = error.message.orEmpty(),
                     ),
                 )
-            } catch (observerError: Exception) {
-                if (observerError !== error) {
-                    error.addSuppressed(observerError)
-                }
             } catch (observerError: Error) {
+                if (observerError !== error) {
+                    observerError.addSuppressed(error)
+                }
+                throw observerError
+            } catch (observerError: Throwable) {
                 if (observerError !== error) {
                     error.addSuppressed(observerError)
                 }
@@ -92,10 +93,7 @@ internal inline fun traceEvaluation(
             )
         }
         result
-    } catch (error: Exception) {
-        notifyFailure(error)
-        throw error
-    } catch (error: Error) {
+    } catch (error: Throwable) {
         notifyFailure(error)
         throw error
     }
