@@ -7,8 +7,15 @@ import ragas.backends.BackendRegistry
 import ragas.cache.CacheBackend
 import ragas.embeddings.BaseRagasEmbedding
 import ragas.embeddings.CachedRagasEmbedding
+import ragas.evaluation.CostEvent
+import ragas.evaluation.EvaluationCallback
+import ragas.evaluation.EvaluationCancellationToken
+import ragas.evaluation.TokenUsage
+import ragas.evaluation.TokenUsageEvent
+import ragas.evaluation.TokenUsageParser
 import ragas.llms.BaseRagasLlm
 import ragas.llms.CachedRagasLlm
+import ragas.integrations.tracing.TraceObserver
 import ragas.metrics.Metric
 import ragas.metrics.collections.agentToolCallTier2Metrics
 import ragas.metrics.collections.answerQualityTier3Metrics
@@ -35,6 +42,16 @@ fun evaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    traceObservers: List<TraceObserver> = emptyList(),
+    tokenUsageParser: TokenUsageParser? = null,
+    tokenUsageCallback: ((TokenUsageEvent) -> Unit)? = null,
+    costCallback: ((CostEvent) -> Unit)? = null,
+    costParser: ((TokenUsage) -> Double)? = null,
+    columnMap: Map<String, String> = emptyMap(),
+    returnExecutor: Boolean = false,
+    executorSink: ((ragas.runtime.Executor) -> Unit)? = null,
+    cancellationToken: EvaluationCancellationToken? = null,
 ): EvaluationResult =
     evaluateInternal(
         dataset = dataset,
@@ -44,6 +61,16 @@ fun evaluate(
         runConfig = runConfig,
         raiseExceptions = raiseExceptions,
         batchSize = batchSize,
+        callbacks = callbacks,
+        traceObservers = traceObservers,
+        tokenUsageParser = tokenUsageParser,
+        tokenUsageCallback = tokenUsageCallback,
+        costCallback = costCallback,
+        costParser = costParser,
+        columnMap = columnMap,
+        returnExecutor = returnExecutor,
+        executorSink = executorSink,
+        cancellationToken = cancellationToken,
     )
 
 suspend fun aevaluate(
@@ -54,6 +81,16 @@ suspend fun aevaluate(
     runConfig: RunConfig = RunConfig(),
     raiseExceptions: Boolean = false,
     batchSize: Int? = null,
+    callbacks: List<EvaluationCallback> = emptyList(),
+    traceObservers: List<TraceObserver> = emptyList(),
+    tokenUsageParser: TokenUsageParser? = null,
+    tokenUsageCallback: ((TokenUsageEvent) -> Unit)? = null,
+    costCallback: ((CostEvent) -> Unit)? = null,
+    costParser: ((TokenUsage) -> Double)? = null,
+    columnMap: Map<String, String> = emptyMap(),
+    returnExecutor: Boolean = false,
+    executorSink: ((ragas.runtime.Executor) -> Unit)? = null,
+    cancellationToken: EvaluationCancellationToken? = null,
 ): EvaluationResult =
     aevaluateInternal(
         dataset = dataset,
@@ -63,6 +100,16 @@ suspend fun aevaluate(
         runConfig = runConfig,
         raiseExceptions = raiseExceptions,
         batchSize = batchSize,
+        callbacks = callbacks,
+        traceObservers = traceObservers,
+        tokenUsageParser = tokenUsageParser,
+        tokenUsageCallback = tokenUsageCallback,
+        costCallback = costCallback,
+        costParser = costParser,
+        columnMap = columnMap,
+        returnExecutor = returnExecutor,
+        executorSink = executorSink,
+        cancellationToken = cancellationToken,
     )
 
 fun defaultMetrics(): List<Metric> = defaultSingleTurnMetrics()

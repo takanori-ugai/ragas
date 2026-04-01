@@ -37,12 +37,12 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 1.0,
         "agent_goal_accuracy_without_reference": 1.0,
-        "agent_workflow_completion": 1.0
+        "agent_workflow_completion": 0.864
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "perfect",
         "agent_goal_accuracy_without_reference": "perfect",
-        "agent_workflow_completion": "perfect"
+        "agent_workflow_completion": "high"
       }
     },
     {
@@ -74,7 +74,7 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 0.0,
         "agent_goal_accuracy_without_reference": 0.0,
-        "agent_workflow_completion": 0.08
+        "agent_workflow_completion": 0.026000000000000002
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "low",
@@ -98,7 +98,7 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 0.0,
         "agent_goal_accuracy_without_reference": 0.0,
-        "agent_workflow_completion": 0.2
+        "agent_workflow_completion": 0.25
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "low",
@@ -144,7 +144,7 @@
       "expected_scores": {
         "agent_goal_accuracy_with_reference": 0.0,
         "agent_goal_accuracy_without_reference": 0.0,
-        "agent_workflow_completion": 0.14
+        "agent_workflow_completion": 0.13122107142857142
       },
       "expected_bands": {
         "agent_goal_accuracy_with_reference": "low",

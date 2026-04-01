@@ -28,14 +28,28 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Remaining Workstreams
 
-### WS1: Evaluation API/Behavior Parity `[ ]`
+### WS1: Evaluation API/Behavior Parity `[x]`
 
-- [ ] Extend `evaluate/aevaluate` parity options:
+- [x] Extend `evaluate/aevaluate` parity options:
   - callbacks/tracing hook compatibility at API level
   - column remap path parity
   - token usage / cost callback parity hooks
   - executor-return / cancellable path parity where applicable
-- [ ] Add compatibility shims for Python-style argument patterns where safe.
+- [x] Add compatibility shims for Python-style argument patterns where safe.
+- Progress note (2026-04-01):
+  - Extended evaluator control surface in:
+    - `src/main/kotlin/ragas/evaluation/Evaluation.kt`
+    - `src/main/kotlin/ragas/evaluation/EvaluationHooks.kt`
+    - `src/main/kotlin/ragas/PublicApi.kt`
+  - Added Python-compatible hook paths:
+    - callback lifecycle + per-metric callback events
+    - tracing observer emission directly from evaluator
+    - column remap projection for single-turn and multi-turn datasets
+    - token usage parser hook + token/cost callback hooks
+    - executor exposure (`executorSink`) + cancellation token path
+    - `returnExecutor` compatibility shim semantics
+  - Added focused parity coverage:
+    - `src/test/kotlin/ragas/EvaluatorParityHooksTest.kt`
 - Exit criteria:
   - Kotlin evaluator supports Python-equivalent control surface for non-framework-specific options.
 
@@ -203,6 +217,21 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_semantic_similarity_fixture.json`
     - Test: `src/test/kotlin/ragas/metrics/collections/SemanticSimilarityFixtureTest.kt`
     - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Completed Tier-2 `AgentWorkflowCompletionMetric` parity pass:
+    - Updated `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt`
+      with completion-aware scoring across goal progress, execution progress,
+      and workflow closure (including safety-refusal handling).
+    - Updated fixture expectations in
+      `src/test/resources/fixtures/metrics/ws3_tier2_agent_workflow_fixture.json`.
+    - Re-validated conformance via
+      `src/test/kotlin/ragas/metrics/collections/AgentWorkflowFixtureTest.kt`.
+  - Completed Tier-3 `AnswerRelevancyMetric` parity pass:
+    - Reworked `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt`
+      from pure Jaccard overlap to a completion-grade relevancy score combining:
+      lexical alignment (precision/recall/F1 + verbosity penalty),
+      noncommittal-answer suppression, and optional embedding cosine similarity.
+    - Added dedicated conformance coverage in
+      `src/test/kotlin/ragas/metrics/defaults/AnswerRelevancyMetricTest.kt`.
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -308,8 +337,8 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-2 | `../src/ragas/metrics/collections/tool_call_f1/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallF1Metric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Partial |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Partial |
-| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Partial |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Partial |
