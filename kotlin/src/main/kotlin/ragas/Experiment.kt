@@ -246,7 +246,7 @@ private fun findGitRoot(startDir: File = File(".").absoluteFile): File {
         }
         current = current.parentFile
     }
-    throw IllegalStateException("Could not find a Git repository from ${startDir.absolutePath}")
+    error("Could not find a Git repository from ${startDir.absolutePath}")
 }
 
 private fun runGit(
@@ -273,7 +273,7 @@ private fun runGit(
             .trim()
     val exitCode = process.waitFor()
     if (exitCode != 0) {
-        throw IllegalStateException(
+        error(
             "git ${args.joinToString(" ")} failed with code $exitCode: $output",
         )
     }

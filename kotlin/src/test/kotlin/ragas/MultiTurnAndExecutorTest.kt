@@ -43,6 +43,38 @@ class MultiTurnAndExecutorTest {
     }
 
     @Test
+    fun evaluateIgnoresIncompatibleColumnRemapTypeForMultiTurn() {
+        val sample = MultiTurnSample(userInput = emptyList(), reference = "Greeting")
+        val dataset = EvaluationDataset(listOf(sample))
+
+        val result =
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(ConversationLengthMetric()),
+                columnMap = mapOf("user_input" to "reference"),
+            )
+
+        assertEquals(0.0, result.scores.first()["conversation_length"])
+    }
+
+    @Test
+    fun evaluateRejectsUnknownColumnMapSourceForMultiTurn() {
+        val sample = MultiTurnSample(userInput = emptyList(), reference = "Greeting")
+        val dataset = EvaluationDataset(listOf(sample))
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                evaluate(
+                    dataset = dataset,
+                    metrics = listOf(ConversationLengthMetric()),
+                    columnMap = mapOf("reference" to "custom_reference"),
+                )
+            }
+
+        assertTrue(error.message.orEmpty().contains("Unsupported columnMap source 'custom_reference'"))
+    }
+
+    @Test
     fun executorReturnsNullWhenRaiseExceptionsIsFalse() =
         runBlocking {
             val executor =

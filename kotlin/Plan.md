@@ -28,14 +28,30 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Remaining Workstreams
 
-### WS1: Evaluation API/Behavior Parity `[ ]`
+### WS1: Evaluation API/Behavior Parity `[x]`
 
-- [ ] Extend `evaluate/aevaluate` parity options:
+- [x] Extend `evaluate/aevaluate` parity options:
   - callbacks/tracing hook compatibility at API level
   - column remap path parity
   - token usage / cost callback parity hooks
   - executor-return / cancellable path parity where applicable
-- [ ] Add compatibility shims for Python-style argument patterns where safe.
+- [x] Add compatibility shims for Python-style argument patterns where safe.
+- Progress note (2026-04-01):
+  - Extended evaluator hook surface in `src/main/kotlin/ragas/evaluation/Evaluation.kt` and
+    `src/main/kotlin/ragas/PublicApi.kt`:
+    - callback/tracing event channel via `EvaluationCallback` / `EvaluationEvent`
+    - column remap support (`columnMap`) with alias normalization (`question`/`query` -> `user_input`, etc.)
+    - token usage callback path (`tokenUsageParser`) and cost callback path (`costParser`)
+    - executor exposure/cancellation shim via `executorObserver`
+  - Added tracking/cost support contracts in
+    `src/main/kotlin/ragas/evaluation/EvaluationHooks.kt`:
+    - `TokenUsage`, `CostEstimate`, parser type aliases
+    - `TrackingRagasLlm` wrapper for parser-driven token accounting
+  - Added focused WS1 parity coverage in
+    `src/test/kotlin/ragas/EvaluationParityHooksTest.kt`:
+    - `evaluateSupportsColumnRemapAliases`
+    - `evaluateEmitsCallbacksAndTokenCostHooks`
+    - `executorObserverCanCancelEvaluation`
 - Exit criteria:
   - Kotlin evaluator supports Python-equivalent control surface for non-framework-specific options.
 
@@ -222,14 +238,73 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - Exit criteria:
   - Backend registration and optional backend story are parity-level compatible.
 
-### WS6: Testset Pipeline Parity `[ ]`
+### WS6: Testset Pipeline Parity `[x]`
 
-- [ ] Port production-grade transforms:
+- [x] Port production-grade transforms:
   - extractors (`llm_based`, `embeddings`, `regex`)
   - splitters
   - relationship builders
-- [ ] Port synthesizer variants (single-hop/multi-hop strategies and prompts).
-- [ ] Ensure generated testsets align structurally and semantically with Python output expectations.
+- [x] Port synthesizer variants (single-hop/multi-hop strategies and prompts).
+- [x] Ensure generated testsets align structurally and semantically with Python output expectations.
+- Progress note (2026-04-01):
+  - Started WS6 production transform modules in Kotlin:
+    - `src/main/kotlin/ragas/testset/transforms/Extractors.kt`
+      - `LlmBasedSummaryExtractor`
+      - `EmbeddingsTopicExtractor`
+      - `RegexEntityExtractor`
+    - `src/main/kotlin/ragas/testset/transforms/Splitters.kt`
+      - `SentenceChunkSplitter`
+    - `src/main/kotlin/ragas/testset/transforms/RelationshipBuilders.kt`
+      - `AdjacentChunkRelationshipBuilder`
+      - `SharedKeywordRelationshipBuilder`
+    - Extended `src/main/kotlin/ragas/testset/transforms/BaseGraphTransformation.kt`
+      with `RelationshipBuilder` base abstraction and dedupe-on-apply behavior.
+  - Extended `src/main/kotlin/ragas/testset/synthesizers/TestsetGenerator.kt`:
+    - chunk-aware single-hop synthesis (strategy-specific `single_hop_*` variants)
+    - relationship-driven multi-hop synthesis (`multi_hop_overlap` / `multi_hop_sequence`) using `next`/`semantic_overlap` edges
+    - transformed-graph candidate selection scoped to newly added document nodes
+  - Added fixture-backed WS6 conformance coverage:
+    - Fixture: `src/test/resources/fixtures/testset/ws6_synthesized_output_fixture.json`
+    - Test: `src/test/kotlin/ragas/testset/WS6ProductionParityTest.kt`
+    - Coverage validates graph structure (chunk + relationship counts), synthesizer mix,
+      and output-quality guardrails (non-empty fields, minimum response length,
+      lexical overlap with retrieved contexts).
+  - Hardened synthesizer strategy layer in `src/main/kotlin/ragas/testset/synthesizers/TestsetGenerator.kt`:
+    - Added deterministic sampling controls via `SynthesisControls` (`seed`, rank-biased toggle, single-hop/multi-hop target counts).
+    - Added richer candidate ranking for single-hop and multi-hop samples.
+    - Replaced coarse stub naming with strategy-specific synthesizers:
+      `single_hop_entity`, `single_hop_topic`, `single_hop_summary`, `single_hop_chunk`,
+      `multi_hop_overlap`, `multi_hop_sequence`.
+    - Added deterministic conformance regression in
+      `src/test/kotlin/ragas/testset/WS6ProductionParityTest.kt`
+      (`seededSamplingProducesDeterministicSynthesizerSelection`).
+  - Continued WS6 hardening pass in `src/main/kotlin/ragas/testset/synthesizers/TestsetGenerator.kt`:
+    - Added explicit sampling modes (`TOP_K`, `RANK_BIASED`, `TEMPERATURE`) and temperature control.
+    - Added document-diversity controls for single-hop selection (`enforceDocumentDiversity`, `maxSingleHopPerDocument`).
+    - Added prompt-plan strategy builders (`buildSingleHopPromptPlan`, `buildMultiHopPromptPlan`) to make strategy prompts explicit and reusable.
+    - Extended ranking signals with lexical-richness/length-balance and topic-bridge/summary-coverage features.
+  - Expanded WS6 deterministic coverage in
+    `src/test/kotlin/ragas/testset/WS6ProductionParityTest.kt`:
+    - `temperatureSamplingModeIsDeterministicForSameSeed`
+    - `documentDiversityCapLimitsSingleHopSamplesPerDocument`
+  - Expanded WS6 edge-case fixture coverage in
+    `src/test/kotlin/ragas/testset/WS6EdgeCaseFixturesTest.kt` with new fixtures:
+    - sparse-overlap graph stress: `src/test/resources/fixtures/testset/ws6_sparse_overlap_fixture.json`
+    - long-document splitting stress: `src/test/resources/fixtures/testset/ws6_long_document_fixture.json`
+    - relationship-density bounds stress: `src/test/resources/fixtures/testset/ws6_relationship_density_fixture.json`
+    - Coverage asserts semantic-overlap sparsity/density bounds, long-doc chunk/edge expectations,
+      and conformance of synthesized sample structure under each scenario.
+  - Added cross-language WS6 golden calibration:
+    - Fixture: `src/test/resources/fixtures/testset/ws6_cross_language_golden_fixture.json`
+    - Test: `src/test/kotlin/ragas/testset/WS6CrossLanguageGoldenTest.kt`
+    - Calibration checks against Python-reference conventions for:
+      - sample shape (`user_input`, `reference`, `reference_contexts`, `persona_name`, `query_style`, `query_length`)
+      - prompt style families (single-hop and multi-hop marker templates)
+      - graph statistics bounds (chunk counts, child/next edges, semantic-overlap density)
+    - Kotlin generator updates for parity alignment:
+      - `query_style` emitted as Python-style enum names (`PERFECT_GRAMMAR`, `WEB_SEARCH_LIKE`, etc.)
+      - `query_length` emitted as Python-style enum names (`SHORT`, `MEDIUM`, `LONG`)
+      - `persona_name` populated for synthesized samples
 - Exit criteria:
   - Kotlin testset generation can replace Python flow for real-world synthesis scenarios.
 
@@ -263,7 +338,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Added top-level public API facades in `src/main/kotlin/ragas/PublicApi.kt`:
       `geneticOptimizer()` and `dspyOptimizer(cache?)`.
   - Integrated optimizer output application to metric prompt objects:
-    - Added `src/main/kotlin/ragas/metrics/primitives/PromptOptimization.kt`
+    - Added `src/main/kotlin/ragas/metrics/primitives/OptimizableMetricPrompt.kt`
       (`OptimizableMetricPrompt`, outcome apply helper, optimize-and-apply helper).
     - Updated `NumericMetric`, `DiscreteMetric`, and `RankingMetric` to store and consume
       mutable `OptimizerPrompt` objects.
@@ -289,8 +364,15 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 - [ ] Build parity test matrix mapping Python module -> Kotlin module/test.
 - [ ] Add cross-language golden fixtures where behavior must be numerically/structurally aligned.
-- [ ] Update `PARITY_MATRIX.md`, `MIGRATION.md`, and `README.md` per milestone.
+- [x] Update `README.md`, `PARITY_MATRIX.md`, `MIGRATION.md`, and `API_SURFACE.md` per milestone.
 - [ ] Add release checklist for parity claims.
+- Intentional deferrals (tracked; not accidental gaps):
+  - Multimodal ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
+  - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
+  - Broader integrations beyond current LangChain/LlamaIndex record adapters and trace observers.
+  - Backend plugin discovery parity and optional Google Drive backend parity.
+  - Exact Python DSPy internals parity (Kotlin keeps adapter seam + heuristic fallback).
+  - CLI experiment/report/comparison parity beyond current `status/backends`.
 - WS9 parity map (full WS3 metrics module coverage):
   - Status legend:
     - `Done`: Kotlin target is implemented and covered by fixture/conformance tests.
@@ -365,6 +447,6 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Immediate Next Actions
 
-1. Close WS1 evaluator parity gaps by extending `evaluate/aevaluate` with Python-compatible hooks (callbacks/tracing, column remap, token-usage/cost callbacks, executor-return/cancellation path) plus focused parity tests.
-2. Complete WS9 documentation sync by reconciling `README.md`, `PARITY_MATRIX.md`, `MIGRATION.md`, and `API_SURFACE.md` with current `src` status (typed/multimodal prompts, Tier1-4 metric accessors, optimizer prompt-object flows) and explicitly listing intentional deferrals.
-3. Start WS6 production testset parity implementation: add extractor/splitter/relationship-builder modules and fixture-backed conformance tests for synthesized output structure/quality.
+1. Start WS4 integration parity expansion by prioritizing high-value adapters beyond LangChain/LlamaIndex (Langsmith/Helicone/Opik/LangGraph/R2R) with explicit unsupported fallbacks and focused conformance tests.
+2. Start WS5 backend parity closure by implementing extension/discovery compatibility and explicitly deciding/documenting Google Drive backend strategy.
+3. Add WS9 release-checklist content for parity claims (test evidence links, deferred-scope review, and versioned doc-freeze gates).
