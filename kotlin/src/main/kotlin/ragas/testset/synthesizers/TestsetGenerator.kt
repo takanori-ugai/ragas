@@ -5,6 +5,7 @@ import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
 import ragas.testset.graph.Relationship
+import ragas.testset.transforms.PropertyNames
 import ragas.testset.transforms.SequenceTransforms
 import ragas.testset.transforms.Transforms
 import ragas.testset.transforms.applyTransforms
@@ -623,19 +624,19 @@ class TestsetGenerator(
 
     private fun nodeSummary(node: Node): String =
         node
-            .getProperty("summary_llm_based")
+            .getProperty(PropertyNames.SUMMARY_LLM_BASED)
             ?.takeIf { value -> value.isNotBlank() }
             ?: node.getProperty("source_document_summary").orEmpty()
 
     private fun nodeEntities(node: Node): String =
         node
-            .getProperty("entities_regex")
+            .getProperty(PropertyNames.ENTITIES_REGEX)
             ?.takeIf { value -> value.isNotBlank() }
             ?: node.getProperty("source_document_entities").orEmpty()
 
     private fun nodeTopic(node: Node): String =
         node
-            .getProperty("embedding_topic_tag")
+            .getProperty(PropertyNames.EMBEDDING_TOPIC_TAG)
             ?.takeIf { value -> value.isNotBlank() }
             ?: node.getProperty("source_document_topic").orEmpty()
 }

@@ -40,9 +40,9 @@ class SentenceChunkSplitter(
                             "page_content" to chunkText,
                             "chunk_index" to index.toString(),
                             "parent_document_id" to node.id,
-                            "source_document_summary" to node.getProperty("summary_llm_based").orEmpty(),
-                            "source_document_entities" to node.getProperty("entities_regex").orEmpty(),
-                            "source_document_topic" to node.getProperty("embedding_topic_tag").orEmpty(),
+                            "source_document_summary" to node.getProperty(PropertyNames.SUMMARY_LLM_BASED).orEmpty(),
+                            "source_document_entities" to node.getProperty(PropertyNames.ENTITIES_REGEX).orEmpty(),
+                            "source_document_topic" to node.getProperty(PropertyNames.EMBEDDING_TOPIC_TAG).orEmpty(),
                         ),
                 )
             }

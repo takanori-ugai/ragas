@@ -51,18 +51,23 @@ suspend fun aevaluate(
     val embeddingsChanged = mutableListOf<MetricWithEmbeddings>()
     val acquiredLocks = mutableListOf<Mutex>()
     val usageLock = Any()
+    val callbackDispatchLock = Any()
     var usagePromptTokens = 0
     var usageCompletionTokens = 0
 
-    try {
-        callbacks.forEach { callback ->
-            callback.onEvent(
-                EvaluationEvent.RunStarted(
-                    sampleCount = remappedDataset.samples.size,
-                    metricNames = selectedMetrics.map { metric -> metric.name },
-                ),
-            )
+    fun dispatchEvent(event: EvaluationEvent) {
+        synchronized(callbackDispatchLock) {
+            callbacks.forEach { callback -> callback.onEvent(event) }
         }
+    }
+
+    try {
+        dispatchEvent(
+            EvaluationEvent.RunStarted(
+                sampleCount = remappedDataset.samples.size,
+                metricNames = selectedMetrics.map { metric -> metric.name },
+            ),
+        )
 
         lockMetrics(selectedMetrics, acquiredLocks)
 
@@ -101,7 +106,7 @@ suspend fun aevaluate(
                 batchSize = batchSize,
             )
         executorObserver?.invoke(executor)
-        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.ExecutorReady(executor)) }
+        dispatchEvent(EvaluationEvent.ExecutorReady(executor))
 
         remappedDataset.samples.forEachIndexed { rowIndex, sample ->
             selectedMetrics.forEach { metric ->
@@ -110,15 +115,13 @@ suspend fun aevaluate(
                     sample is SingleTurnSample && metric is SingleTurnMetric -> {
                         executor.submit(name = "$metricName-$rowIndex") {
                             val value = metric.singleTurnAscore(sample)
-                            callbacks.forEach { callback ->
-                                callback.onEvent(
-                                    EvaluationEvent.MetricComputed(
-                                        rowIndex = rowIndex,
-                                        metricName = metricName,
-                                        value = value,
-                                    ),
-                                )
-                            }
+                            dispatchEvent(
+                                EvaluationEvent.MetricComputed(
+                                    rowIndex = rowIndex,
+                                    metricName = metricName,
+                                    value = value,
+                                ),
+                            )
                             value
                         }
                     }
@@ -126,15 +129,13 @@ suspend fun aevaluate(
                     sample is MultiTurnSample && metric is MultiTurnMetric -> {
                         executor.submit(name = "$metricName-$rowIndex") {
                             val value = metric.multiTurnAscore(sample)
-                            callbacks.forEach { callback ->
-                                callback.onEvent(
-                                    EvaluationEvent.MetricComputed(
-                                        rowIndex = rowIndex,
-                                        metricName = metricName,
-                                        value = value,
-                                    ),
-                                )
-                            }
+                            dispatchEvent(
+                                EvaluationEvent.MetricComputed(
+                                    rowIndex = rowIndex,
+                                    metricName = metricName,
+                                    value = value,
+                                ),
+                            )
                             value
                         }
                     }
@@ -151,14 +152,12 @@ suspend fun aevaluate(
                 row[metric.name] = flatResults[cursor++]
             }
             rowScores += row
-            callbacks.forEach { callback ->
-                callback.onEvent(
-                    EvaluationEvent.RowCompleted(
-                        rowIndex = rowIndex,
-                        scores = row,
-                    ),
-                )
-            }
+            dispatchEvent(
+                EvaluationEvent.RowCompleted(
+                    rowIndex = rowIndex,
+                    scores = row,
+                ),
+            )
         }
 
         val result =
@@ -173,16 +172,20 @@ suspend fun aevaluate(
                     promptTokens = usagePromptTokens,
                     completionTokens = usageCompletionTokens,
                 )
-            callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.TokenUsageComputed(usage)) }
+            dispatchEvent(EvaluationEvent.TokenUsageComputed(usage))
             val cost = costParser?.invoke(usage)
             if (cost != null) {
-                callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.CostComputed(cost)) }
+                dispatchEvent(EvaluationEvent.CostComputed(cost))
             }
         }
-        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.RunCompleted(result)) }
+        dispatchEvent(EvaluationEvent.RunCompleted(result))
         return result
     } catch (error: Throwable) {
-        callbacks.forEach { callback -> callback.onEvent(EvaluationEvent.RunFailed(error)) }
+        synchronized(callbackDispatchLock) {
+            callbacks.forEach { callback ->
+                runCatching { callback.onEvent(EvaluationEvent.RunFailed(error)) }
+            }
+        }
         throw error
     } finally {
         llmChanged.forEach { metric -> metric.llm = null }
@@ -229,8 +232,20 @@ private fun remapDataset(
     if (columnMap.isEmpty()) {
         return dataset
     }
-    val normalizedMap =
-        columnMap.mapKeys { (target, _) -> normalizeColumnName(target) }.mapValues { (_, source) -> normalizeColumnName(source) }
+    val normalizedEntries =
+        columnMap.entries.map { (target, source) ->
+            normalizeColumnName(target) to normalizeColumnName(source)
+        }
+    val duplicateTargets =
+        normalizedEntries
+            .groupingBy { (target, _) -> target }
+            .eachCount()
+            .filterValues { count -> count > 1 }
+            .keys
+    require(duplicateTargets.isEmpty()) {
+        "Duplicate columnMap targets after normalization: ${duplicateTargets.sorted().joinToString(", ")}"
+    }
+    val normalizedMap = normalizedEntries.toMap()
     validateColumnMapKeys(dataset.getSampleType(), normalizedMap)
     val remappedSamples =
         dataset.samples.map { sample ->

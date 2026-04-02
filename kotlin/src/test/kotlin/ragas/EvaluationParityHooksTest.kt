@@ -96,6 +96,31 @@ class EvaluationParityHooksTest {
     }
 
     @Test
+    fun evaluateRejectsDuplicateColumnMapTargetsAfterNormalization() {
+        val dataset =
+            EvaluationDataset(
+                listOf(
+                    SingleTurnSample(
+                        userInput = "",
+                        reference = "remapped-question",
+                        response = "answer",
+                    ),
+                ),
+            )
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                evaluate(
+                    dataset = dataset,
+                    metrics = listOf(UserInputEchoMetric()),
+                    columnMap = mapOf("question" to "reference", "user_input" to "response"),
+                )
+            }
+
+        assertTrue(error.message.orEmpty().contains("Duplicate columnMap targets after normalization: user_input"))
+    }
+
+    @Test
     fun evaluateEmitsCallbacksAndTokenCostHooks() {
         val events = mutableListOf<EvaluationEvent>()
         val callback = EvaluationCallback { event -> events += event }

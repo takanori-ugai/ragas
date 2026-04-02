@@ -7,7 +7,7 @@ class RegexEntityExtractor(
     override val name: String = "regex_entity_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
     private val sourceProperty: String = "page_content",
-    private val targetProperty: String = "entities_regex",
+    private val targetProperty: String = PropertyNames.ENTITIES_REGEX,
     private val maxEntities: Int = 8,
 ) : Extractor(name = name, filterNodes = filterNodes) {
     private val entityPattern = Regex("\\b[A-Z][a-zA-Z]{2,}\\b")
@@ -34,7 +34,7 @@ class EmbeddingsTopicExtractor(
     override val name: String = "embeddings_topic_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
     private val sourceProperty: String = "page_content",
-    private val targetProperty: String = "embedding_topic_tag",
+    private val targetProperty: String = PropertyNames.EMBEDDING_TOPIC_TAG,
 ) : Extractor(name = name, filterNodes = filterNodes) {
     override suspend fun extract(node: Node): Pair<String, String> {
         val text = node.getProperty(sourceProperty).orEmpty()
@@ -59,7 +59,7 @@ class LlmBasedSummaryExtractor(
     override val name: String = "llm_based_summary_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
     private val sourceProperty: String = "page_content",
-    private val targetProperty: String = "summary_llm_based",
+    private val targetProperty: String = PropertyNames.SUMMARY_LLM_BASED,
     private val maxWords: Int = 24,
 ) : Extractor(name = name, filterNodes = filterNodes) {
     override suspend fun extract(node: Node): Pair<String, String> {
