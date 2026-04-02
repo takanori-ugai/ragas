@@ -21,12 +21,6 @@ class QuotedSpansAlignmentMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty()
         val contexts = sample.retrievedContexts.orEmpty()
-        if (response.isBlank()) {
-            return 0.0
-        }
-        if (contexts.isEmpty()) {
-            return 0.0
-        }
 
         val spans = extractQuotedSpans(response, minSpanWords)
         if (spans.isEmpty()) {
@@ -69,9 +63,9 @@ class QuotedSpansAlignmentMetric(
     private companion object {
         val QUOTE_REGEX =
             Regex(
-                "(?<![\\p{L}\\p{N}])[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]" +
+                "[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]" +
                     "(.*?)" +
-                    "[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](?![\\p{L}\\p{N}])",
+                    "[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]",
             )
         val WHITESPACE_REGEX = Regex("\\s+")
     }

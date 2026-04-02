@@ -155,9 +155,9 @@ class BackendsTest {
     @Test
     fun backendRegistryDiscoversServiceLoaderProviders() {
         val registry = BackendRegistry()
+        val loadedProviders = registry.discoverBackends()
 
-        registry.discoverBackends()
-
+        assertEquals(1, loadedProviders)
         assertTrue(registry.contains("test/discovered"))
         assertTrue(registry.contains("td"))
         val backend = registry.create("td")
@@ -171,6 +171,7 @@ class BackendsTest {
             name = "custom/info",
             factory = ::InMemoryBackend,
             aliasList = listOf("ci"),
+            backendClass = InMemoryBackend::class,
             description = "custom backend for info test",
             source = "test",
         )
@@ -182,6 +183,27 @@ class BackendsTest {
         assertTrue(info.implementationClass.contains("InMemoryBackend"))
         assertEquals("test", info.source)
         assertEquals("custom backend for info test", info.description)
+    }
+
+    @Test
+    fun backendRegistryInspectionDoesNotInstantiateFactoryWithoutBackendClass() {
+        val registry = BackendRegistry()
+        var createCalls = 0
+        registry.register(
+            name = "custom/lazy-info",
+            factory = {
+                createCalls += 1
+                InMemoryBackend()
+            },
+            aliasList = listOf("cli"),
+            description = "custom backend for lazy info test",
+            source = "test",
+        )
+
+        val info: BackendInfo = registry.getBackendInfo("cli")
+
+        assertEquals("unknown", info.implementationClass)
+        assertEquals(0, createCalls)
     }
 
     @Test

@@ -1,26 +1,6 @@
 {
   "single_turn_metric_cases": [
     {
-      "case_id": "answer_relevancy_exact_overlap",
-      "metric": "answer_relevancy",
-      "sample": {
-        "user_input": "What is the capital of France",
-        "response": "What is the capital of France"
-      },
-      "expected_band": "perfect"
-    },
-    {
-      "case_id": "faithfulness_supported_sentence",
-      "metric": "faithfulness",
-      "sample": {
-        "response": "Paris is the capital of France.",
-        "retrieved_contexts": [
-          "Paris is the capital of France and a major European city."
-        ]
-      },
-      "expected_band": "perfect"
-    },
-    {
       "case_id": "context_recall_exact_reference_coverage",
       "metric": "context_recall",
       "sample": {

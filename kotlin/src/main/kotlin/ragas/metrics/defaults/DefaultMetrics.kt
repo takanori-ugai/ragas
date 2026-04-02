@@ -4,8 +4,8 @@ import ragas.metrics.Metric
 
 fun defaultSingleTurnMetrics(): List<Metric> =
     listOf(
-        AnswerRelevancyMetric(),
+        AnswerRelevancyMetric(allowHeuristicFallback = true),
         ContextPrecisionMetric(),
-        FaithfulnessMetric(),
+        FaithfulnessMetric(allowHeuristicFallback = true),
         ContextRecallMetric(),
     )

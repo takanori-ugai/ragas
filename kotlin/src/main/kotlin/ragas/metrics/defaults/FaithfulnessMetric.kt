@@ -1,6 +1,7 @@
 package ragas.metrics.defaults
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import ragas.llms.BaseRagasLlm
 import ragas.metrics.BaseMetric
@@ -13,7 +14,9 @@ import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
-class FaithfulnessMetric :
+class FaithfulnessMetric(
+    private val allowHeuristicFallback: Boolean = false,
+) :
     BaseMetric(
         name = "faithfulness",
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "retrieved_contexts")),
@@ -34,6 +37,12 @@ class FaithfulnessMetric :
         val llmInstance = llm
         if (llmInstance != null) {
             return llmFaithfulnessScore(sample, llmInstance)
+        }
+        if (!allowHeuristicFallback) {
+            throw IllegalStateException(
+                "FaithfulnessMetric requires an LLM for parity semantics. " +
+                    "Set llm on the metric or use FaithfulnessMetric(allowHeuristicFallback = true).",
+            )
         }
         return fallbackFaithfulnessScore(sample)
     }
@@ -70,16 +79,32 @@ class FaithfulnessMetric :
     ): List<String> {
         val prompt =
             buildString {
-                appendLine("Given a question and an answer, break the answer into atomic statements.")
-                appendLine("Rules:")
-                appendLine("- Keep statements faithful to the answer.")
-                appendLine("- Avoid pronouns; use explicit entities.")
-                appendLine("- Return JSON only with this shape: {\"statements\": [\"...\"]}")
+                appendLine(
+                    "Given a question and an answer, analyze the complexity of each sentence in the answer. " +
+                        "Break down each sentence into one or more fully understandable statements. " +
+                        "Ensure that no pronouns are used in any statement.",
+                )
+                appendLine("Return JSON only with this shape: {\"statements\": [\"...\"]}")
                 appendLine()
-                appendLine("Question:")
-                appendLine(question)
-                appendLine("Answer:")
-                appendLine(response)
+                appendLine("Example:")
+                appendLine("Question: Who was Albert Einstein and what is he best known for?")
+                appendLine(
+                    "Answer: He was a German-born theoretical physicist, widely acknowledged to be one " +
+                        "of the greatest and most influential physicists of all time. " +
+                        "He was best known for developing the theory of relativity, he also made important " +
+                        "contributions to the development of the theory of quantum mechanics.",
+                )
+                appendLine(
+                    "Output: {\"statements\": [" +
+                        "\"Albert Einstein was a German-born theoretical physicist.\"," +
+                        "\"Albert Einstein is recognized as one of the greatest and most influential physicists of all time.\"," +
+                        "\"Albert Einstein was best known for developing the theory of relativity.\"," +
+                        "\"Albert Einstein made important contributions to the development of the theory of quantum mechanics.\"" +
+                        "]}",
+                )
+                appendLine()
+                appendLine("Question: ${JsonPrimitive(question)}")
+                appendLine("Answer: ${JsonPrimitive(response)}")
                 append("Output:")
             }
         val raw =
@@ -98,18 +123,38 @@ class FaithfulnessMetric :
         context: String,
         llmInstance: BaseRagasLlm,
     ): List<Int> {
-        val statementsJson = statements.joinToString(separator = "\", \"", prefix = "[\"", postfix = "\"]")
+        val statementsJson = statements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
         val prompt =
             buildString {
-                appendLine("Judge whether each statement is directly inferable from the context.")
-                appendLine("Return verdict=1 if inferable, else verdict=0.")
+                appendLine(
+                    "Your task is to judge the faithfulness of a series of statements based on a given context. " +
+                        "For each statement you must return verdict as 1 if the statement can be directly inferred " +
+                        "based on the context or 0 if the statement can not be directly inferred based on the context.",
+                )
                 appendLine("Return JSON only with this shape:")
                 appendLine("{\"statements\":[{\"statement\":\"...\",\"reason\":\"...\",\"verdict\":0}]}")
                 appendLine()
-                appendLine("Context:")
-                appendLine(context)
-                appendLine("Statements:")
-                appendLine(statementsJson)
+                appendLine("Example:")
+                appendLine(
+                    "Context: John is a student at XYZ University. He is pursuing a degree in Computer Science. " +
+                        "He is enrolled in several courses this semester, including Data Structures, Algorithms, " +
+                        "and Database Management. John is a diligent student and spends a significant amount of " +
+                        "time studying and completing assignments. He often stays late in the library to work on his projects.",
+                )
+                appendLine(
+                    "Statements: [\"John is majoring in Biology.\",\"John is taking a course on Artificial Intelligence.\",\"John is a dedicated student.\",\"John has a part-time job.\"]",
+                )
+                appendLine(
+                    "Output: {\"statements\":[" +
+                        "{\"statement\":\"John is majoring in Biology.\",\"reason\":\"John's major is explicitly stated as Computer Science, not Biology.\",\"verdict\":0}," +
+                        "{\"statement\":\"John is taking a course on Artificial Intelligence.\",\"reason\":\"The context lists Data Structures, Algorithms, and Database Management but not AI.\",\"verdict\":0}," +
+                        "{\"statement\":\"John is a dedicated student.\",\"reason\":\"The context states John is diligent and spends significant time studying.\",\"verdict\":1}," +
+                        "{\"statement\":\"John has a part-time job.\",\"reason\":\"There is no information in the context about a part-time job.\",\"verdict\":0}" +
+                        "]}",
+                )
+                appendLine()
+                appendLine("Context: ${JsonPrimitive(context)}")
+                appendLine("Statements: $statementsJson")
                 append("Output:")
             }
         val raw =
