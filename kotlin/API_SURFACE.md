@@ -32,6 +32,10 @@ This file defines the intended stable entrypoints under package `ragas`.
   - `OptimizerPrompt`, `PromptObjectEvaluator`, `OptimizerOutcome`
 - Metric prompt optimization contract under `ragas.metrics.primitives`:
   - `OptimizableMetricPrompt`
+- Backend extension/inspection contracts under `ragas.backends`:
+  - `BackendDiscoveryProvider`
+  - `BackendInfo`
+  - `BackendRegistry.getBackendInfo(...)`, `listBackendInfo()`, `listAllNames()`
 
 ## Stability Goal
 

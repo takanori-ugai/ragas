@@ -19,6 +19,8 @@ This module provides:
   - metric primitive integration via `OptimizableMetricPrompt`
   - public optimizer facades: `geneticOptimizer()`, `dspyOptimizer(cache?)`
 - LangChain4j LLM/embedding adapters
+- backend extension/discovery via `ServiceLoader` (`BackendDiscoveryProvider`)
+- backend registry inspection metadata (`listBackendInfo`, `getBackendInfo`, aliases)
 - CLI scaffold for runtime status and backend listing
 
 ## Requirements
@@ -48,6 +50,9 @@ The CLI entrypoint is `ragas.cli.MainKt`.
 ./gradlew run --args="help"
 ./gradlew run --args="status"
 ./gradlew run --args="backends"
+./gradlew run --args="eval --input dataset.json --metrics default --output run.json"
+./gradlew run --args="report --input run.json"
+./gradlew run --args="compare --baseline baseline.json --candidate run.json --gate faithfulness=0.01"
 ```
 
 ### Via Gradle `execute`
@@ -88,6 +93,57 @@ List registered backends from `BACKEND_REGISTRY`.
 ./gradlew run --args="backends"
 ```
 
+### `eval`
+
+Run evaluation from JSON/JSONL input rows and emit a report JSON.
+
+```bash
+./gradlew run --args="eval --input dataset.json --metrics default,tier1 --output run.json"
+```
+
+Supported input shapes:
+- JSON array of row objects
+- JSON object containing `rows` or `samples` array
+- JSONL with one row-object per line (`--format jsonl` or `.jsonl` extension)
+
+### `report`
+
+Aggregate metric means/counts from a report JSON.
+
+```bash
+./gradlew run --args="report --input run.json --output summary.json"
+```
+
+### `compare`
+
+Compare candidate report vs baseline report and optionally apply gate thresholds.
+Returns exit code `2` when a gate fails (CI-friendly).
+
+```bash
+./gradlew run --args="compare --baseline baseline.json --candidate run.json --gate faithfulness=0.01,answer_relevancy=0.00"
+```
+
+## Backend Extensions
+
+Kotlin supports plugin-style backend discovery using Java/Kotlin `ServiceLoader`.
+
+1. Implement `ragas.backends.BackendDiscoveryProvider`.
+2. Register one or more backends in `registerBackends(registry)`.
+3. Add a service entry file:
+   `META-INF/services/ragas.backends.BackendDiscoveryProvider`.
+
+The registry lazily discovers providers on first access (`create`, `contains`, `availableNames`, etc.).
+
+### Google Drive Backend Strategy
+
+`ragas-kotlin` does not ship a built-in Google Drive backend in core.
+
+- Reason: Drive/Sheets auth and runtime dependency surface are platform-specific and high-churn.
+- Parity strategy: keep core backend-neutral, support discovery via `BackendDiscoveryProvider`, and
+  implement Google Drive as an optional plugin module.
+- Recommended usage today: `LocalCsvBackend`/`LocalJsonlBackend` for built-ins, or pass a custom
+  backend instance directly to experiment APIs.
+
 ## API Quick Example
 
 ```kotlin
@@ -112,4 +168,6 @@ println(result.scores)
 ## Notes
 
 - This Kotlin module is under active parity work with the Python implementation in `../`.
-- See [`Plan.md`](./Plan.md), [`PARITY_MATRIX.md`](./PARITY_MATRIX.md), and [`MIGRATION.md`](./MIGRATION.md) for detailed status.
+- See [`Plan.md`](./Plan.md), [`PARITY_MATRIX.md`](./PARITY_MATRIX.md),
+  [`PARITY_TEST_MATRIX.md`](./PARITY_TEST_MATRIX.md), and [`MIGRATION.md`](./MIGRATION.md)
+  for detailed status and parity evidence mapping.

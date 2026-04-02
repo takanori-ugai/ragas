@@ -230,11 +230,33 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - Exit criteria:
   - Kotlin integration surface matches Python’s practical integration coverage for mainstream workflows.
 
-### WS5: Backends Parity `[ ]`
+### WS5: Backends Parity `[x]`
 
-- [ ] Implement registry extension/discovery model equivalent to Python entry-point backend discovery.
-- [ ] Port optional Google Drive backend behavior or document platform-specific replacement.
-- [ ] Align aliasing/info/inspection features in backend registry.
+- [x] Implement registry extension/discovery model equivalent to Python entry-point backend discovery.
+- [x] Port optional Google Drive backend behavior or document platform-specific replacement.
+- [x] Align aliasing/info/inspection features in backend registry.
+- Progress note (2026-04-02):
+  - Implemented Kotlin backend discovery SPI + lazy extension loading with `ServiceLoader`:
+    - `src/main/kotlin/ragas/backends/BackendRegistry.kt`
+      - Added `BackendDiscoveryProvider` and `discoverBackends(force = false)` with lazy discovery.
+      - Added registry metadata model `BackendInfo` and inspection APIs:
+        `getBackendInfo`, `listBackendInfo`, `listAllNames`, alias grouping.
+      - Added `registerAliases(..., overwrite = false)` for parity-level alias management.
+      - Extended registration metadata (`backendClass`, `description`, `source`) to support
+        inspection and provenance (`builtin`, `runtime`, plugin/provider-defined).
+  - Added WS5 discovery conformance coverage:
+    - `src/test/kotlin/ragas/BackendsTest.kt`
+      - `backendRegistryDiscoversServiceLoaderProviders`
+      - `backendRegistryProvidesInspectionMetadata`
+      - `backendRegistryListAllNamesIncludesAliases`
+    - `src/test/kotlin/ragas/backends/TestBackendDiscoveryProvider.kt`
+    - `src/test/resources/META-INF/services/ragas.backends.BackendDiscoveryProvider`
+  - Explicit Google Drive backend decision for Kotlin:
+    - Core module will not ship a built-in Google Drive backend.
+    - Kotlin parity path uses optional plugin discovery (`BackendDiscoveryProvider`) so Google Drive
+      can live in an external module with independent dependency/auth lifecycle.
+    - Built-in backend baseline remains `inmemory`, `local/csv`, `local/jsonl`; callers can also
+      pass concrete backend instances directly to experiment APIs.
 - Exit criteria:
   - Backend registration and optional backend story are parity-level compatible.
 
@@ -350,29 +372,67 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - Exit criteria:
   - Both genetic and DSPy optimization workflows are usable in Kotlin with parity semantics.
 
-### WS8: CLI Parity `[ ]`
+### WS8: CLI Parity `[x]`
 
-- [ ] Expand Kotlin CLI beyond `status/backends`:
+- [x] Expand Kotlin CLI beyond `status/backends`:
   - experiment execution
   - metrics reporting/aggregation
   - baseline comparison and gate outputs
-- [ ] Keep CLI UX scriptable while mirroring essential Python CLI workflows.
+- [x] Keep CLI UX scriptable while mirroring essential Python CLI workflows.
+- Progress note (2026-04-02):
+  - Extended CLI entrypoint in `src/main/kotlin/ragas/cli/Main.kt` with parity workflow commands:
+    - `eval`: run evaluation from JSON/JSONL dataset rows and emit structured report JSON.
+    - `report`: aggregate metric means/non-null counts from an evaluation report.
+    - `compare`: baseline vs candidate metric delta report with explicit gate thresholds.
+  - Added scriptable behavior suitable for CI:
+    - command exit code `2` for failed compare gates.
+    - JSON output payloads for eval/report/compare commands (stdout or `--output` path).
+    - deterministic option parsing via `--key value` pairs.
+  - Added WS8 CLI conformance tests:
+    - `src/test/kotlin/ragas/cli/CliParityTest.kt`
+      - `evalCommandProducesReportJson`
+      - `reportCommandAggregatesScores`
+      - `compareCommandReturnsNonZeroWhenGateFails`
 - Exit criteria:
   - Kotlin CLI can run parity-level evaluation workflows from terminal.
 
-### WS9: Parity Verification + Documentation `[ ]`
+### WS9: Parity Verification + Documentation `[x]`
 
-- [ ] Build parity test matrix mapping Python module -> Kotlin module/test.
-- [ ] Add cross-language golden fixtures where behavior must be numerically/structurally aligned.
+- [x] Build parity test matrix mapping Python module -> Kotlin module/test.
+- [x] Add cross-language golden fixtures where behavior must be numerically/structurally aligned.
 - [x] Update `README.md`, `PARITY_MATRIX.md`, `MIGRATION.md`, and `API_SURFACE.md` per milestone.
-- [ ] Add release checklist for parity claims.
+- [x] Add release checklist for parity claims.
+- Progress note (2026-04-02):
+  - Added versioned parity release-checklist document:
+    - `RELEASE_CHECKLIST.md`
+  - Checklist includes required sections for parity-claim readiness:
+    - test evidence links (commands + artifact paths + key suites)
+    - deferred-scope review (explicit rationale/risk/owner/next review)
+    - versioned doc-freeze gates (release candidate and tag gates with consistency checks)
+  - WS9 usage rule:
+    - Any Kotlin parity claim for a tagged release must attach a completed checklist instance
+      (filled values + links) in the release PR/notes.
+- Progress note (2026-04-02, continuation):
+  - Added Python->Kotlin parity test matrix with test/fixture evidence links:
+    - `PARITY_TEST_MATRIX.md`
+  - Added WS9 cross-language golden coverage for `Partial` metrics:
+    - Fixture: `src/test/resources/fixtures/metrics/ws9_cross_language_partial_metrics_fixture.json`
+    - Test: `src/test/kotlin/ragas/metrics/collections/WS9CrossLanguagePartialGoldenTest.kt`
+  - Cross-language fixture scope includes currently `Partial` metrics listed in WS9 map:
+    - Tier-2 workflow: `agent_goal_accuracy_with_reference`, `agent_goal_accuracy_without_reference`,
+      `agent_workflow_completion`
+    - Tier-3 defaults/collections:
+      `answer_relevancy`, `faithfulness`, `context_recall`,
+      `answer_accuracy`, `answer_correctness`, `factual_correctness`, `topic_adherence`,
+      `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
+      `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
 - Intentional deferrals (tracked; not accidental gaps):
   - Multimodal ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
   - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
   - Broader integrations beyond current LangChain/LlamaIndex record adapters and trace observers.
-  - Backend plugin discovery parity and optional Google Drive backend parity.
+  - Bundled (in-core) Google Drive backend implementation; Kotlin strategy is optional plugin module via backend discovery SPI.
   - Exact Python DSPy internals parity (Kotlin keeps adapter seam + heuristic fallback).
-  - CLI experiment/report/comparison parity beyond current `status/backends`.
+  - Full Python CLI UX surface beyond current Kotlin scriptable parity set (`eval`, `report`, `compare`, `status`, `backends`).
 - WS9 parity map (full WS3 metrics module coverage):
   - Status legend:
     - `Done`: Kotlin target is implemented and covered by fixture/conformance tests.
@@ -448,5 +508,4 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 ## Immediate Next Actions
 
 1. Start WS4 integration parity expansion by prioritizing high-value adapters beyond LangChain/LlamaIndex (Langsmith/Helicone/Opik/LangGraph/R2R) with explicit unsupported fallbacks and focused conformance tests.
-2. Start WS5 backend parity closure by implementing extension/discovery compatibility and explicitly deciding/documenting Google Drive backend strategy.
-3. Add WS9 release-checklist content for parity claims (test evidence links, deferred-scope review, and versioned doc-freeze gates).
+2. Run WS9 release-checklist execution for the next version candidate (attach `PARITY_TEST_MATRIX.md`, golden-fixture test evidence, and deferred-scope sign-off in release PR).

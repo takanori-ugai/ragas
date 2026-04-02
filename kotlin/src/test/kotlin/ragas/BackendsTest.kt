@@ -1,6 +1,7 @@
 package ragas
 
 import ragas.backends.BackendRegistry
+import ragas.backends.BackendInfo
 import ragas.backends.InMemoryBackend
 import ragas.backends.LocalCsvBackend
 import ragas.backends.LocalJsonlBackend
@@ -149,6 +150,52 @@ class BackendsTest {
                 registry.register("second", ::InMemoryBackend, aliasList = listOf("shared"))
             }
         assertTrue(error.message.orEmpty().contains("Alias 'shared' is already registered"))
+    }
+
+    @Test
+    fun backendRegistryDiscoversServiceLoaderProviders() {
+        val registry = BackendRegistry()
+
+        registry.discoverBackends()
+
+        assertTrue(registry.contains("test/discovered"))
+        assertTrue(registry.contains("td"))
+        val backend = registry.create("td")
+        assertTrue(backend is InMemoryBackend)
+    }
+
+    @Test
+    fun backendRegistryProvidesInspectionMetadata() {
+        val registry = BackendRegistry()
+        registry.register(
+            name = "custom/info",
+            factory = ::InMemoryBackend,
+            aliasList = listOf("ci"),
+            description = "custom backend for info test",
+            source = "test",
+        )
+
+        val info: BackendInfo = registry.getBackendInfo("ci")
+
+        assertEquals("custom/info", info.name)
+        assertEquals(listOf("ci"), info.aliases)
+        assertTrue(info.implementationClass.contains("InMemoryBackend"))
+        assertEquals("test", info.source)
+        assertEquals("custom backend for info test", info.description)
+    }
+
+    @Test
+    fun backendRegistryListAllNamesIncludesAliases() {
+        val registry = BackendRegistry()
+        registry.register(
+            name = "custom/list",
+            factory = ::InMemoryBackend,
+            aliasList = listOf("cl1", "cl2"),
+        )
+
+        val listing = registry.listAllNames()
+
+        assertEquals(listOf("custom/list", "cl1", "cl2"), listing["custom/list"])
     }
 
     @Test
