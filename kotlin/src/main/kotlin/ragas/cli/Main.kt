@@ -4,17 +4,17 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import ragas.backends.BACKEND_REGISTRY
+import ragas.backends.anyToJsonElement
+import ragas.backends.jsonElementToAny
 import ragas.defaultMetrics
 import ragas.evaluate
+import ragas.model.EvaluationDataset
+import ragas.model.SingleTurnSample
 import ragas.tier1Metrics
 import ragas.tier2Metrics
 import ragas.tier3Metrics
 import ragas.tier4Metrics
-import ragas.backends.BACKEND_REGISTRY
-import ragas.backends.anyToJsonElement
-import ragas.backends.jsonElementToAny
-import ragas.model.EvaluationDataset
-import ragas.model.SingleTurnSample
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -258,18 +258,23 @@ private fun readRows(
         "json" -> {
             val parsed = Json.parseToJsonElement(file.readText())
             when (parsed) {
-                is JsonArray -> parsed.map { element -> jsonElementToMap(element) }
+                is JsonArray -> {
+                    parsed.map { element -> jsonElementToMap(element) }
+                }
+
                 is JsonObject -> {
                     val rowsElement = parsed["rows"] ?: parsed["samples"] ?: error("JSON input object must contain 'rows' or 'samples'.")
                     require(rowsElement is JsonArray) { "'rows'/'samples' must be an array." }
                     rowsElement.map { element -> jsonElementToMap(element) }
                 }
 
-                else -> error("JSON input must be an array of row objects or object with rows/samples array.")
+                else -> {
+                    error("JSON input must be an array of row objects or object with rows/samples array.")
+                }
             }
         }
 
-        "jsonl" ->
+        "jsonl" -> {
             file
                 .readLines()
                 .asSequence()
@@ -277,8 +282,11 @@ private fun readRows(
                 .filter { line -> line.isNotEmpty() }
                 .map { line -> jsonElementToMap(Json.parseToJsonElement(line)) }
                 .toList()
+        }
 
-        else -> error("Unsupported format '$format'. Use json or jsonl.")
+        else -> {
+            error("Unsupported format '$format'. Use json or jsonl.")
+        }
     }
 }
 
@@ -325,12 +333,30 @@ private fun resolveMetrics(spec: String): List<ragas.metrics.Metric> {
         .filter { token -> token.isNotEmpty() }
         .forEach { token ->
             when (token) {
-                "default" -> resolved += defaultMetrics()
-                "tier1" -> resolved += tier1Metrics()
-                "tier2" -> resolved += tier2Metrics()
-                "tier3" -> resolved += tier3Metrics()
-                "tier4" -> resolved += tier4Metrics()
-                "all" -> resolved += allMetrics.values
+                "default" -> {
+                    resolved += defaultMetrics()
+                }
+
+                "tier1" -> {
+                    resolved += tier1Metrics()
+                }
+
+                "tier2" -> {
+                    resolved += tier2Metrics()
+                }
+
+                "tier3" -> {
+                    resolved += tier3Metrics()
+                }
+
+                "tier4" -> {
+                    resolved += tier4Metrics()
+                }
+
+                "all" -> {
+                    resolved += allMetrics.values
+                }
+
                 else -> {
                     val metric = allMetrics[token] ?: error("Unknown metric '$token'.")
                     resolved += metric
@@ -346,14 +372,19 @@ private fun resolveMetrics(spec: String): List<ragas.metrics.Metric> {
 private fun extractScores(path: String): List<Map<String, Any?>> {
     val parsed = Json.parseToJsonElement(File(path).readText())
     return when (parsed) {
-        is JsonArray -> parsed.map { element -> jsonElementToMap(element) }
+        is JsonArray -> {
+            parsed.map { element -> jsonElementToMap(element) }
+        }
+
         is JsonObject -> {
             val scores = parsed["scores"] ?: error("Expected a 'scores' array in report file: $path")
             require(scores is JsonArray) { "'scores' must be an array in report file: $path" }
             scores.map { element -> jsonElementToMap(element) }
         }
 
-        else -> error("Invalid report file format: $path")
+        else -> {
+            error("Invalid report file format: $path")
+        }
     }
 }
 
