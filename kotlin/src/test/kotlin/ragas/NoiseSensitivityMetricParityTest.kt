@@ -80,7 +80,9 @@ class NoiseSensitivityMetricParityTest {
 
             val missingReference =
                 assertFailsWith<IllegalArgumentException> {
-                    metric.singleTurnAscore(SingleTurnSample(userInput = "Q", response = "A", reference = "", retrievedContexts = listOf("ctx")))
+                    metric.singleTurnAscore(
+                        SingleTurnSample(userInput = "Q", response = "A", reference = "", retrievedContexts = listOf("ctx")),
+                    )
                 }
             assertEquals("reference is missing. Please add reference to the test sample.", missingReference.message)
         }

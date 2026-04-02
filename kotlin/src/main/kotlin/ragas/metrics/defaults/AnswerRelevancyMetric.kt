@@ -20,8 +20,7 @@ import kotlin.math.sqrt
 
 class AnswerRelevancyMetric(
     private val allowHeuristicFallback: Boolean = false,
-) :
-    BaseMetric(
+) : BaseMetric(
         name = "answer_relevancy",
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response")),
         outputType = MetricOutputType.CONTINUOUS,
@@ -105,7 +104,9 @@ class AnswerRelevancyMetric(
 private fun answerRelevancePrompt(response: String): String =
     buildString {
         appendLine("Generate a question for the given answer and identify if the answer is noncommittal.")
-        appendLine("Give noncommittal as 1 if the answer is noncommittal (evasive, vague, or ambiguous) and 0 if the answer is substantive.")
+        appendLine(
+            "Give noncommittal as 1 if the answer is noncommittal (evasive, vague, or ambiguous) and 0 if the answer is substantive.",
+        )
         appendLine("Examples of noncommittal answers: \"I don't know\", \"I'm not sure\", \"It depends\".")
         appendLine("Return your response as JSON with this format: {\"question\":\"...\",\"noncommittal\":0}")
         appendLine()

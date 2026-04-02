@@ -16,8 +16,7 @@ import ragas.runtime.RunConfig
 
 class FaithfulnessMetric(
     private val allowHeuristicFallback: Boolean = false,
-) :
-    BaseMetric(
+) : BaseMetric(
         name = "faithfulness",
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "retrieved_contexts")),
         outputType = MetricOutputType.CONTINUOUS,
@@ -123,7 +122,12 @@ class FaithfulnessMetric(
         context: String,
         llmInstance: BaseRagasLlm,
     ): List<Int> {
-        val statementsJson = statements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
+        val statementsJson =
+            statements.joinToString(
+                separator = ",",
+                prefix = "[",
+                postfix = "]",
+            ) { statement -> JsonPrimitive(statement).toString() }
         val prompt =
             buildString {
                 appendLine(
@@ -146,10 +150,15 @@ class FaithfulnessMetric(
                 )
                 appendLine(
                     "Output: {\"statements\":[" +
-                        "{\"statement\":\"John is majoring in Biology.\",\"reason\":\"John's major is explicitly stated as Computer Science, not Biology.\",\"verdict\":0}," +
-                        "{\"statement\":\"John is taking a course on Artificial Intelligence.\",\"reason\":\"The context lists Data Structures, Algorithms, and Database Management but not AI.\",\"verdict\":0}," +
-                        "{\"statement\":\"John is a dedicated student.\",\"reason\":\"The context states John is diligent and spends significant time studying.\",\"verdict\":1}," +
-                        "{\"statement\":\"John has a part-time job.\",\"reason\":\"There is no information in the context about a part-time job.\",\"verdict\":0}" +
+                        "{\"statement\":\"John is majoring in Biology.\"," +
+                        "\"reason\":\"John's major is explicitly stated as Computer Science, not Biology.\",\"verdict\":0}," +
+                        "{\"statement\":\"John is taking a course on Artificial Intelligence.\"," +
+                        "\"reason\":\"The context lists Data Structures, Algorithms, " +
+                        "and Database Management but not AI.\",\"verdict\":0}," +
+                        "{\"statement\":\"John is a dedicated student.\"," +
+                        "\"reason\":\"The context states John is diligent and spends significant time studying.\",\"verdict\":1}," +
+                        "{\"statement\":\"John has a part-time job.\"," +
+                        "\"reason\":\"There is no information in the context about a part-time job.\",\"verdict\":0}" +
                         "]}",
                 )
                 appendLine()

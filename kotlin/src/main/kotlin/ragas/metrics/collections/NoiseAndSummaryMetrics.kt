@@ -261,7 +261,12 @@ private fun noiseFaithfulnessPrompt(
     context: String,
     statements: List<String>,
 ): String {
-    val statementsJson = statements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
+    val statementsJson =
+        statements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
     return buildString {
         appendLine("Your task is to judge the faithfulness of statements based on a given context.")
         appendLine("For each statement, return verdict as 1 if directly inferable from context, else 0.")
@@ -488,7 +493,12 @@ private fun summaryGenerateQuestionsPrompt(
     text: String,
     keyphrases: List<String>,
 ): String {
-    val keyphrasesJson = keyphrases.joinToString(separator = ",", prefix = "[", postfix = "]") { keyphrase -> JsonPrimitive(keyphrase).toString() }
+    val keyphrasesJson =
+        keyphrases.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { keyphrase -> JsonPrimitive(keyphrase).toString() }
     return buildString {
         appendLine("Based on the given text and keyphrases, generate closed-ended questions.")
         appendLine("Questions should ALWAYS be answerable as '1' from the given text.")
@@ -504,7 +514,12 @@ private fun summaryGenerateAnswersPrompt(
     summary: String,
     questions: List<String>,
 ): String {
-    val questionsJson = questions.joinToString(separator = ",", prefix = "[", postfix = "]") { question -> JsonPrimitive(question).toString() }
+    val questionsJson =
+        questions.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { question -> JsonPrimitive(question).toString() }
     return buildString {
         appendLine("Given a summary and close-ended questions, return '1' or '0' for each question.")
         appendLine("Return JSON only with this shape: {\"answers\":[\"1\",\"0\"]}")

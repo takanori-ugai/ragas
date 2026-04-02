@@ -13,11 +13,11 @@ import ragas.metrics.MetricWithEmbeddings
 import ragas.metrics.MetricWithLlm
 import ragas.metrics.SingleTurnMetric
 import ragas.metrics.clamp01
+import ragas.metrics.defaults.LlmJsonSupport
 import ragas.metrics.jaccardSimilarity
 import ragas.metrics.tokenSet
 import ragas.metrics.tokenize
 import ragas.model.SingleTurnSample
-import ragas.metrics.defaults.LlmJsonSupport
 import ragas.runtime.RunConfig
 import kotlin.math.pow
 
@@ -165,10 +165,18 @@ private fun answerAccuracyJudge1Prompt(
     referenceAnswer: String,
 ): String =
     buildString {
-        appendLine("Instruction: You are a world class state of the art assistant for rating a User Answer given a Question. The Question is completely answered by the Reference Answer.")
-        appendLine("Say 4, if User Answer is full contained and equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.")
-        appendLine("Say 2, if User Answer is partially contained and almost equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.")
-        appendLine("Say 0, if User Answer is not contained in Reference Answer or not accurate in all terms, topics, numbers, metrics, dates and units or the User Answer do not answer the question.")
+        appendLine(
+            "Instruction: You are a world class state of the art assistant for rating a User Answer given a Question. The Question is completely answered by the Reference Answer.",
+        )
+        appendLine(
+            "Say 4, if User Answer is full contained and equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+        )
+        appendLine(
+            "Say 2, if User Answer is partially contained and almost equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+        )
+        appendLine(
+            "Say 0, if User Answer is not contained in Reference Answer or not accurate in all terms, topics, numbers, metrics, dates and units or the User Answer do not answer the question.",
+        )
         appendLine("Do not explain or justify your rating. Your rating must be only 4, 2 or 0 according to the instructions above.")
         appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
         appendLine()
@@ -185,10 +193,18 @@ private fun answerAccuracyJudge2Prompt(
 ): String =
     buildString {
         appendLine("I will rate the User Answer in comparison to the Reference Answer for a given Question.")
-        appendLine("A rating of 4 indicates that the User Answer is entirely consistent with the Reference Answer, covering all aspects, topics, numbers, metrics, dates, and units.")
-        appendLine("A rating of 2 signifies that the User Answer is mostly aligned with the Reference Answer, with minor discrepancies in some areas.")
-        appendLine("A rating of 0 means that the User Answer is either inaccurate, incomplete, or unrelated to the Reference Answer, or it fails to address the Question.")
-        appendLine("I will provide the rating without any explanation or justification, adhering to the following scale: 0 (no match), 2 (partial match), 4 (exact match).")
+        appendLine(
+            "A rating of 4 indicates that the User Answer is entirely consistent with the Reference Answer, covering all aspects, topics, numbers, metrics, dates, and units.",
+        )
+        appendLine(
+            "A rating of 2 signifies that the User Answer is mostly aligned with the Reference Answer, with minor discrepancies in some areas.",
+        )
+        appendLine(
+            "A rating of 0 means that the User Answer is either inaccurate, incomplete, or unrelated to the Reference Answer, or it fails to address the Question.",
+        )
+        appendLine(
+            "I will provide the rating without any explanation or justification, adhering to the following scale: 0 (no match), 2 (partial match), 4 (exact match).",
+        )
         appendLine("Do not explain or justify my rating. My rating must be only 4, 2 or 0 only.")
         appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
         appendLine()
@@ -530,8 +546,18 @@ private fun answerCorrectnessClassifierPrompt(
     answerStatements: List<String>,
     groundTruthStatements: List<String>,
 ): String {
-    val answerJson = answerStatements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
-    val groundTruthJson = groundTruthStatements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
+    val answerJson =
+        answerStatements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
+    val groundTruthJson =
+        groundTruthStatements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
     return buildString {
         appendLine("Given a ground truth and answer statements, classify into TP, FP, and FN.")
         appendLine("TP: answer statements directly supported by one or more ground truth statements.")

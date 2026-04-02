@@ -346,7 +346,9 @@ private fun factualClaimDecompositionPrompt(
         appendLine()
         appendLine("Input:")
         appendLine(
-            "{\"response\":${JsonPrimitive(response)},\"atomicity\":${JsonPrimitive(atomicity.name.lowercase())},\"coverage\":${JsonPrimitive(coverage.name.lowercase())}}",
+            "{\"response\":${JsonPrimitive(
+                response,
+            )},\"atomicity\":${JsonPrimitive(atomicity.name.lowercase())},\"coverage\":${JsonPrimitive(coverage.name.lowercase())}}",
         )
         append("Output:")
     }
@@ -355,7 +357,12 @@ private fun factualNliPrompt(
     context: String,
     statements: List<String>,
 ): String {
-    val statementsJson = statements.joinToString(separator = ",", prefix = "[", postfix = "]") { statement -> JsonPrimitive(statement).toString() }
+    val statementsJson =
+        statements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
     return buildString {
         appendLine("Your task is to judge the faithfulness of statements based on a given context.")
         appendLine("For each statement, return verdict as 1 if directly inferable from context, else 0.")
@@ -395,7 +402,12 @@ private fun topicClassificationPrompt(
     referenceTopics: List<String>,
     topics: List<String>,
 ): String {
-    val referenceJson = referenceTopics.joinToString(separator = ",", prefix = "[", postfix = "]") { topic -> JsonPrimitive(topic).toString() }
+    val referenceJson =
+        referenceTopics.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { topic -> JsonPrimitive(topic).toString() }
     val topicsJson = topics.joinToString(separator = ",", prefix = "[", postfix = "]") { topic -> JsonPrimitive(topic).toString() }
     return buildString {
         appendLine("Given a set of topics classify if each topic falls into any of the given reference topics.")
@@ -537,8 +549,14 @@ class TopicAdherenceMetric(
         val eps = 1e-10
 
         return when (mode) {
-            Mode.PRECISION -> truePositives / (truePositives + falsePositives + eps)
-            Mode.RECALL -> truePositives / (truePositives + falseNegatives + eps)
+            Mode.PRECISION -> {
+                truePositives / (truePositives + falsePositives + eps)
+            }
+
+            Mode.RECALL -> {
+                truePositives / (truePositives + falseNegatives + eps)
+            }
+
             Mode.F1 -> {
                 val precision = truePositives / (truePositives + falsePositives + eps)
                 val recall = truePositives / (truePositives + falseNegatives + eps)
