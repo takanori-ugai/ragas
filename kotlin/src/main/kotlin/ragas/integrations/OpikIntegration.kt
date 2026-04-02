@@ -32,6 +32,11 @@ object OpikIntegration {
             },
         )
 
+    @Deprecated(
+        message = "OpikIntegration.evaluateRecords is not implemented yet and always throws UnsupportedOperationException.",
+        replaceWith = ReplaceWith("unsupportedIntegration(\"opik\")"),
+        level = DeprecationLevel.ERROR,
+    )
     @Suppress("UNUSED_PARAMETER")
     fun evaluateRecords(
         records: List<OpikRecord>,

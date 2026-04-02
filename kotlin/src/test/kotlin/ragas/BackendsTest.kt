@@ -9,6 +9,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BackendsTest {
@@ -160,8 +161,23 @@ class BackendsTest {
         assertEquals(1, loadedProviders)
         assertTrue(registry.contains("test/discovered"))
         assertTrue(registry.contains("td"))
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
         val backend = registry.create("td")
         assertTrue(backend is InMemoryBackend)
+    }
+
+    @Test
+    fun backendRegistryRollsBackFailedProviderRegistrationAtomically() {
+        val registry = BackendRegistry()
+
+        assertEquals(1, registry.discoverBackends())
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
+
+        assertEquals(1, registry.discoverBackends(force = true))
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
     }
 
     @Test

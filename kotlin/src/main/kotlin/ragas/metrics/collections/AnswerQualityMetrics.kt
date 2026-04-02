@@ -330,6 +330,9 @@ class AnswerCorrectnessMetric(
         val tp = parsed.countArrayEntries("TP")
         val fp = parsed.countArrayEntries("FP")
         val fn = parsed.countArrayEntries("FN")
+        if (tp == 0 && fp == 0 && fn == 0) {
+            return null
+        }
         return ClassificationCounts(tp = tp, fp = fp, fn = fn)
     }
 
@@ -359,7 +362,8 @@ class AnswerCorrectnessMetric(
     ): Double {
         val responseEmbedding = embeddingInstance.embedText(response)
         val referenceEmbedding = embeddingInstance.embedText(reference)
-        return cosineSimilarityDouble(responseEmbedding, referenceEmbedding)
+        val cosine = cosineSimilarityDouble(responseEmbedding, referenceEmbedding)
+        return clamp01((cosine + 1.0) / 2.0)
     }
 
     private fun weightedAverage(

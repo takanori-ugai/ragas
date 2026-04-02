@@ -15,10 +15,12 @@ data class AgUiRecord(
     val retrievedContexts: List<String> = emptyList(),
     val referenceContexts: List<String> = emptyList(),
     val reference: String? = null,
+    /** Kept for integration-schema parity; not consumed until sample-level metadata is supported. */
     val metadata: Map<String, String> = emptyMap(),
 )
 
 object AgUiIntegration {
+    // Record-level metadata is intentionally ignored here because SingleTurnSample does not expose metadata fields yet.
     fun toDataset(records: List<AgUiRecord>): EvaluationDataset<SingleTurnSample> =
         EvaluationDataset(
             records.map { record ->
@@ -46,7 +48,7 @@ object AgUiIntegration {
         observers: List<TraceObserver> = emptyList(),
     ): EvaluationResult =
         traceEvaluation(
-            framework = "ag_ui",
+            framework = "ag-ui",
             runName = runName,
             tags = tags,
             metadata = metadata,

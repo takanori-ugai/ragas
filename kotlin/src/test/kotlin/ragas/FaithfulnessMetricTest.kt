@@ -14,6 +14,18 @@ import kotlin.test.assertTrue
 
 class FaithfulnessMetricTest {
     @Test
+    fun requiredColumnsDependOnHeuristicFallbackMode() {
+        assertEquals(
+            setOf("response", "retrieved_contexts"),
+            FaithfulnessMetric(allowHeuristicFallback = true).requiredColumns[ragas.metrics.MetricType.SINGLE_TURN],
+        )
+        assertEquals(
+            setOf("user_input", "response", "retrieved_contexts"),
+            FaithfulnessMetric().requiredColumns[ragas.metrics.MetricType.SINGLE_TURN],
+        )
+    }
+
+    @Test
     fun crossContextSplicedSentenceIsNotMarkedSupported() =
         runBlocking {
             val metric = FaithfulnessMetric(allowHeuristicFallback = true)

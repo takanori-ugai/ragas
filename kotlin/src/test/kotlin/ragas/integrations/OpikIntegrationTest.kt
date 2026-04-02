@@ -32,6 +32,7 @@ class OpikIntegrationTest {
         assertEquals("Metrics are numeric signals.", sample.reference)
     }
 
+    @Suppress("DEPRECATION_ERROR")
     @Test
     fun evaluateRecordsEmitsRunStartedWithMetadataThenFailsUnsupported() {
         val observer = InMemoryTraceObserver()

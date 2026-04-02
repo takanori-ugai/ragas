@@ -1,1 +1,2 @@
 ragas.backends.TestBackendDiscoveryProvider
+ragas.backends.TestFailingBackendDiscoveryProvider

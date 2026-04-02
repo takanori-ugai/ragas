@@ -48,13 +48,14 @@ class SwarmIntegrationTest {
             }
 
         assertTrue(thrown.message?.contains("Integration 'swarm' is not yet implemented") == true)
-        val started = observer.events.first() as RunStarted
+        assertEquals(2, observer.events.size)
+        val started = observer.events[0] as RunStarted
         assertEquals("swarm", started.framework)
         assertEquals("swarm-phase3", started.runName)
         assertEquals(mapOf("env" to "test"), started.tags)
         assertEquals(mapOf("tenant" to "acme"), started.metadata)
 
-        val failed = observer.events.last() as RunFailed
+        val failed = observer.events[1] as RunFailed
         assertEquals("UnsupportedOperationException", failed.errorType)
         assertTrue(failed.errorMessage.contains("swarm"))
     }

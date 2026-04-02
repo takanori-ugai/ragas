@@ -33,6 +33,24 @@ class BedrockIntegrationTest {
     }
 
     @Test
+    fun toDatasetRejectsRecordMetadataUntilSupported() {
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                BedrockIntegration.toDataset(
+                    listOf(
+                        BedrockRecord(
+                            input = "q",
+                            output = "a",
+                            metadata = mapOf("tenant" to "acme"),
+                        ),
+                    ),
+                )
+            }
+
+        assertTrue(error.message.orEmpty().contains("BedrockRecord.metadata is not supported yet"))
+    }
+
+    @Test
     fun evaluateRecordsEmitsRunStartedWithMetadataThenFailsUnsupported() {
         val observer = InMemoryTraceObserver()
 

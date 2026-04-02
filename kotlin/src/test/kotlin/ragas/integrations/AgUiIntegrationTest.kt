@@ -49,7 +49,7 @@ class AgUiIntegrationTest {
 
         assertTrue(thrown.message?.contains("Integration 'ag-ui' is not yet implemented") == true)
         val started = observer.events.first() as RunStarted
-        assertEquals("ag_ui", started.framework)
+        assertEquals("ag-ui", started.framework)
         assertEquals("ag-ui-phase3", started.runName)
         assertEquals(mapOf("env" to "test"), started.tags)
         assertEquals(mapOf("tenant" to "acme"), started.metadata)

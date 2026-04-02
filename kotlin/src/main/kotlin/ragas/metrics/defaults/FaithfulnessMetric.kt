@@ -1,8 +1,8 @@
 package ragas.metrics.defaults
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import ragas.llms.BaseRagasLlm
 import ragas.metrics.BaseMetric
 import ragas.metrics.MetricOutputType
@@ -18,7 +18,15 @@ class FaithfulnessMetric(
     private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = "faithfulness",
-        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "retrieved_contexts")),
+        requiredColumns =
+            mapOf(
+                MetricType.SINGLE_TURN to
+                    if (allowHeuristicFallback) {
+                        setOf("response", "retrieved_contexts")
+                    } else {
+                        setOf("user_input", "response", "retrieved_contexts")
+                    },
+            ),
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric,
@@ -178,7 +186,7 @@ class FaithfulnessMetric(
                 ?.text
                 .orEmpty()
         val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        val items = parsed["statements"]?.jsonArray.orEmpty()
+        val items = (parsed["statements"] as? JsonArray).orEmpty()
         return items.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
             LlmJsonSupport.readIntLike(obj, "verdict")

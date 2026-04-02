@@ -19,8 +19,14 @@ data class BedrockRecord(
 )
 
 object BedrockIntegration {
-    fun toDataset(records: List<BedrockRecord>): EvaluationDataset<SingleTurnSample> =
-        EvaluationDataset(
+    fun toDataset(records: List<BedrockRecord>): EvaluationDataset<SingleTurnSample> {
+        val recordWithMetadataIndex = records.indexOfFirst { it.metadata.isNotEmpty() }
+        require(recordWithMetadataIndex < 0) {
+            "BedrockRecord.metadata is not supported yet and would be dropped in conversion to SingleTurnSample. " +
+                "Provide run-level metadata via evaluateRecords(metadata = ...) instead."
+        }
+
+        return EvaluationDataset(
             records.map { record ->
                 SingleTurnSample(
                     userInput = record.input,
@@ -31,6 +37,7 @@ object BedrockIntegration {
                 )
             },
         )
+    }
 
     @Suppress("UNUSED_PARAMETER")
     fun evaluateRecords(

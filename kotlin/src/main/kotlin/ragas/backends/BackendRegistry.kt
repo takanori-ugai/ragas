@@ -91,10 +91,16 @@ class BackendRegistry {
                     )
                     continue
                 }
+            val backendsSnapshot = backends.toMap()
+            val aliasesSnapshot = aliases.toMap()
             try {
                 provider.registerBackends(this)
                 loadedProviders += 1
             } catch (e: Exception) {
+                backends.clear()
+                backends.putAll(backendsSnapshot)
+                aliases.clear()
+                aliases.putAll(aliasesSnapshot)
                 val providerName = provider::class.qualifiedName ?: provider.javaClass.name
                 System.err.println("Backend discovery provider failed: $providerName: ${e.message ?: e::class.simpleName}")
             }
