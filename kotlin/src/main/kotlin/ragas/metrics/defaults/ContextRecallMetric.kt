@@ -1,6 +1,7 @@
 package ragas.metrics.defaults
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import ragas.llms.BaseRagasLlm
 import ragas.metrics.BaseMetric
@@ -54,12 +55,12 @@ class ContextRecallMetric :
                 appendLine("Return JSON only with this shape:")
                 appendLine("{\"classifications\":[{\"statement\":\"...\",\"reason\":\"...\",\"attributed\":0}]}")
                 appendLine()
-                appendLine("Question:")
-                appendLine(question)
-                appendLine("Context:")
-                appendLine(retrieved.joinToString("\n"))
-                appendLine("Answer:")
-                appendLine(reference)
+                appendLine("Input:")
+                appendLine(
+                    "{\"question\":${JsonPrimitive(
+                        question,
+                    )},\"context\":${JsonPrimitive(retrieved.joinToString("\n"))},\"answer\":${JsonPrimitive(reference)}}",
+                )
                 append("Output:")
             }
 
@@ -76,16 +77,23 @@ class ContextRecallMetric :
             return Double.NaN
         }
 
-        val attributions =
+        val normalizedAttributions =
             classifications.mapNotNull { element ->
                 val obj = element as? JsonObject ?: return@mapNotNull null
-                LlmJsonSupport.readIntLike(obj, "attributed")
+                val attribution = LlmJsonSupport.readIntLike(obj, "attributed") ?: return@mapNotNull null
+                if (attribution == 0 || attribution == 1) {
+                    attribution
+                } else {
+                    null
+                }
             }
-        if (attributions.isEmpty()) {
+        if (normalizedAttributions.size != classifications.size) {
             return Double.NaN
         }
 
-        val score = attributions.count { value -> value != 0 }.toDouble() / attributions.size.toDouble()
+        val score =
+            normalizedAttributions.count { value -> value == 1 }.toDouble() /
+                normalizedAttributions.size.toDouble()
         return clamp01(score)
     }
 

@@ -11,6 +11,7 @@ import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class AnswerCorrectnessMetricParityTest {
     @Test
@@ -88,6 +89,43 @@ class AnswerCorrectnessMetricParityTest {
                 "Embeddings are required for semantic similarity scoring. Either provide embeddings or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation.",
                 error.message,
             )
+        }
+
+    @Test
+    fun llmPathReturnsNanWhenStatementExtractionFails() =
+        runBlocking {
+            val llm =
+                ScriptedAnswerCorrectnessLlm(
+                    outputs =
+                        listOf(
+                            "not-json",
+                            """{"statements":["A"]}""",
+                        ),
+                )
+            val metric = AnswerCorrectnessMetric(weights = listOf(1.0, 0.0)).also { it.llm = llm }
+            val sample = SingleTurnSample(userInput = "Q", response = "R", reference = "G")
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
+        }
+
+    @Test
+    fun llmPathReturnsNanWhenClassificationParsingFails() =
+        runBlocking {
+            val llm =
+                ScriptedAnswerCorrectnessLlm(
+                    outputs =
+                        listOf(
+                            """{"statements":["A"]}""",
+                            """{"statements":["A"]}""",
+                            "not-json",
+                        ),
+                )
+            val metric = AnswerCorrectnessMetric(weights = listOf(1.0, 0.0)).also { it.llm = llm }
+            val sample = SingleTurnSample(userInput = "Q", response = "R", reference = "G")
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
         }
 }
 

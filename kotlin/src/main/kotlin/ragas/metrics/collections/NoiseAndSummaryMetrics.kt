@@ -137,16 +137,20 @@ class NoiseSensitivityMetric(
         llmInstance: BaseRagasLlm,
         statements: List<String>,
         contexts: List<String>,
-    ): List<List<Boolean>> =
+    ): List<List<Boolean>> {
         if (statements.isEmpty()) {
-            emptyList()
-        } else {
-            statements.map { statement ->
-                contexts.map { ctx ->
-                    evaluateFaithfulnessWithLlm(llmInstance, listOf(statement), ctx).firstOrNull() ?: false
-                }
+            return emptyList()
+        }
+        val resultsPerContext =
+            contexts.map { ctx ->
+                evaluateFaithfulnessWithLlm(llmInstance, statements, ctx)
+            }
+        return statements.indices.map { stmtIdx ->
+            contexts.indices.map { ctxIdx ->
+                resultsPerContext.getOrNull(ctxIdx)?.getOrNull(stmtIdx) ?: false
             }
         }
+    }
 
     private fun fallbackNoiseSensitivityScore(sample: SingleTurnSample): Double {
         val userInput = sample.userInput.orEmpty().trim()

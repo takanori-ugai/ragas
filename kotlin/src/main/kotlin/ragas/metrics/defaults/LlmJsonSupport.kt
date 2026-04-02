@@ -12,8 +12,24 @@ internal object LlmJsonSupport {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun parseFirstJsonObject(raw: String): JsonObject? {
-        val extracted = extractFirstJsonObject(raw) ?: return null
-        return runCatching { json.parseToJsonElement(extracted) as? JsonObject }.getOrNull()
+        var searchFrom = 0
+        while (searchFrom < raw.length) {
+            val start = raw.indexOf('{', searchFrom)
+            if (start < 0) {
+                return null
+            }
+            val extracted = extractJsonObjectAt(raw, start)
+            if (extracted != null) {
+                val parsed = runCatching { json.parseToJsonElement(extracted.first) as? JsonObject }.getOrNull()
+                if (parsed != null) {
+                    return parsed
+                }
+                searchFrom = extracted.second + 1
+            } else {
+                searchFrom = start + 1
+            }
+        }
+        return null
     }
 
     fun readStringArray(
@@ -41,11 +57,10 @@ internal object LlmJsonSupport {
         return primitive.content.trim().toIntOrNull()
     }
 
-    private fun extractFirstJsonObject(text: String): String? {
-        val start = text.indexOf('{')
-        if (start < 0) {
-            return null
-        }
+    private fun extractJsonObjectAt(
+        text: String,
+        start: Int,
+    ): Pair<String, Int>? {
         var depth = 0
         var inString = false
         var escaped = false
@@ -71,7 +86,7 @@ internal object LlmJsonSupport {
             if (ch == '}') {
                 depth -= 1
                 if (depth == 0) {
-                    return text.substring(start, index + 1)
+                    return text.substring(start, index + 1) to index
                 }
             }
         }

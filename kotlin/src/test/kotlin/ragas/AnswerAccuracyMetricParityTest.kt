@@ -1,5 +1,6 @@
 package ragas
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -88,6 +89,59 @@ class AnswerAccuracyMetricParityTest {
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
             assertTrue(score.isNaN())
         }
+
+    @Test
+    fun llmPathReturnsNanWhenOnlyOneJudgeSucceeds() =
+        runBlocking {
+            val llm =
+                ScriptedAnswerAccuracyLlm(
+                    outputs =
+                        listOf(
+                            """{"rating":4}""",
+                            """{"rating":3}""",
+                            """{"rating":5}""",
+                        ),
+                )
+            val metric = AnswerAccuracyMetric(maxRetries = 2).also { it.llm = llm }
+            val sample =
+                SingleTurnSample(
+                    userInput = "When was Einstein born?",
+                    response = "Einstein was born in 1879.",
+                    reference = "Albert Einstein was born on March 14, 1879.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
+            assertEquals(3, llm.prompts.size)
+        }
+
+    @Test
+    fun llmPathPropagatesCancellationExceptionFromJudgeCalls() {
+        runBlocking {
+            val metric =
+                AnswerAccuracyMetric(maxRetries = 2).also {
+                    it.llm =
+                        object : BaseRagasLlm {
+                            override var runConfig: RunConfig = RunConfig()
+
+                            override suspend fun generateText(
+                                prompt: String,
+                                n: Int,
+                                temperature: Double?,
+                                stop: List<String>?,
+                            ): LlmResult = throw CancellationException("cancelled")
+                        }
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "When was Einstein born?",
+                    response = "Einstein was born in 1879.",
+                    reference = "Albert Einstein was born on March 14, 1879.",
+                )
+
+            assertFailsWith<CancellationException> { metric.singleTurnAscore(sample) }
+        }
+    }
 
     @Test
     fun llmPathValidatesRequiredFieldsLikePythonImplementation() =

@@ -1,5 +1,6 @@
 package ragas.backends
 
+import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
 import kotlin.reflect.KClass
 
@@ -76,7 +77,20 @@ class BackendRegistry {
         }
         var loadedProviders = 0
         val loader = ServiceLoader.load(BackendDiscoveryProvider::class.java)
-        loader.forEach { provider ->
+        val iterator = loader.iterator()
+        while (true) {
+            val provider =
+                try {
+                    if (!iterator.hasNext()) {
+                        break
+                    }
+                    iterator.next()
+                } catch (e: ServiceConfigurationError) {
+                    System.err.println(
+                        "Backend discovery provider loading failed: ${e.message ?: e::class.simpleName}",
+                    )
+                    continue
+                }
             try {
                 provider.registerBackends(this)
                 loadedProviders += 1
@@ -134,7 +148,7 @@ class BackendRegistry {
             backends[resolved]
                 ?: throw NoSuchElementException("Backend '$name' not found. Available backends: ${availableNames()}")
         val backendClass = registration.backendClass
-        val qualifiedName = backendClass?.qualifiedName ?: "unknown"
+        val qualifiedName = backendClass?.qualifiedName ?: backendClass?.java?.name ?: "unknown"
         val module = qualifiedName.substringBeforeLast('.', "")
         return BackendInfo(
             name = resolved,

@@ -93,10 +93,8 @@ class LangChain4jLlm(
                                 if (!stop.isNullOrEmpty()) {
                                     requestBuilder.stopSequences(stop)
                                 }
-                                println("LLM is called")
                                 val response = model.chat(requestBuilder.build())
                                 val text = response.aiMessage().text()
-                                println("LLM is called: $text")
                                 val finish = response.finishReason()?.name
                                 LlmGeneration(
                                     text = applyStop(text, stop),

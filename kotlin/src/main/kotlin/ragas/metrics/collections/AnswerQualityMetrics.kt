@@ -1,5 +1,6 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -83,6 +84,8 @@ class AnswerAccuracyMetric(
                 if (parsedRating in setOf(0, 2, 4)) {
                     return parsedRating.toDouble()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 // Mirror Python retry behavior by trying again up to maxRetries.
             }
@@ -97,11 +100,10 @@ class AnswerAccuracyMetric(
         score1: Double,
         score2: Double,
     ): Double =
-        when {
-            !score1.isNaN() && !score2.isNaN() -> (score1 + score2) / 2.0
-            !score1.isNaN() -> score1
-            !score2.isNaN() -> score2
-            else -> Double.NaN
+        if (!score1.isNaN() && !score2.isNaN()) {
+            (score1 + score2) / 2.0
+        } else {
+            Double.NaN
         }
 
     private fun fallbackAnswerAccuracyScore(sample: SingleTurnSample): Double {
@@ -267,13 +269,13 @@ class AnswerCorrectnessMetric(
 
         val responseStatements = generateStatements(llmInstance, question, response)
         val referenceStatements = generateStatements(llmInstance, question, reference)
-        val factuality =
-            if (responseStatements.isNotEmpty() && referenceStatements.isNotEmpty()) {
-                val classification = classifyStatements(llmInstance, question, responseStatements, referenceStatements)
-                fBetaFromClassification(classification)
-            } else {
-                1.0
-            }
+        if (responseStatements.isEmpty() || referenceStatements.isEmpty()) {
+            return Double.NaN
+        }
+        val classification =
+            classifyStatements(llmInstance, question, responseStatements, referenceStatements)
+                ?: return Double.NaN
+        val factuality = fBetaFromClassification(classification)
 
         val similarity =
             if (weights[1] == 0.0) {
@@ -310,7 +312,7 @@ class AnswerCorrectnessMetric(
         question: String,
         answerStatements: List<String>,
         groundTruthStatements: List<String>,
-    ): ClassificationCounts {
+    ): ClassificationCounts? {
         val raw =
             llmInstance
                 .generateText(
@@ -324,7 +326,7 @@ class AnswerCorrectnessMetric(
                 .firstOrNull()
                 ?.text
                 .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return ClassificationCounts(tp = 0, fp = 0, fn = 0)
+        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return null
         val tp = parsed.countArrayEntries("TP")
         val fp = parsed.countArrayEntries("FP")
         val fn = parsed.countArrayEntries("FN")

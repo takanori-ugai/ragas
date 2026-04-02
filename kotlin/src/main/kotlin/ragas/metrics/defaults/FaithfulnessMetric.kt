@@ -66,9 +66,13 @@ class FaithfulnessMetric(
         if (verdicts.isEmpty()) {
             return Double.NaN
         }
+        val normalizedVerdicts = verdicts.filter { verdict -> verdict == 0 || verdict == 1 }
+        if (normalizedVerdicts.size != statements.size) {
+            return Double.NaN
+        }
 
-        val faithfulCount = verdicts.count { verdict -> verdict != 0 }
-        return faithfulCount.toDouble() / verdicts.size.toDouble()
+        val faithfulCount = normalizedVerdicts.count { verdict -> verdict == 1 }
+        return faithfulCount.toDouble() / normalizedVerdicts.size.toDouble()
     }
 
     private suspend fun generateStatements(

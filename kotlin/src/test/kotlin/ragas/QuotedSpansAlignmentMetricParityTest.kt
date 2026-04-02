@@ -28,6 +28,6 @@ class QuotedSpansAlignmentMetricParityTest {
                 )
 
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-            assertEquals(0.0, score, 1e-9)
+            assertEquals(1.0, score, 1e-9)
         }
 }

@@ -110,6 +110,56 @@ class FaithfulnessMetricTest {
             assertEquals(1.0, score, 1e-9)
             assertTrue(llm.prompts[1].contains("""["Kotlin is called \"JetBrains language\"."]"""))
         }
+
+    @Test
+    fun llmPathReturnsNanWhenAnyVerdictIsMissing() =
+        runBlocking {
+            val metric =
+                FaithfulnessMetric().also { faithfulness ->
+                    faithfulness.llm =
+                        ScriptedLlm(
+                            outputs =
+                                listOf(
+                                    """{"statements":["S1","S2"]}""",
+                                    """{"statements":[{"statement":"S1","reason":"ok","verdict":1},{"statement":"S2","reason":"missing"}]}""",
+                                ),
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Q",
+                    response = "R",
+                    retrievedContexts = listOf("C"),
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
+        }
+
+    @Test
+    fun llmPathReturnsNanWhenAnyVerdictIsNonBinary() =
+        runBlocking {
+            val metric =
+                FaithfulnessMetric().also { faithfulness ->
+                    faithfulness.llm =
+                        ScriptedLlm(
+                            outputs =
+                                listOf(
+                                    """{"statements":["S1","S2"]}""",
+                                    """{"statements":[{"statement":"S1","reason":"ok","verdict":1},{"statement":"S2","reason":"bad","verdict":2}]}""",
+                                ),
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Q",
+                    response = "R",
+                    retrievedContexts = listOf("C"),
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
+        }
 }
 
 private class ScriptedLlm(

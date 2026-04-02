@@ -93,7 +93,7 @@ class QuotedAndChrfFixtureTest {
             val metric = QuotedSpansAlignmentMetric(casefold = true, minSpanWords = 2)
 
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-            assertEquals(0.0, score)
+            assertEquals(1.0, score)
         }
 
     @Test

@@ -9,6 +9,7 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ContextRecallMetricTest {
     @Test
@@ -43,6 +44,50 @@ class ContextRecallMetricTest {
                 )
 
             assertEquals(0.75, metric.singleTurnAscore(sample))
+        }
+
+    @Test
+    fun llmPathReturnsNanWhenAnyClassificationIsMissingAttribution() =
+        runBlocking {
+            val metric =
+                ContextRecallMetric().also { recall ->
+                    recall.llm =
+                        ScriptedRecallLlm(
+                            output =
+                                """{"classifications":[{"statement":"S1","reason":"ok","attributed":1},{"statement":"S2","reason":"missing"}]}""",
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Tell me about Kotlin",
+                    retrievedContexts = listOf("Kotlin runs on JVM."),
+                    reference = "Kotlin runs on JVM. Kotlin was released in 2010.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
+        }
+
+    @Test
+    fun llmPathReturnsNanWhenAnyClassificationHasNonBinaryAttribution() =
+        runBlocking {
+            val metric =
+                ContextRecallMetric().also { recall ->
+                    recall.llm =
+                        ScriptedRecallLlm(
+                            output =
+                                """{"classifications":[{"statement":"S1","reason":"ok","attributed":1},{"statement":"S2","reason":"bad","attributed":2}]}""",
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Tell me about Kotlin",
+                    retrievedContexts = listOf("Kotlin runs on JVM."),
+                    reference = "Kotlin runs on JVM. Kotlin was released in 2010.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
         }
 }
 

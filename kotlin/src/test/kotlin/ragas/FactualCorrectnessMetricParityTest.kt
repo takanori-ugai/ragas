@@ -113,7 +113,10 @@ private class ScriptedFactualCorrectnessLlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull().orEmpty() }
+        val value =
+            checkNotNull(outputs.getOrNull(cursor)) {
+                "Unexpected generateText call ${cursor + 1}; only ${outputs.size} scripted responses were provided."
+            }
         cursor += 1
         return LlmResult(generations = listOf(LlmGeneration(value)))
     }
