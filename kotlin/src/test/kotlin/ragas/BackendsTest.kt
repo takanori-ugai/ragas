@@ -1,7 +1,7 @@
 package ragas
 
-import ragas.backends.BackendRegistry
 import ragas.backends.BackendInfo
+import ragas.backends.BackendRegistry
 import ragas.backends.InMemoryBackend
 import ragas.backends.LocalCsvBackend
 import ragas.backends.LocalJsonlBackend

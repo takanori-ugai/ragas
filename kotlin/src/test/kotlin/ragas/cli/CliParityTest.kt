@@ -35,7 +35,13 @@ class CliParityTest {
         assertTrue(report.exists())
 
         val parsed = Json.parseToJsonElement(report.readText()).jsonObject
-        assertEquals(1, parsed.getValue("row_count").jsonPrimitive.content.toInt())
+        assertEquals(
+            1,
+            parsed
+                .getValue("row_count")
+                .jsonPrimitive.content
+                .toInt(),
+        )
         assertTrue(parsed.containsKey("scores"))
         assertTrue(parsed.containsKey("metric_means"))
     }
@@ -62,8 +68,22 @@ class CliParityTest {
         assertEquals(0, code)
         val parsed = Json.parseToJsonElement(summary.readText()).jsonObject
         val means = parsed.getValue("metric_means").jsonObject
-        assertEquals(0.6, means.getValue("m1").jsonPrimitive.content.toDouble(), 1e-9)
-        assertEquals(0.3, means.getValue("m2").jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(
+            0.6,
+            means
+                .getValue("m1")
+                .jsonPrimitive.content
+                .toDouble(),
+            1e-9,
+        )
+        assertEquals(
+            0.3,
+            means
+                .getValue("m2")
+                .jsonPrimitive.content
+                .toDouble(),
+            1e-9,
+        )
     }
 
     @Test
