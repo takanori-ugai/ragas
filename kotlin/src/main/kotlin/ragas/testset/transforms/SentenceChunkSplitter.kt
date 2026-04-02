@@ -104,7 +104,7 @@ class SentenceChunkSplitter(
             return false
         }
 
-        if (trimmedCurrent in knownAbbreviations) {
+        if (trimmedCurrent in knownAbbreviations || hasTrailingKnownAbbreviation(trimmedCurrent)) {
             return true
         }
 
@@ -138,5 +138,10 @@ class SentenceChunkSplitter(
                 "etc.",
             )
         private val decimalTailRegex = Regex("\\d\\.$")
+
+        private fun hasTrailingKnownAbbreviation(text: String): Boolean =
+            knownAbbreviations.any { abbreviation ->
+                text.endsWith(" $abbreviation")
+            }
     }
 }

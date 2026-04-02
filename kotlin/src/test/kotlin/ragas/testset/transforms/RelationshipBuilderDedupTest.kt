@@ -1,6 +1,6 @@
 package ragas.testset.transforms
 
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 class RelationshipBuilderDedupTest {
     @Test
     fun dedupDistinguishesBidirectionalFlag() =
-        runBlocking {
+        runTest {
             val source = Node(id = "source", type = NodeType.DOCUMENT)
             val target = Node(id = "target", type = NodeType.CHUNK)
             val kg = KnowledgeGraph(nodes = mutableListOf(source, target))

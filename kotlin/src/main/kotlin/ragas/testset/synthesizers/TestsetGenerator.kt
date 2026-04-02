@@ -236,17 +236,17 @@ class TestsetGenerator(
             return emptyList()
         }
         val mode = resolveSamplingMode(controls)
-        val capped = if (count >= scored.size) scored else scored.toList()
+        val pool = if (count >= scored.size) scored else scored.toList()
 
         val selected =
             when (mode) {
                 SamplingMode.TOP_K -> {
-                    capped.take(count).map { (item) -> item }
+                    pool.take(count).map { (item) -> item }
                 }
 
                 SamplingMode.RANK_BIASED -> {
                     selectRankBiased(
-                        scored = capped,
+                        scored = pool,
                         count = count,
                         random = random,
                     )
@@ -254,7 +254,7 @@ class TestsetGenerator(
 
                 SamplingMode.TEMPERATURE -> {
                     selectTemperature(
-                        scored = capped,
+                        scored = pool,
                         count = count,
                         random = random,
                         temperature = controls.temperature,
@@ -347,7 +347,10 @@ class TestsetGenerator(
         groupKey: (T) -> String,
         maxPerGroup: Int,
     ): List<T> {
-        if (maxPerGroup == Int.MAX_VALUE || maxPerGroup <= 0) {
+        require(maxPerGroup > 0 || maxPerGroup == Int.MAX_VALUE) {
+            "maxPerGroup must be positive or Int.MAX_VALUE, got $maxPerGroup"
+        }
+        if (maxPerGroup == Int.MAX_VALUE) {
             return selected.take(count)
         }
         val groupCounts = mutableMapOf<String, Int>()

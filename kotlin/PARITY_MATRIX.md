@@ -43,7 +43,7 @@ Last updated: 2026-04-01
 
 - Evaluation API: remaining Python-specific ecosystem integrations are not yet mirrored.
 - Multimodal prompt ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
-- Full production-grade testset synthesis pipeline parity (extractors, splitters, relationship builders, advanced synthesizers).
+- Additional WS6 hardening beyond the current shipped baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.
 - Backend entry-point plugin discovery and optional Google Drive backend parity.
 - Exact Python DSPy runtime parity; Kotlin currently uses adapter seam + heuristic fallback semantics.

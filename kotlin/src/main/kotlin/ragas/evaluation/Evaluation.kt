@@ -20,6 +20,7 @@ import ragas.runtime.RunConfig
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.WeakHashMap
+import kotlin.reflect.KClass
 
 private const val EVALUATION_DESC = "Evaluating"
 private val metricLocks: MutableMap<Metric, Mutex> = Collections.synchronizedMap(WeakHashMap())
@@ -230,6 +231,7 @@ private fun remapDataset(
     }
     val normalizedMap =
         columnMap.mapKeys { (target, _) -> normalizeColumnName(target) }.mapValues { (_, source) -> normalizeColumnName(source) }
+    validateColumnMapKeys(dataset.getSampleType(), normalizedMap)
     val remappedSamples =
         dataset.samples.map { sample ->
             when (sample) {
@@ -335,6 +337,28 @@ private fun readMultiTurnField(
 private fun normalizeColumnName(name: String): String {
     val normalized = name.trim().lowercase()
     return COLUMN_ALIASES[normalized] ?: normalized
+}
+
+private fun validateColumnMapKeys(
+    sampleType: KClass<out Sample>?,
+    columnMap: Map<String, String>,
+) {
+    val supportedColumns =
+        when (sampleType) {
+            SingleTurnSample::class -> SINGLE_TURN_COLUMNS
+            MultiTurnSample::class -> MULTI_TURN_COLUMNS
+            else -> return
+        }
+    val sampleTypeName = sampleType.simpleName ?: "Sample"
+    val supportedList = supportedColumns.sorted().joinToString(", ")
+    columnMap.forEach { (target, source) ->
+        require(target in supportedColumns) {
+            "Unsupported columnMap target '$target' for $sampleTypeName. Supported columns: $supportedList"
+        }
+        require(source in supportedColumns) {
+            "Unsupported columnMap source '$source' for $sampleTypeName. Supported columns: $supportedList"
+        }
+    }
 }
 
 private fun isNullOrEmptyValue(value: Any?): Boolean =

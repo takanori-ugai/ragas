@@ -7,18 +7,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
-import ragas.testset.graph.NodeType
-import ragas.testset.synthesizers.SamplingMode
-import ragas.testset.synthesizers.SynthesisControls
-import ragas.testset.synthesizers.TestsetGenerator
-import ragas.testset.transforms.AdjacentChunkRelationshipBuilder
-import ragas.testset.transforms.EmbeddingsTopicExtractor
-import ragas.testset.transforms.LlmBasedSummaryExtractor
-import ragas.testset.transforms.RegexEntityExtractor
-import ragas.testset.transforms.SentenceChunkSplitter
-import ragas.testset.transforms.SequenceTransforms
-import ragas.testset.transforms.SharedKeywordRelationshipBuilder
-import ragas.testset.transforms.SingleTransform
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -26,52 +14,11 @@ class WS6CrossLanguageGoldenTest {
     @Test
     fun ws6CrossLanguageFixtureCalibratesShapePromptStyleAndGraphStats() =
         runBlocking {
-            val fixture = WS6TestFixtures.readFixture("ws6_cross_language_golden_fixture.json").jsonObject
-            val documents = fixture.getValue("documents").jsonArray.map { item -> item.jsonPrimitive.content }
-            val config = fixture.getValue("config").jsonObject
-            val pythonReference = fixture.getValue("python_reference").jsonObject
-            val graphReference = fixture.getValue("graph_reference").jsonObject
-
-            val controlsObject = config.getValue("synthesis_controls").jsonObject
-            val samplingMode =
-                when (controlsObject.getValue("sampling_mode").jsonPrimitive.content) {
-                    "top_k" -> SamplingMode.TOP_K
-                    "rank_biased" -> SamplingMode.RANK_BIASED
-                    "temperature" -> SamplingMode.TEMPERATURE
-                    else -> error("Unsupported sampling_mode in fixture.")
-                }
-
-            val generator = TestsetGenerator()
-            val testset =
-                generator.generateFromDocuments(
-                    documents = documents,
-                    testsetSize = config.getValue("testset_size").jsonPrimitive.int,
-                    transforms =
-                        SequenceTransforms(
-                            listOf(
-                                SingleTransform(LlmBasedSummaryExtractor()),
-                                SingleTransform(RegexEntityExtractor()),
-                                SingleTransform(EmbeddingsTopicExtractor()),
-                                SingleTransform(
-                                    SentenceChunkSplitter(
-                                        maxSentencesPerChunk = config.getValue("max_sentences_per_chunk").jsonPrimitive.int,
-                                    ),
-                                ),
-                                SingleTransform(AdjacentChunkRelationshipBuilder()),
-                                SingleTransform(
-                                    SharedKeywordRelationshipBuilder(
-                                        minSharedKeywords = config.getValue("min_shared_keywords").jsonPrimitive.int,
-                                    ),
-                                ),
-                            ),
-                        ),
-                    synthesisControls =
-                        SynthesisControls(
-                            seed = controlsObject.getValue("seed").jsonPrimitive.int,
-                            samplingMode = samplingMode,
-                            multiHopCount = controlsObject.getValue("multi_hop_count").jsonPrimitive.int,
-                        ),
-                )
+            val fixture = WS6TestFixtures.readFixture("ws6_cross_language_golden_fixture.json")
+            val root = fixture.jsonObject
+            val run = WS6TestFixtures.executeFixture(fixture)
+            val pythonReference = root.getValue("python_reference").jsonObject
+            val graphReference = root.getValue("graph_reference").jsonObject
 
             val requiredFields =
                 pythonReference
@@ -102,7 +49,7 @@ class WS6CrossLanguageGoldenTest {
                     .jsonArray
                     .map { item -> item.jsonPrimitive.content }
 
-            testset.samples.forEach { sample ->
+            run.testset.samples.forEach { sample ->
                 val row = sample.evalSample.toMap().keys
                 assertTrue(requiredFields.all { field -> field in row }, "Missing required shape fields in sample map.")
 
@@ -124,18 +71,18 @@ class WS6CrossLanguageGoldenTest {
                 }
             }
 
-            val graph = generator.knowledgeGraph
-            val chunkCount = graph.nodes.count { node -> node.type == NodeType.CHUNK }
-            val childEdges = graph.relationships.count { rel -> rel.type == "child" }
-            val nextEdges = graph.relationships.count { rel -> rel.type == "next" }
-            val overlapEdges = graph.relationships.count { rel -> rel.type == "semantic_overlap" }
-            val totalPairs = chunkCount * (chunkCount - 1) / 2
-            val overlapDensity = if (totalPairs == 0) 0.0 else overlapEdges.toDouble() / totalPairs.toDouble()
+            val totalPairs = run.chunkCount * (run.chunkCount - 1) / 2
+            val overlapDensity =
+                if (totalPairs == 0) {
+                    0.0
+                } else {
+                    run.overlapRelationshipCount.toDouble() / totalPairs.toDouble()
+                }
 
-            assertTrue(chunkCount >= graphReference.getValue("chunk_count_min").jsonPrimitive.int)
-            assertTrue(chunkCount <= graphReference.getValue("chunk_count_max").jsonPrimitive.int)
-            assertTrue(childEdges >= graphReference.getValue("child_edges_min").jsonPrimitive.int)
-            assertTrue(nextEdges >= graphReference.getValue("next_edges_min").jsonPrimitive.int)
+            assertTrue(run.chunkCount >= graphReference.getValue("chunk_count_min").jsonPrimitive.int)
+            assertTrue(run.chunkCount <= graphReference.getValue("chunk_count_max").jsonPrimitive.int)
+            assertTrue(run.childRelationshipCount >= graphReference.getValue("child_edges_min").jsonPrimitive.int)
+            assertTrue(run.nextRelationshipCount >= graphReference.getValue("next_edges_min").jsonPrimitive.int)
             assertTrue(overlapDensity >= graphReference.getValue("overlap_density_min").jsonPrimitive.double)
             assertTrue(overlapDensity <= graphReference.getValue("overlap_density_max").jsonPrimitive.double)
         }

@@ -1,6 +1,6 @@
 package ragas
 
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import ragas.evaluation.CostEstimate
 import ragas.evaluation.EvaluationCallback
@@ -21,6 +21,7 @@ import ragas.runtime.Executor
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class EvaluationParityHooksTest {
@@ -68,6 +69,30 @@ class EvaluationParityHooksTest {
             )
 
         assertEquals("", result.scores.single()["user_input_echo"])
+    }
+
+    @Test
+    fun evaluateRejectsUnknownColumnMapSourceForSingleTurn() {
+        val dataset =
+            EvaluationDataset(
+                listOf(
+                    SingleTurnSample(
+                        userInput = "",
+                        response = "answer",
+                    ),
+                ),
+            )
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                evaluate(
+                    dataset = dataset,
+                    metrics = listOf(UserInputEchoMetric()),
+                    columnMap = mapOf("user_input" to "custom_question"),
+                )
+            }
+
+        assertTrue(error.message.orEmpty().contains("Unsupported columnMap source 'custom_question'"))
     }
 
     @Test
@@ -140,7 +165,8 @@ class EvaluationParityHooksTest {
     fun executorObserverCanCancelEvaluation() =
         runBlocking {
             val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r1"), SingleTurnSample(response = "r2")))
-            val metric = SlowMetric()
+            val gate = CompletableDeferred<Unit>()
+            val metric = BlockingMetric(gate)
             lateinit var captured: Executor
 
             val result =
@@ -148,7 +174,7 @@ class EvaluationParityHooksTest {
                     dataset = dataset,
                     metrics = listOf(metric),
                     executorObserver = { executor ->
-                        // Assumes observer is called before metric jobs are submitted.
+                        // Cancellation is expected to null out in-flight and pending metric tasks.
                         captured = executor
                         executor.cancel()
                     },
@@ -202,7 +228,9 @@ private class EchoLlm(
     ): LlmResult = LlmResult(generations = listOf(LlmGeneration(output)))
 }
 
-private class SlowMetric :
+private class BlockingMetric(
+    private val gate: CompletableDeferred<Unit>,
+) :
     BaseMetric(
         name = "slow_metric",
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
@@ -210,7 +238,7 @@ private class SlowMetric :
     ),
     SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
-        delay(250)
+        gate.await()
         return 1.0
     }
 }
