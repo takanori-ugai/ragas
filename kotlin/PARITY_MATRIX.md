@@ -1,6 +1,6 @@
 # RAGAS Python -> Kotlin Parity Matrix
 
-Last updated: 2026-04-01
+Last updated: 2026-04-02
 
 ## Core Runtime
 
@@ -24,11 +24,11 @@ Last updated: 2026-04-01
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Backends | Partial | `inmemory/csv/jsonl` and registry exist; Python optional `GDriveBackend` and entry-point plugin discovery are not ported |
+| Backends | Done | `inmemory/csv/jsonl` built-ins plus lazy `ServiceLoader` backend discovery (`BackendDiscoveryProvider`), alias grouping, and backend inspection metadata; Google Drive is an explicit optional plugin strategy (not bundled in core) |
 | Prompt subsystem | Partial | `SimplePrompt` + typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry) + multimodal typed flow (`ImageTextTypedPrompt`, `PromptContentPart`, `MultiModalRagasLlm`) are implemented; multimodal URL/local-file ingestion hardening remains deferred |
 | Testset/graph/transforms | Partial | Scaffold + core models + basic engine |
 | Integrations | Partial | LangChain/LlamaIndex record adapters plus trace lifecycle observers (in-memory/Langfuse-style/MLflow-style); broader Python integrations are missing |
-| CLI | Partial | Status/backends commands |
+| CLI | Done | Scriptable parity workflow commands implemented: `eval` (run evaluation), `report` (metric aggregation), `compare` (baseline deltas + gate exit codes), plus `status/backends` |
 | Optimizers | Done | Genetic + DSPy-style optimizer flows, prompt-object contracts (`OptimizerPrompt`), primitive metric prompt integration (`OptimizableMetricPrompt`), cache-backed DSPy scoring |
 
 ## Testing Parity
@@ -36,7 +36,8 @@ Last updated: 2026-04-01
 | Area | Status | Notes |
 | --- | --- | --- |
 | Unit tests | Done | Core, metrics, cache, backends, prompt, testset, multi-turn |
-| Golden fixtures | Done | Default metrics + aggregation + WS3 tier fixture suites |
+| Golden fixtures | Done | Default metrics + aggregation + WS3 tier fixture suites + WS9 cross-language partial-metrics fixture (`ws9_cross_language_partial_metrics_fixture.json`) |
+| Parity test matrix | Done | Python->Kotlin module-to-test evidence map in `PARITY_TEST_MATRIX.md` |
 | E2E evaluation flow | Done | Mock LLM + embeddings injected via evaluate; `./gradlew test` passing |
 
 ## Intentional Deferrals
@@ -45,6 +46,6 @@ Last updated: 2026-04-01
 - Multimodal prompt ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
 - Additional WS6 hardening beyond the current shipped baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.
-- Backend entry-point plugin discovery and optional Google Drive backend parity.
+- Bundled core Google Drive backend implementation (strategy is optional plugin via backend discovery SPI).
 - Exact Python DSPy runtime parity; Kotlin currently uses adapter seam + heuristic fallback semantics.
-- Python CLI parity for experiment workflows, reporting, and comparison UX.
+- Full Python CLI UX parity breadth remains intentionally narrowed; Kotlin covers essential scriptable evaluation/report/compare workflows.

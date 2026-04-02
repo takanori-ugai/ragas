@@ -20,6 +20,12 @@
 - Kotlin provides LangChain/LlamaIndex record adapters and trace observers (`InMemoryTraceObserver`, Langfuse-style, MLflow-style), but broader Python integration ecosystem is still pending.
 - Kotlin optimizers expose usable `GeneticOptimizer` and DSPy-style `DspyOptimizer` with prompt-object (`OptimizerPrompt`) flows, including metric primitive integration via `OptimizableMetricPrompt`.
 - Python-style evaluator hooks for callbacks/column-remap/token-cost/executor exposure are available; broader framework-specific callback ecosystems may still differ.
+- Kotlin backend registry supports lazy plugin discovery through `ServiceLoader` (`BackendDiscoveryProvider`) with alias/info inspection APIs (`listBackendInfo`, `getBackendInfo`).
+- Google Drive backend is not bundled in Kotlin core; parity strategy is an optional plugin backend module discovered via `BackendDiscoveryProvider`.
+- Kotlin CLI includes scriptable workflow commands for evaluation/report/compare:
+  - `eval --input ... --output ...`
+  - `report --input ...`
+  - `compare --baseline ... --candidate ... --gate metric=delta`
 
 ## Minimal Kotlin Evaluate Example
 
