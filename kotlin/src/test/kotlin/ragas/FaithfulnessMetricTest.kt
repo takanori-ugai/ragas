@@ -69,9 +69,12 @@ class FaithfulnessMetricTest {
                     response = "Kotlin runs on JVM.",
                     retrievedContexts = listOf("Kotlin runs on JVM."),
                 )
-            assertFailsWith<IllegalStateException> {
-                metric.singleTurnAscore(sample)
-            }
+            val error = assertFailsWith<IllegalStateException> { metric.singleTurnAscore(sample) }
+            assertEquals(
+                "FaithfulnessMetric requires an LLM for parity semantics. " +
+                    "Set llm on the metric or use FaithfulnessMetric(allowHeuristicFallback = true).",
+                error.message,
+            )
         }
     }
 
@@ -186,7 +189,10 @@ private class ScriptedLlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull().orEmpty() }
+        check(cursor < outputs.size) {
+            "Unexpected generateText call #${cursor + 1}; scripted outputs exhausted."
+        }
+        val value = outputs[cursor]
         cursor += 1
         return LlmResult(generations = listOf(LlmGeneration(value)))
     }
@@ -206,7 +212,10 @@ private class CapturingScriptedLlm(
         stop: List<String>?,
     ): LlmResult {
         prompts += prompt
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull().orEmpty() }
+        check(cursor < outputs.size) {
+            "Unexpected generateText call #${cursor + 1}; scripted outputs exhausted."
+        }
+        val value = outputs[cursor]
         cursor += 1
         return LlmResult(generations = listOf(LlmGeneration(value)))
     }

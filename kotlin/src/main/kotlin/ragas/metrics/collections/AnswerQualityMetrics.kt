@@ -588,10 +588,10 @@ private fun cosineSimilarityDouble(
     if (left.isEmpty() || right.isEmpty()) {
         return 0.0
     }
-    val size = minOf(left.size, right.size)
-    if (size == 0) {
-        return 0.0
+    require(left.size == right.size) {
+        "Embedding dimension mismatch: left=${left.size}, right=${right.size}"
     }
+    val size = left.size
     var dot = 0.0
     var leftNorm = 0.0
     var rightNorm = 0.0

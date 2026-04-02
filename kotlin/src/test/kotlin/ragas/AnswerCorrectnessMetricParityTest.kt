@@ -127,6 +127,37 @@ class AnswerCorrectnessMetricParityTest {
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
             assertTrue(score.isNaN())
         }
+
+    @Test
+    fun llmPathFailsOnEmbeddingDimensionMismatch() =
+        runBlocking {
+            val llm =
+                ScriptedAnswerCorrectnessLlm(
+                    outputs =
+                        listOf(
+                            """{"statements":["A"]}""",
+                            """{"statements":["A"]}""",
+                            """{"TP":[{"statement":"A","reason":"same"}],"FP":[],"FN":[]}""",
+                        ),
+                )
+            val embeddings =
+                ScriptedAnswerCorrectnessEmbedding(
+                    vectors =
+                        mapOf(
+                            "R" to listOf(1f, 0f),
+                            "G" to listOf(1f, 0f, 0f),
+                        ),
+                )
+            val metric =
+                AnswerCorrectnessMetric(weights = listOf(0.75, 0.25)).also {
+                    it.llm = llm
+                    it.embeddings = embeddings
+                }
+            val sample = SingleTurnSample(userInput = "Q", response = "R", reference = "G")
+
+            val error = assertFailsWith<IllegalArgumentException> { metric.singleTurnAscore(sample) }
+            assertEquals("Embedding dimension mismatch: left=2, right=3", error.message)
+        }
 }
 
 private class ScriptedAnswerCorrectnessLlm(
