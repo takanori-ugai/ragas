@@ -230,8 +230,7 @@ private class EchoLlm(
 
 private class BlockingMetric(
     private val gate: CompletableDeferred<Unit>,
-) :
-    BaseMetric(
+) : BaseMetric(
         name = "slow_metric",
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
         outputType = MetricOutputType.CONTINUOUS,
