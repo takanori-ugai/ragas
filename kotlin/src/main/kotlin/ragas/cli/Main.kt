@@ -198,6 +198,21 @@ private fun runCompare(
         } else {
             selectedMetrics
         }
+    if (!selectedMetrics.isNullOrEmpty()) {
+        val missingInBaseline = selectedMetrics.filter { metric -> baselineMeans[metric] == null }
+        val missingInCandidate = selectedMetrics.filter { metric -> candidateMeans[metric] == null }
+        require(missingInBaseline.isEmpty() && missingInCandidate.isEmpty()) {
+            buildString {
+                append("Requested metrics are unavailable for comparison.")
+                if (missingInBaseline.isNotEmpty()) {
+                    append(" Missing in baseline: ${missingInBaseline.distinct().sorted().joinToString(", ")}.")
+                }
+                if (missingInCandidate.isNotEmpty()) {
+                    append(" Missing in candidate: ${missingInCandidate.distinct().sorted().joinToString(", ")}.")
+                }
+            }
+        }
+    }
 
     val deltas =
         metricsToCompare.associateWith { metric ->
@@ -218,6 +233,7 @@ private fun runCompare(
                     "metric" to metric,
                     "required_delta" to threshold,
                     "actual_delta" to delta,
+                    "reason" to if (delta == null) "metric_missing" else "below_threshold",
                 )
             } else {
                 null
@@ -275,13 +291,13 @@ private fun readRows(
         }
 
         "jsonl" -> {
-            file
-                .readLines()
-                .asSequence()
-                .map { line -> line.trim() }
-                .filter { line -> line.isNotEmpty() }
-                .map { line -> jsonElementToMap(Json.parseToJsonElement(line)) }
-                .toList()
+            file.useLines { lines ->
+                lines
+                    .map { line -> line.trim() }
+                    .filter { line -> line.isNotEmpty() }
+                    .map { line -> jsonElementToMap(Json.parseToJsonElement(line)) }
+                    .toList()
+            }
         }
 
         else -> {
@@ -408,6 +424,7 @@ private fun parseThresholdMap(raw: String?): Map<String, Double> {
             val split = token.split('=', limit = 2)
             require(split.size == 2) { "Gate token must be metric=threshold, got '$token'." }
             val metric = split[0].trim()
+            require(metric.isNotEmpty()) { "Gate metric name cannot be empty in token '$token'." }
             val threshold = split[1].trim().toDoubleOrNull() ?: error("Invalid threshold in gate token '$token'.")
             metric to threshold
         }

@@ -1,5 +1,6 @@
 package ragas.backends
 
+import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
 import kotlin.reflect.KClass
 
@@ -68,21 +69,40 @@ class BackendRegistry {
 
     @Synchronized
     fun discoverBackends(force: Boolean = false): Int {
-        if (discovered && !force) {
-            return 0
-        }
-        if (force) {
-            discovered = false
-        }
         if (discovered) {
-            return 0
+            if (!force) {
+                return 0
+            }
+            discovered = false
         }
         var loadedProviders = 0
         val loader = ServiceLoader.load(BackendDiscoveryProvider::class.java)
-        loader.forEach { provider ->
-            runCatching {
+        val iterator = loader.iterator()
+        while (true) {
+            val provider =
+                try {
+                    if (!iterator.hasNext()) {
+                        break
+                    }
+                    iterator.next()
+                } catch (e: ServiceConfigurationError) {
+                    System.err.println(
+                        "Backend discovery provider loading failed: ${e.message ?: e::class.simpleName}",
+                    )
+                    continue
+                }
+            val backendsSnapshot = backends.toMap()
+            val aliasesSnapshot = aliases.toMap()
+            try {
                 provider.registerBackends(this)
                 loadedProviders += 1
+            } catch (e: Exception) {
+                backends.clear()
+                backends.putAll(backendsSnapshot)
+                aliases.clear()
+                aliases.putAll(aliasesSnapshot)
+                val providerName = provider::class.qualifiedName ?: provider.javaClass.name
+                System.err.println("Backend discovery provider failed: $providerName: ${e.message ?: e::class.simpleName}")
             }
         }
         discovered = true
@@ -134,8 +154,7 @@ class BackendRegistry {
             backends[resolved]
                 ?: throw NoSuchElementException("Backend '$name' not found. Available backends: ${availableNames()}")
         val backendClass = registration.backendClass
-        val qualifiedName =
-            backendClass?.qualifiedName ?: runCatching { registration.factory().javaClass.name }.getOrNull() ?: "unknown"
+        val qualifiedName = backendClass?.qualifiedName ?: backendClass?.java?.name ?: "unknown"
         val module = qualifiedName.substringBeforeLast('.', "")
         return BackendInfo(
             name = resolved,

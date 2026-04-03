@@ -156,7 +156,8 @@ val dataset = EvaluationDataset(
         SingleTurnSample(
             userInput = "What is Kotlin?",
             response = "Kotlin is a JVM language.",
-            retrievedContexts = listOf("Kotlin is a statically typed language for JVM and Android.")
+            retrievedContexts = listOf("Kotlin is a statically typed language for JVM and Android."),
+            reference = "Kotlin is a statically typed language for JVM and Android."
         )
     )
 )

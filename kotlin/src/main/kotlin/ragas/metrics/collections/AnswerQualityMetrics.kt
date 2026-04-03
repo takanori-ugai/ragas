@@ -1,33 +1,118 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import ragas.embeddings.BaseRagasEmbedding
+import ragas.llms.BaseRagasLlm
 import ragas.metrics.BaseMetric
 import ragas.metrics.COMMON_STOP_WORDS
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
+import ragas.metrics.MetricWithEmbeddings
+import ragas.metrics.MetricWithLlm
 import ragas.metrics.SingleTurnMetric
 import ragas.metrics.clamp01
+import ragas.metrics.defaults.LlmJsonSupport
 import ragas.metrics.jaccardSimilarity
 import ragas.metrics.tokenSet
 import ragas.metrics.tokenize
 import ragas.model.SingleTurnSample
+import ragas.runtime.RunConfig
 import kotlin.math.pow
 
 class AnswerAccuracyMetric(
     name: String = "answer_accuracy",
+    private val maxRetries: Int = 5,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference")),
         outputType = MetricOutputType.CONTINUOUS,
     ),
-    SingleTurnMetric {
+    SingleTurnMetric,
+    MetricWithLlm {
+    override var llm: BaseRagasLlm? = null
+
+    override suspend fun init(runConfig: RunConfig) {
+        validateRequiredColumns()
+        llm?.runConfig = runConfig
+    }
+
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+        val llmInstance = llm
+        if (llmInstance != null) {
+            return llmAnswerAccuracyScore(sample, llmInstance)
+        }
+        return fallbackAnswerAccuracyScore(sample)
+    }
+
+    private suspend fun llmAnswerAccuracyScore(
+        sample: SingleTurnSample,
+        llmInstance: BaseRagasLlm,
+    ): Double {
+        val question = sample.userInput.orEmpty().trim()
+        val response = sample.response.orEmpty().trim()
+        val reference = sample.reference.orEmpty().trim()
+        require(question.isNotEmpty()) { "user_input is missing. Please add user_input to the test sample." }
+        require(response.isNotEmpty()) { "response is missing. Please add response to the test sample." }
+        require(reference.isNotEmpty()) { "reference is missing. Please add reference to the test sample." }
+
+        val judge1 = getJudgeRating(llmInstance, answerAccuracyJudge1Prompt(question, response, reference))
+        val judge2 = getJudgeRating(llmInstance, answerAccuracyJudge2Prompt(question, reference, response))
+        val score1 = judge1 / 4.0
+        val score2 = judge2 / 4.0
+        return averageScores(score1, score2)
+    }
+
+    private suspend fun getJudgeRating(
+        llmInstance: BaseRagasLlm,
+        prompt: String,
+    ): Double {
+        repeat(maxRetries.coerceAtLeast(1)) { index ->
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = prompt)
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw)
+                val rating = parsed?.let { root -> LlmJsonSupport.readIntLike(root, "rating") }
+                val parsedRating = rating ?: return@repeat
+                if (parsedRating in setOf(0, 2, 4)) {
+                    return parsedRating.toDouble()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Mirror Python retry behavior by trying again up to maxRetries.
+            }
+            if (index == maxRetries.coerceAtLeast(1) - 1) {
+                return Double.NaN
+            }
+        }
+        return Double.NaN
+    }
+
+    private fun averageScores(
+        score1: Double,
+        score2: Double,
+    ): Double =
+        if (!score1.isNaN() && !score2.isNaN()) {
+            (score1 + score2) / 2.0
+        } else {
+            Double.NaN
+        }
+
+    private fun fallbackAnswerAccuracyScore(sample: SingleTurnSample): Double {
         val question = sample.userInput.orEmpty().trim()
         val response = sample.response.orEmpty().trim()
         val reference = sample.reference.orEmpty().trim()
         if (question.isBlank() || response.isBlank() || reference.isBlank()) {
             return 0.0
         }
-
         val normalizedResponse = normalizeText(response)
         val normalizedReference = normalizeText(reference)
         if (normalizedResponse == normalizedReference) {
@@ -76,6 +161,64 @@ class AnswerAccuracyMetric(
     }
 }
 
+private fun answerAccuracyJudge1Prompt(
+    query: String,
+    userAnswer: String,
+    referenceAnswer: String,
+): String =
+    buildString {
+        appendLine(
+            "Instruction: You are a world class state of the art assistant for rating a User Answer given a Question. The Question is completely answered by the Reference Answer.",
+        )
+        appendLine(
+            "Say 4, if User Answer is full contained and equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+        )
+        appendLine(
+            "Say 2, if User Answer is partially contained and almost equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+        )
+        appendLine(
+            "Say 0, if User Answer is not contained in Reference Answer or not accurate in all terms, topics, numbers, metrics, dates and units or the User Answer do not answer the question.",
+        )
+        appendLine("Do not explain or justify your rating. Your rating must be only 4, 2 or 0 according to the instructions above.")
+        appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
+        appendLine()
+        appendLine("### Question: ${kotlinx.serialization.json.JsonPrimitive(query)}")
+        appendLine("### User Answer: ${kotlinx.serialization.json.JsonPrimitive(userAnswer)}")
+        appendLine("### Reference Answer: ${kotlinx.serialization.json.JsonPrimitive(referenceAnswer)}")
+        append("The rating is:")
+    }
+
+private fun answerAccuracyJudge2Prompt(
+    query: String,
+    userAnswer: String,
+    referenceAnswer: String,
+): String =
+    buildString {
+        appendLine("I will rate the User Answer in comparison to the Reference Answer for a given Question.")
+        appendLine(
+            "A rating of 4 indicates that the User Answer is entirely consistent with the Reference Answer, covering all aspects, topics, numbers, metrics, dates, and units.",
+        )
+        appendLine(
+            "A rating of 2 signifies that the User Answer is mostly aligned with the Reference Answer, with minor discrepancies in some areas.",
+        )
+        appendLine(
+            "A rating of 0 means that the User Answer is either inaccurate, incomplete, or unrelated to the Reference Answer, or it fails to address the Question.",
+        )
+        appendLine(
+            "I will provide the rating without any explanation or justification, adhering to the following scale: 0 (no match), 2 (partial match), 4 (exact match).",
+        )
+        appendLine("Do not explain or justify my rating. My rating must be only 4, 2 or 0 only.")
+        appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
+        appendLine()
+        appendLine("Question: ${kotlinx.serialization.json.JsonPrimitive(query)}")
+        appendLine()
+        appendLine("Reference Answer: ${kotlinx.serialization.json.JsonPrimitive(referenceAnswer)}")
+        appendLine()
+        appendLine("User Answer: ${kotlinx.serialization.json.JsonPrimitive(userAnswer)}")
+        appendLine()
+        append("Rating: ")
+    }
+
 class AnswerCorrectnessMetric(
     name: String = "answer_correctness",
     private val weights: List<Double> = listOf(0.75, 0.25),
@@ -85,7 +228,12 @@ class AnswerCorrectnessMetric(
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference")),
         outputType = MetricOutputType.CONTINUOUS,
     ),
-    SingleTurnMetric {
+    SingleTurnMetric,
+    MetricWithLlm,
+    MetricWithEmbeddings {
+    override var llm: BaseRagasLlm? = null
+    override var embeddings: BaseRagasEmbedding? = null
+
     init {
         require(weights.size == 2) {
             "Expects a list of two weights. First for factuality, second for semantic similarity"
@@ -95,7 +243,142 @@ class AnswerCorrectnessMetric(
         require(beta.isFinite() && beta > 0.0) { "Beta must be a positive finite value." }
     }
 
+    override suspend fun init(runConfig: RunConfig) {
+        validateRequiredColumns()
+        llm?.runConfig = runConfig
+    }
+
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
+        val llmInstance = llm
+        if (llmInstance != null) {
+            return llmAnswerCorrectnessScore(sample, llmInstance)
+        }
+        return fallbackAnswerCorrectnessScore(sample)
+    }
+
+    private suspend fun llmAnswerCorrectnessScore(
+        sample: SingleTurnSample,
+        llmInstance: BaseRagasLlm,
+    ): Double {
+        val question = sample.userInput.orEmpty().trim()
+        val response = sample.response.orEmpty().trim()
+        val reference = sample.reference.orEmpty().trim()
+        if (question.isEmpty() || response.isEmpty() || reference.isEmpty()) {
+            return 0.0
+        }
+
+        val responseStatements = generateStatements(llmInstance, question, response)
+        val referenceStatements = generateStatements(llmInstance, question, reference)
+        if (responseStatements.isEmpty() || referenceStatements.isEmpty()) {
+            return Double.NaN
+        }
+        val classification =
+            classifyStatements(llmInstance, question, responseStatements, referenceStatements)
+                ?: return Double.NaN
+        val factuality = fBetaFromClassification(classification)
+
+        val similarity =
+            if (weights[1] == 0.0) {
+                0.0
+            } else {
+                val embeddingInstance =
+                    requireNotNull(embeddings) {
+                        "Embeddings are required for semantic similarity scoring. Either provide embeddings or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation."
+                    }
+                semanticSimilarityScore(embeddingInstance, response, reference)
+            }
+
+        return weightedAverage(listOf(factuality, similarity), weights)
+    }
+
+    private suspend fun generateStatements(
+        llmInstance: BaseRagasLlm,
+        question: String,
+        answer: String,
+    ): List<String> {
+        val raw =
+            llmInstance
+                .generateText(prompt = answerCorrectnessStatementGeneratorPrompt(question, answer))
+                .generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
+        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
+        return LlmJsonSupport.readStringArray(parsed, "statements")
+    }
+
+    private suspend fun classifyStatements(
+        llmInstance: BaseRagasLlm,
+        question: String,
+        answerStatements: List<String>,
+        groundTruthStatements: List<String>,
+    ): ClassificationCounts? {
+        val raw =
+            llmInstance
+                .generateText(
+                    prompt =
+                        answerCorrectnessClassifierPrompt(
+                            question = question,
+                            answerStatements = answerStatements,
+                            groundTruthStatements = groundTruthStatements,
+                        ),
+                ).generations
+                .firstOrNull()
+                ?.text
+                .orEmpty()
+        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return null
+        val tp = parsed.countArrayEntries("TP")
+        val fp = parsed.countArrayEntries("FP")
+        val fn = parsed.countArrayEntries("FN")
+        if (tp == 0 && fp == 0 && fn == 0) {
+            return null
+        }
+        return ClassificationCounts(tp = tp, fp = fp, fn = fn)
+    }
+
+    private fun fBetaFromClassification(classification: ClassificationCounts): Double {
+        val tp = classification.tp
+        val fp = classification.fp
+        val fn = classification.fn
+        val precision =
+            if (tp + fp == 0) {
+                if (fn == 0) 1.0 else 0.0
+            } else {
+                tp.toDouble() / (tp + fp).toDouble()
+            }
+        val recall =
+            if (tp + fn == 0) {
+                if (fp == 0) 1.0 else 0.0
+            } else {
+                tp.toDouble() / (tp + fn).toDouble()
+            }
+        return fBetaScore(precision, recall)
+    }
+
+    private suspend fun semanticSimilarityScore(
+        embeddingInstance: BaseRagasEmbedding,
+        response: String,
+        reference: String,
+    ): Double {
+        val responseEmbedding = embeddingInstance.embedText(response)
+        val referenceEmbedding = embeddingInstance.embedText(reference)
+        val cosine = cosineSimilarityDouble(responseEmbedding, referenceEmbedding)
+        return clamp01((cosine + 1.0) / 2.0)
+    }
+
+    private fun weightedAverage(
+        values: List<Double>,
+        weights: List<Double>,
+    ): Double {
+        val weightSum = weights.sum()
+        if (weightSum <= 0.0) {
+            return 0.0
+        }
+        val weightedSum = values.zip(weights).sumOf { (value, weight) -> value * weight }
+        return weightedSum / weightSum
+    }
+
+    private fun fallbackAnswerCorrectnessScore(sample: SingleTurnSample): Double {
         val question = sample.userInput.orEmpty().trim()
         val response = sample.response.orEmpty().trim()
         val reference = sample.reference.orEmpty().trim()
@@ -241,6 +524,88 @@ class AnswerCorrectnessMetric(
         val STATEMENT_SPLIT_REGEX = Regex("[.!?;]+")
         val NEGATION_REGEX = Regex("\\b(no|not|never|none|without|cannot|can't|won't|isn't|aren't|didn't|doesn't|don't)\\b")
     }
+}
+
+private data class ClassificationCounts(
+    val tp: Int,
+    val fp: Int,
+    val fn: Int,
+)
+
+private fun answerCorrectnessStatementGeneratorPrompt(
+    question: String,
+    answer: String,
+): String =
+    buildString {
+        appendLine("Given a question and an answer, analyze the complexity of each sentence in the answer.")
+        appendLine("Break down each sentence into one or more fully understandable statements.")
+        appendLine("Ensure that no pronouns are used in any statement.")
+        appendLine("Return JSON only with this shape: {\"statements\": [\"...\"]}")
+        appendLine()
+        appendLine("Input:")
+        appendLine("{\"question\":${JsonPrimitive(question)},\"answer\":${JsonPrimitive(answer)}}")
+        append("Output:")
+    }
+
+private fun answerCorrectnessClassifierPrompt(
+    question: String,
+    answerStatements: List<String>,
+    groundTruthStatements: List<String>,
+): String {
+    val answerJson =
+        answerStatements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
+    val groundTruthJson =
+        groundTruthStatements.joinToString(
+            separator = ",",
+            prefix = "[",
+            postfix = "]",
+        ) { statement -> JsonPrimitive(statement).toString() }
+    return buildString {
+        appendLine("Given a ground truth and answer statements, classify into TP, FP, and FN.")
+        appendLine("TP: answer statements directly supported by one or more ground truth statements.")
+        appendLine("FP: answer statements not directly supported by any ground truth statement.")
+        appendLine("FN: ground truth statements not present in answer.")
+        appendLine("Each statement can only belong to one category.")
+        appendLine("Return JSON only with this shape:")
+        appendLine("{\"TP\":[{\"statement\":\"...\",\"reason\":\"...\"}],\"FP\":[...],\"FN\":[...]}")
+        appendLine()
+        appendLine("Input:")
+        appendLine("{\"question\":${JsonPrimitive(question)},\"answer\":$answerJson,\"ground_truth\":$groundTruthJson}")
+        append("Output:")
+    }
+}
+
+private fun JsonObject.countArrayEntries(key: String): Int = (this[key] as? JsonArray)?.size ?: 0
+
+private fun cosineSimilarityDouble(
+    left: List<Float>,
+    right: List<Float>,
+): Double {
+    if (left.isEmpty() || right.isEmpty()) {
+        return 0.0
+    }
+    require(left.size == right.size) {
+        "Embedding dimension mismatch: left=${left.size}, right=${right.size}"
+    }
+    val size = left.size
+    var dot = 0.0
+    var leftNorm = 0.0
+    var rightNorm = 0.0
+    repeat(size) { index ->
+        val l = left[index].toDouble()
+        val r = right[index].toDouble()
+        dot += l * r
+        leftNorm += l * l
+        rightNorm += r * r
+    }
+    if (leftNorm == 0.0 || rightNorm == 0.0) {
+        return 0.0
+    }
+    return dot / (kotlin.math.sqrt(leftNorm) * kotlin.math.sqrt(rightNorm))
 }
 
 private fun normalizeText(text: String): String =

@@ -9,6 +9,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BackendsTest {
@@ -155,13 +156,28 @@ class BackendsTest {
     @Test
     fun backendRegistryDiscoversServiceLoaderProviders() {
         val registry = BackendRegistry()
+        val loadedProviders = registry.discoverBackends()
 
-        registry.discoverBackends()
-
+        assertEquals(1, loadedProviders)
         assertTrue(registry.contains("test/discovered"))
         assertTrue(registry.contains("td"))
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
         val backend = registry.create("td")
         assertTrue(backend is InMemoryBackend)
+    }
+
+    @Test
+    fun backendRegistryRollsBackFailedProviderRegistrationAtomically() {
+        val registry = BackendRegistry()
+
+        assertEquals(1, registry.discoverBackends())
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
+
+        assertEquals(1, registry.discoverBackends(force = true))
+        assertFalse(registry.contains("test/partial"))
+        assertFalse(registry.contains("tp"))
     }
 
     @Test
@@ -171,6 +187,7 @@ class BackendsTest {
             name = "custom/info",
             factory = ::InMemoryBackend,
             aliasList = listOf("ci"),
+            backendClass = InMemoryBackend::class,
             description = "custom backend for info test",
             source = "test",
         )
@@ -182,6 +199,27 @@ class BackendsTest {
         assertTrue(info.implementationClass.contains("InMemoryBackend"))
         assertEquals("test", info.source)
         assertEquals("custom backend for info test", info.description)
+    }
+
+    @Test
+    fun backendRegistryInspectionDoesNotInstantiateFactoryWithoutBackendClass() {
+        val registry = BackendRegistry()
+        var createCalls = 0
+        registry.register(
+            name = "custom/lazy-info",
+            factory = {
+                createCalls += 1
+                InMemoryBackend()
+            },
+            aliasList = listOf("cli"),
+            description = "custom backend for lazy info test",
+            source = "test",
+        )
+
+        val info: BackendInfo = registry.getBackendInfo("cli")
+
+        assertEquals("unknown", info.implementationClass)
+        assertEquals(0, createCalls)
     }
 
     @Test

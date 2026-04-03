@@ -7,7 +7,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.metrics.MultiTurnMetric
 import ragas.metrics.SingleTurnMetric
-import ragas.metrics.defaults.AnswerRelevancyMetric
 import ragas.metrics.defaults.ContextRecallMetric
 import ragas.metrics.defaults.FaithfulnessMetric
 import ragas.model.MultiTurnSample
@@ -47,7 +46,6 @@ class WS9CrossLanguagePartialGoldenTest {
 
     private fun singleTurnMetricByName(name: String): SingleTurnMetric =
         when (name) {
-            "answer_relevancy" -> AnswerRelevancyMetric()
             "faithfulness" -> FaithfulnessMetric()
             "context_recall" -> ContextRecallMetric()
             "answer_accuracy" -> AnswerAccuracyMetric()

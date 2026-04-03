@@ -83,7 +83,7 @@ class QuotedAndChrfFixtureTest {
         }
 
     @Test
-    fun apostrophesInsideWordsAreNotTreatedAsQuoteDelimiters() =
+    fun apostrophesInsideWordsFollowPythonQuotedSpanBehavior() =
         runBlocking {
             val sample =
                 SingleTurnSample(

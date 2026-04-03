@@ -27,6 +27,7 @@ class MetricsMvpTest {
                         userInput = "What is Kotlin?",
                         response = "Kotlin is a JVM language.",
                         retrievedContexts = listOf("Kotlin is a statically typed language for the JVM."),
+                        reference = "Kotlin is a statically typed language for the JVM.",
                         referenceContexts = listOf("Kotlin targets the JVM and is statically typed."),
                     ),
                 ),

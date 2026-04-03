@@ -21,12 +21,6 @@ class QuotedSpansAlignmentMetric(
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty()
         val contexts = sample.retrievedContexts.orEmpty()
-        if (response.isBlank()) {
-            return 0.0
-        }
-        if (contexts.isEmpty()) {
-            return 0.0
-        }
 
         val spans = extractQuotedSpans(response, minSpanWords)
         if (spans.isEmpty()) {

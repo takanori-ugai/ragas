@@ -1,6 +1,6 @@
 # RAGAS Kotlin Full-Parity Completion Plan
 
-Last updated: 2026-04-01
+Last updated: 2026-04-02
 
 ## Goal
 
@@ -422,7 +422,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Tier-2 workflow: `agent_goal_accuracy_with_reference`, `agent_goal_accuracy_without_reference`,
       `agent_workflow_completion`
     - Tier-3 defaults/collections:
-      `answer_relevancy`, `faithfulness`, `context_recall`,
+      `context_recall`,
       `answer_accuracy`, `answer_correctness`, `factual_correctness`, `topic_adherence`,
       `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
       `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
@@ -451,8 +451,8 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Partial |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Partial |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerCorrectnessMetric`) | Partial |
