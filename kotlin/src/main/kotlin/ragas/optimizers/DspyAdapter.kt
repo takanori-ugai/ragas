@@ -1,5 +1,6 @@
 package ragas.optimizers
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ragas.prompt.PromptContentPart
 import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
@@ -35,6 +36,8 @@ fun interface DspyAdapter {
  * Service-loader utility that discovers and returns DSPy adapter implementations.
  */
 object DspyAdapterLoader {
+    private val logger = KotlinLogging.logger {}
+
     /**
      * Loads the first available DSPy adapter via service discovery, or null.
      */
@@ -42,10 +45,9 @@ object DspyAdapterLoader {
         try {
             ServiceLoader.load(DspyAdapter::class.java).firstOrNull()
         } catch (error: ServiceConfigurationError) {
-            System.err.println(
-                "DSPy adapter discovery failed: ${error.message ?: error::class.simpleName}. " +
-                    "Proceeding without external DSPy adapter.",
-            )
+            logger.warn(error) {
+                "DSPy adapter discovery failed. Proceeding without external DSPy adapter."
+            }
             null
         }
 }

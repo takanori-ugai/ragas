@@ -8,6 +8,7 @@ interface BaseBackend {
      * Loads a dataset by name from the backend.
      *
      * @param name Name or identifier.
+     * @return List of rows for the dataset, where each map is one row of column values.
      */
     fun loadDataset(name: String): List<Map<String, Any?>>
 
@@ -15,6 +16,7 @@ interface BaseBackend {
      * Loads an experiment by name from the backend.
      *
      * @param name Name or identifier.
+     * @return List of rows for the experiment, where each map is one row of column values.
      */
     fun loadExperiment(name: String): List<Map<String, Any?>>
 

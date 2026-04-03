@@ -45,7 +45,7 @@ fun interface EvaluationCallback {
 }
 
 /**
- * Serializable failure payload emitted by evaluation lifecycle events.
+ * Structured failure payload emitted by evaluation lifecycle events.
  *
  * @property type Short error category or exception type.
  * @property message Human-readable error message.

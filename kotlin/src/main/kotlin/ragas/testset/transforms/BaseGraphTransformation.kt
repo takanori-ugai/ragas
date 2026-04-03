@@ -30,10 +30,14 @@ interface BaseGraphTransformation {
     suspend fun transform(kg: KnowledgeGraph): Any?
 
     /**
-     * Returns a subgraph containing only nodes and relationships accepted by the node filter.
+     * Returns a shallow graph view containing only nodes accepted by the node filter and
+     * relationships whose source and target are both in that node set.
+     *
+     * The returned graph copies node/relationship lists, but reuses original node and
+     * relationship instances.
      *
      * @param kg Input graph.
-     * @return Filtered graph containing selected nodes and their connecting relationships.
+     * @return Filtered shallow graph view.
      */
     fun filter(kg: KnowledgeGraph): KnowledgeGraph {
         val filteredNodes = kg.nodes.filter(filterNodes)
@@ -190,11 +194,26 @@ abstract class RelationshipBuilder(
      * Produces deferred operations that execute this transformation against a graph.
      * @param kg Knowledge graph to transform or inspect.
      */
-    override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> =
-        listOf(
+    override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> {
+        val snapshot =
+            synchronized(kg) {
+                KnowledgeGraph(
+                    nodes =
+                        kg.nodes
+                            .map { node ->
+                                Node(
+                                    id = node.id,
+                                    properties = node.properties.toMutableMap(),
+                                    type = node.type,
+                                )
+                            }.toMutableList(),
+                    relationships = kg.relationships.toMutableList(),
+                )
+            }
+        val filtered = filter(snapshot)
+        return listOf(
             suspend {
-                val filtered = filter(kg)
-                val built = build(kg, filtered)
+                val built = build(snapshot, filtered)
                 synchronized(kg) {
                     built.forEach { relationship ->
                         if (!kg.hasRelationship(relationship)) {
@@ -204,6 +223,7 @@ abstract class RelationshipBuilder(
                 }
             },
         )
+    }
 }
 
 private fun KnowledgeGraph.hasRelationship(candidate: Relationship): Boolean =
