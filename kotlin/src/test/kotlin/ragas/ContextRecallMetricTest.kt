@@ -20,7 +20,9 @@ class ContextRecallMetricTest {
                     recall.llm =
                         ScriptedRecallLlm(
                             output =
-                                """{"classifications":[{"statement":"Kotlin runs on JVM.","reason":"Supported","attributed":1},{"statement":"Kotlin was released in 2010.","reason":"Unsupported","attributed":0}]}""",
+                                """{"classifications":[""" +
+                                    """{"statement":"Kotlin runs on JVM.","reason":"Supported","attributed":1},""" +
+                                    """{"statement":"Kotlin was released in 2010.","reason":"Unsupported","attributed":0}]}""",
                         )
                 }
             val sample =
@@ -54,7 +56,9 @@ class ContextRecallMetricTest {
                     recall.llm =
                         ScriptedRecallLlm(
                             output =
-                                """{"classifications":[{"statement":"S1","reason":"ok","attributed":1},{"statement":"S2","reason":"missing"}]}""",
+                                """{"classifications":[""" +
+                                    """{"statement":"S1","reason":"ok","attributed":1},""" +
+                                    """{"statement":"S2","reason":"missing"}]}""",
                         )
                 }
             val sample =
@@ -76,7 +80,9 @@ class ContextRecallMetricTest {
                     recall.llm =
                         ScriptedRecallLlm(
                             output =
-                                """{"classifications":[{"statement":"S1","reason":"ok","attributed":1},{"statement":"S2","reason":"bad","attributed":2}]}""",
+                                """{"classifications":[""" +
+                                    """{"statement":"S1","reason":"ok","attributed":1},""" +
+                                    """{"statement":"S2","reason":"bad","attributed":2}]}""",
                         )
                 }
             val sample =

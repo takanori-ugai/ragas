@@ -10,10 +10,13 @@ import ragas.prompt.PromptContentPart
 import ragas.runtime.Executor
 
 /**
- * Prompt/completion token accounting for one or more LLM calls.
+ * Best-effort prompt/completion token accounting for one or more LLM calls.
  *
- * @property promptTokens Count of tokens attributed to prompts.
- * @property completionTokens Count of tokens attributed to completions.
+ * Values are exact only when [TokenUsageParser] extracts provider-reported usage.
+ * If parsing fails, tracking falls back to a whitespace-based heuristic.
+ *
+ * @property promptTokens Best-effort count of tokens attributed to prompts.
+ * @property completionTokens Best-effort count of tokens attributed to completions.
  */
 data class TokenUsage(
     val promptTokens: Int,
@@ -24,9 +27,9 @@ data class TokenUsage(
 }
 
 /**
- * Parsed cost estimate derived from [TokenUsage].
+ * Best-effort cost estimate derived from [TokenUsage].
  *
- * @property amount Estimated monetary amount.
+ * @property amount Estimated monetary amount, not an exact billing value.
  * @property currency Currency code for [amount].
  */
 data class CostEstimate(
@@ -48,7 +51,7 @@ fun interface EvaluationCallback {
  * Structured failure payload emitted by evaluation lifecycle events.
  *
  * @property type Short error category or exception type.
- * @property message Human-readable error message.
+ * @property message Telemetry-safe error message with sensitive details removed.
  */
 data class EvaluationError(
     val type: String,
@@ -162,17 +165,25 @@ sealed interface EvaluationEvent {
                     error =
                         EvaluationError(
                             type = error::class.simpleName ?: error::class.qualifiedName ?: "UnknownError",
-                            message = error.message.orEmpty(),
+                            message = "Error details omitted for safety.",
                         ),
                 )
         }
     }
 }
 
-/** User-supplied parser that extracts token usage from an LLM call. */
+/**
+ * User-supplied parser that extracts token usage from an LLM call.
+ *
+ * Returning `null` triggers heuristic token estimation.
+ */
 typealias TokenUsageParser = (prompt: String, result: LlmResult) -> TokenUsage?
 
-/** User-supplied parser that turns token usage into a cost estimate. */
+/**
+ * User-supplied parser that turns token usage into a cost estimate.
+ *
+ * The resulting value should be treated as best-effort unless it uses exact provider billing rules.
+ */
 typealias CostParser = (usage: TokenUsage) -> CostEstimate?
 
 internal open class TrackingRagasLlm private constructor(

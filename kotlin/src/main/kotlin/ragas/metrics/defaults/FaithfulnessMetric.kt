@@ -171,7 +171,10 @@ class FaithfulnessMetric(
                         "time studying and completing assignments. He often stays late in the library to work on his projects.",
                 )
                 appendLine(
-                    "Statements: [\"John is majoring in Biology.\",\"John is taking a course on Artificial Intelligence.\",\"John is a dedicated student.\",\"John has a part-time job.\"]",
+                    "Statements: [\"John is majoring in Biology.\"," +
+                        "\"John is taking a course on Artificial Intelligence.\"," +
+                        "\"John is a dedicated student.\"," +
+                        "\"John has a part-time job.\"]",
                 )
                 appendLine(
                     "Output: {\"statements\":[" +

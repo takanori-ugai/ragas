@@ -53,6 +53,9 @@ interface BaseGraphTransformation {
     /**
      * Produces deferred operations that execute this transformation against a graph.
      *
+     * Returned tasks may be executed concurrently by the engine. Implementations should
+     * snapshot or synchronize any shared mutable state they touch.
+     *
      * @param kg Graph used to prepare execution tasks.
      * @return Deferred tasks that perform the transformation.
      */
@@ -70,12 +73,20 @@ abstract class Extractor(
     override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
     /**
-     * Extracts one `(propertyName, propertyValue)` pair from a node.
+     * Returns the property key written by this extractor for a node.
      *
      * @param node Node to extract from.
-     * @return Property key/value pair to write.
+     * @return Property key to write.
      */
-    abstract suspend fun extract(node: Node): Pair<String, String>
+    abstract fun propertyName(node: Node): String
+
+    /**
+     * Extracts the property value for [propertyName].
+     *
+     * @param node Node to extract from.
+     * @return Property value to write.
+     */
+    abstract suspend fun extract(node: Node): String
 
     /**
      * Computes extraction results for filtered nodes.
@@ -84,7 +95,8 @@ abstract class Extractor(
     override suspend fun transform(kg: KnowledgeGraph): List<Pair<Node, Pair<String, String>>> {
         val filtered = filter(kg)
         return filtered.nodes.map { node ->
-            node to extract(node)
+            val key = propertyName(node)
+            node to (key to extract(node))
         }
     }
 
@@ -96,10 +108,17 @@ abstract class Extractor(
         val filtered = filter(kg)
         return filtered.nodes.map { node ->
             suspend {
-                val (key, value) = extract(node)
-                synchronized(node) {
-                    if (node.getProperty(key) == null) {
-                        node.addProperty(key, value)
+                val key = propertyName(node)
+                val shouldExtract =
+                    synchronized(node) {
+                        node.getProperty(key) == null
+                    }
+                if (shouldExtract) {
+                    val value = extract(node)
+                    synchronized(node) {
+                        if (node.getProperty(key) == null) {
+                            node.addProperty(key, value)
+                        }
                     }
                 }
             }
@@ -172,8 +191,12 @@ abstract class RelationshipBuilder(
     /**
      * Builds relationships to be added to the graph.
      *
-     * @param kg Full graph to inspect for context.
-     * @param filtered Graph view filtered by [filterNodes] for candidate selection.
+     * Implementations must treat both graphs as read-only. When called from
+     * [generateExecutionPlan], [kg] and [filtered] may be detached snapshot copies rather
+     * than the live graph, so builders must not rely on object identity or mutate them.
+     *
+     * @param kg Full graph snapshot to inspect for context.
+     * @param filtered Filtered snapshot used for candidate selection.
      * @return Relationships produced by this builder.
      */
     abstract suspend fun build(
@@ -192,6 +215,10 @@ abstract class RelationshipBuilder(
 
     /**
      * Produces deferred operations that execute this transformation against a graph.
+     *
+     * The task calls [build] with snapshot copies to avoid observing concurrent graph
+     * mutations while planning new relationships.
+     *
      * @param kg Knowledge graph to transform or inspect.
      */
     override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> {

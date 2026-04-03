@@ -24,7 +24,9 @@ class FactualCorrectnessMetricParityTest {
                             outputs =
                                 listOf(
                                     """{"claims":["c1","c2"]}""",
-                                    """{"statements":[{"statement":"c1","reason":"ok","verdict":1},{"statement":"c2","reason":"bad","verdict":0}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"c1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"c2","reason":"bad","verdict":0}]}""",
                                 ),
                         )
                 }
@@ -37,9 +39,13 @@ class FactualCorrectnessMetricParityTest {
                             outputs =
                                 listOf(
                                     """{"claims":["c1","c2"]}""",
-                                    """{"statements":[{"statement":"c1","reason":"ok","verdict":1},{"statement":"c2","reason":"bad","verdict":0}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"c1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"c2","reason":"bad","verdict":0}]}""",
                                     """{"claims":["g1","g2"]}""",
-                                    """{"statements":[{"statement":"g1","reason":"bad","verdict":0},{"statement":"g2","reason":"ok","verdict":1}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"g1","reason":"bad","verdict":0},""" +
+                                        """{"statement":"g2","reason":"ok","verdict":1}]}""",
                                 ),
                         )
                 }
@@ -52,9 +58,13 @@ class FactualCorrectnessMetricParityTest {
                             outputs =
                                 listOf(
                                     """{"claims":["c1","c2"]}""",
-                                    """{"statements":[{"statement":"c1","reason":"ok","verdict":1},{"statement":"c2","reason":"bad","verdict":0}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"c1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"c2","reason":"bad","verdict":0}]}""",
                                     """{"claims":["g1","g2"]}""",
-                                    """{"statements":[{"statement":"g1","reason":"bad","verdict":0},{"statement":"g2","reason":"ok","verdict":1}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"g1","reason":"bad","verdict":0},""" +
+                                        """{"statement":"g2","reason":"ok","verdict":1}]}""",
                                 ),
                         )
                 }
@@ -71,7 +81,10 @@ class FactualCorrectnessMetricParityTest {
                             outputs =
                                 listOf(
                                     """{"claims":["c1","c2","c3"]}""",
-                                    """{"statements":[{"statement":"c1","reason":"ok","verdict":1},{"statement":"c2","reason":"ok","verdict":1},{"statement":"c3","reason":"bad","verdict":0}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"c1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"c2","reason":"ok","verdict":1},""" +
+                                        """{"statement":"c3","reason":"bad","verdict":0}]}""",
                                 ),
                         )
                 }

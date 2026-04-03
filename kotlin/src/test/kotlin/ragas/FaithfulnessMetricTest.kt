@@ -88,7 +88,9 @@ class FaithfulnessMetricTest {
                             outputs =
                                 listOf(
                                     """{"statements":["Kotlin runs on JVM.","Kotlin was created in 2010."]}""",
-                                    """{"statements":[{"statement":"Kotlin runs on JVM.","reason":"In context","verdict":1},{"statement":"Kotlin was created in 2010.","reason":"Not in context","verdict":0}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"Kotlin runs on JVM.","reason":"In context","verdict":1},""" +
+                                        """{"statement":"Kotlin was created in 2010.","reason":"Not in context","verdict":0}]}""",
                                 ),
                         )
                 }
@@ -110,7 +112,8 @@ class FaithfulnessMetricTest {
                     outputs =
                         listOf(
                             """{"statements":["Kotlin is called \"JetBrains language\"."]}""",
-                            """{"statements":[{"statement":"Kotlin is called \"JetBrains language\".","reason":"In context","verdict":1}]}""",
+                            """{"statements":[""" +
+                                """{"statement":"Kotlin is called \"JetBrains language\".","reason":"In context","verdict":1}]}""",
                         ),
                 )
             val metric = FaithfulnessMetric().also { it.llm = llm }
@@ -137,7 +140,9 @@ class FaithfulnessMetricTest {
                             outputs =
                                 listOf(
                                     """{"statements":["S1","S2"]}""",
-                                    """{"statements":[{"statement":"S1","reason":"ok","verdict":1},{"statement":"S2","reason":"missing"}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"S1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"S2","reason":"missing"}]}""",
                                 ),
                         )
                 }
@@ -162,7 +167,9 @@ class FaithfulnessMetricTest {
                             outputs =
                                 listOf(
                                     """{"statements":["S1","S2"]}""",
-                                    """{"statements":[{"statement":"S1","reason":"ok","verdict":1},{"statement":"S2","reason":"bad","verdict":2}]}""",
+                                    """{"statements":[""" +
+                                        """{"statement":"S1","reason":"ok","verdict":1},""" +
+                                        """{"statement":"S2","reason":"bad","verdict":2}]}""",
                                 ),
                         )
                 }

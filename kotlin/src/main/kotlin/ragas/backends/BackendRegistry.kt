@@ -150,16 +150,25 @@ class BackendRegistry(
                 }
             val backendsSnapshot = backends.toMap()
             val aliasesSnapshot = aliases.toMap()
-            try {
-                provider.registerBackends(this)
+            val registrationFailure =
+                runCatching {
+                    provider.registerBackends(this)
+                }.exceptionOrNull()
+            if (registrationFailure == null) {
                 loadedProviders += 1
-            } catch (e: Exception) {
+            } else {
+                if (registrationFailure is Error) {
+                    throw registrationFailure
+                }
                 backends.clear()
                 backends.putAll(backendsSnapshot)
                 aliases.clear()
                 aliases.putAll(aliasesSnapshot)
                 val providerName = provider::class.qualifiedName ?: provider.javaClass.name
-                System.err.println("Backend discovery provider failed: $providerName: ${e.message ?: e::class.simpleName}")
+                System.err.println(
+                    "Backend discovery provider failed: $providerName: " +
+                        "${registrationFailure.message ?: registrationFailure::class.simpleName}",
+                )
             }
         }
         discovered = true

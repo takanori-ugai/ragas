@@ -163,6 +163,7 @@ class EvaluationParityHooksTest {
         }
         val failed = events.filterIsInstance<EvaluationEvent.RunFailed>().single()
         assertTrue(failed.error.type.isNotBlank())
+        assertEquals("Error details omitted for safety.", failed.error.message)
     }
 
     @Test
