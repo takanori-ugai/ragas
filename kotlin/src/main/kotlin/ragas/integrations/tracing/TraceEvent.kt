@@ -1,5 +1,8 @@
 package ragas.integrations.tracing
 
+private const val DEFAULT_TRACE_FRAMEWORK = "ragas-kotlin"
+private const val DEFAULT_TRACE_RUN_NAME = "run"
+
 /** Base event emitted by evaluation/tracing integrations. */
 sealed interface TraceEvent {
     /** Unique identifier of the run this event belongs to. */
@@ -27,9 +30,9 @@ sealed interface TraceEvent {
  */
 data class RunStarted(
     override val runId: String,
-    override val framework: String,
-    override val runName: String,
-    override val timestampMs: Long,
+    override val framework: String = DEFAULT_TRACE_FRAMEWORK,
+    override val runName: String = DEFAULT_TRACE_RUN_NAME,
+    override val timestampMs: Long = System.currentTimeMillis(),
     val tags: Map<String, String> = emptyMap(),
     val metadata: Map<String, String> = emptyMap(),
 ) : TraceEvent
@@ -46,9 +49,9 @@ data class RunStarted(
  */
 data class MetricRowLogged(
     override val runId: String,
-    override val framework: String,
-    override val runName: String,
-    override val timestampMs: Long,
+    override val framework: String = DEFAULT_TRACE_FRAMEWORK,
+    override val runName: String = DEFAULT_TRACE_RUN_NAME,
+    override val timestampMs: Long = System.currentTimeMillis(),
     val rowIndex: Int,
     val scores: Map<String, Any?>,
 ) : TraceEvent
@@ -65,9 +68,9 @@ data class MetricRowLogged(
  */
 data class RunCompleted(
     override val runId: String,
-    override val framework: String,
-    override val runName: String,
-    override val timestampMs: Long,
+    override val framework: String = DEFAULT_TRACE_FRAMEWORK,
+    override val runName: String = DEFAULT_TRACE_RUN_NAME,
+    override val timestampMs: Long = System.currentTimeMillis(),
     val durationMs: Long,
     val aggregateMetrics: Map<String, Double>,
 ) : TraceEvent
@@ -85,9 +88,9 @@ data class RunCompleted(
  */
 data class RunFailed(
     override val runId: String,
-    override val framework: String,
-    override val runName: String,
-    override val timestampMs: Long,
+    override val framework: String = DEFAULT_TRACE_FRAMEWORK,
+    override val runName: String = DEFAULT_TRACE_RUN_NAME,
+    override val timestampMs: Long = System.currentTimeMillis(),
     val durationMs: Long,
     val errorType: String,
     val errorMessage: String,

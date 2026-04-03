@@ -7,7 +7,7 @@ import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
 /**
- * Implements [InstanceSpecificRubricsMetric].
+ * Scores a response against rubrics provided per sample instance.
  */
 class InstanceSpecificRubricsMetric(
     name: String = "instance_specific_rubrics",

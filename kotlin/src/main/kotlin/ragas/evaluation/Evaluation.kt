@@ -204,7 +204,7 @@ suspend fun aevaluate(
     } catch (error: Throwable) {
         synchronized(callbackDispatchLock) {
             callbacks.forEach { callback ->
-                runCatching { callback.onEvent(EvaluationEvent.RunFailed(error)) }
+                runCatching { callback.onEvent(EvaluationEvent.RunFailed.fromThrowable(error)) }
             }
         }
         throw error

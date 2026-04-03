@@ -82,9 +82,9 @@ class QuotedSpansAlignmentMetric(
 }
 
 /**
- * Implements [ChrfScoreMetric].
+ * Computes chrF-style character n-gram similarity between reference and response text.
  *
- * @property charOrder Property `charOrder`.
+ * @property charOrder Maximum character n-gram order to include.
  * @property beta F-score beta parameter.
  */
 class ChrfScoreMetric(
@@ -103,7 +103,11 @@ class ChrfScoreMetric(
     }
 
     /**
-     * Executes singleTurnAscore.
+     * Computes the average F-beta score across character n-gram orders from 1 to [charOrder].
+     *
+     * Returns `0.0` when either side is blank after normalization; otherwise returns
+     * a continuous score in [0.0, 1.0].
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

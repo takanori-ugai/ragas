@@ -20,9 +20,11 @@ interface BaseGraphTransformation {
     val filterNodes: (Node) -> Boolean
 
     /**
-     * Mutates the target graph by applying this transformation.
+     * Computes this transformation result from the provided graph.
      *
-     * @param kg Graph to mutate.
+     * This method is side-effect free; graph mutation is applied by [generateExecutionPlan].
+     *
+     * @param kg Graph to inspect.
      * @return Transformation-specific result payload.
      */
     suspend fun transform(kg: KnowledgeGraph): Any?
@@ -72,7 +74,7 @@ abstract class Extractor(
     abstract suspend fun extract(node: Node): Pair<String, String>
 
     /**
-     * Mutates the target graph by applying this transformation.
+     * Computes extraction results for filtered nodes.
      * @param kg Knowledge graph to transform or inspect.
      */
     override suspend fun transform(kg: KnowledgeGraph): List<Pair<Node, Pair<String, String>>> {
@@ -120,7 +122,7 @@ abstract class Splitter(
     abstract suspend fun split(node: Node): Pair<List<Node>, List<ragas.testset.graph.Relationship>>
 
     /**
-     * Mutates the target graph by applying this transformation.
+     * Computes split outputs for filtered nodes.
      * @param kg Knowledge graph to transform or inspect.
      */
     override suspend fun transform(kg: KnowledgeGraph): Pair<List<Node>, List<ragas.testset.graph.Relationship>> {
@@ -166,16 +168,23 @@ abstract class RelationshipBuilder(
     /**
      * Builds relationships to be added to the graph.
      *
-     * @param kg Graph to inspect.
+     * @param kg Full graph to inspect for context.
+     * @param filtered Graph view filtered by [filterNodes] for candidate selection.
      * @return Relationships produced by this builder.
      */
-    abstract suspend fun build(kg: KnowledgeGraph): List<Relationship>
+    abstract suspend fun build(
+        kg: KnowledgeGraph,
+        filtered: KnowledgeGraph,
+    ): List<Relationship>
 
     /**
-     * Mutates the target graph by applying this transformation.
+     * Computes relationships to add based on the current graph state.
      * @param kg Knowledge graph to transform or inspect.
      */
-    override suspend fun transform(kg: KnowledgeGraph): List<Relationship> = build(kg)
+    override suspend fun transform(kg: KnowledgeGraph): List<Relationship> {
+        val filtered = filter(kg)
+        return build(kg, filtered)
+    }
 
     /**
      * Produces deferred operations that execute this transformation against a graph.
@@ -184,7 +193,8 @@ abstract class RelationshipBuilder(
     override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> =
         listOf(
             suspend {
-                val built = build(kg)
+                val filtered = filter(kg)
+                val built = build(kg, filtered)
                 synchronized(kg) {
                     built.forEach { relationship ->
                         if (!kg.hasRelationship(relationship)) {

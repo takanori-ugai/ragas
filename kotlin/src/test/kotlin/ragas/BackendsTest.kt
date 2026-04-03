@@ -154,6 +154,29 @@ class BackendsTest {
     }
 
     @Test
+    fun backendRegistryReRegisterReplacesAliasSetForSameBackend() {
+        val registry = BackendRegistry()
+        registry.register("custom", ::InMemoryBackend, aliasList = listOf("old"))
+        registry.register("custom", ::InMemoryBackend, aliasList = listOf("new"))
+
+        assertFalse(registry.contains("old"))
+        assertTrue(registry.contains("new"))
+        assertTrue(registry.contains("custom"))
+    }
+
+    @Test
+    fun backendRegistryRejectsAliasThatShadowsCanonicalBackendName() {
+        val registry = BackendRegistry()
+        registry.register("csv", ::InMemoryBackend)
+
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                registry.register("custom", ::InMemoryBackend, aliasList = listOf("csv"))
+            }
+        assertTrue(error.message.orEmpty().contains("conflicts with canonical backend name"))
+    }
+
+    @Test
     fun backendRegistryDiscoversServiceLoaderProviders() {
         val registry = BackendRegistry()
         val loadedProviders = registry.discoverBackends()
@@ -234,6 +257,22 @@ class BackendsTest {
         val listing = registry.listAllNames()
 
         assertEquals(listOf("custom/list", "cl1", "cl2"), listing["custom/list"])
+    }
+
+    @Test
+    fun backendRegistryClearWithResetReappliesBootstrapRegistrations() {
+        val registry =
+            BackendRegistry {
+                register("builtin/test", ::InMemoryBackend, aliasList = listOf("bt"), source = "builtin")
+            }
+
+        assertTrue(registry.contains("builtin/test"))
+        assertTrue(registry.contains("bt"))
+
+        registry.clear(resetDiscovery = true)
+
+        assertTrue(registry.contains("builtin/test"))
+        assertTrue(registry.contains("bt"))
     }
 
     @Test

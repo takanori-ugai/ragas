@@ -23,7 +23,10 @@ data class PromptIoExample(
 /**
  * Renders instruction templates with optional schema hints and few-shot examples.
  *
- * Constructor parameters are private by design; call [render] to create the final prompt text.
+ * @property instructionTemplate Base template string with `{key}` placeholders.
+ * @property outputSchema Optional JSON schema to guide output format.
+ * @property examples Few-shot examples to include in the prompt.
+ * @property includeInputOutputFrame Whether to append input/output framing instructions.
  */
 class PromptTemplate(
     private val instructionTemplate: String,

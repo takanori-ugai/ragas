@@ -148,6 +148,24 @@ class EvaluationParityHooksTest {
     }
 
     @Test
+    fun evaluateEmitsSanitizedRunFailedEvent() {
+        val events = mutableListOf<EvaluationEvent>()
+        val callback = EvaluationCallback { event -> events += event }
+        val dataset = EvaluationDataset(listOf(SingleTurnSample(userInput = "q", response = "r")))
+
+        assertFailsWith<IllegalStateException> {
+            evaluate(
+                dataset = dataset,
+                metrics = listOf(ThrowingMetric()),
+                callbacks = listOf(callback),
+                raiseExceptions = true,
+            )
+        }
+        val failed = events.filterIsInstance<EvaluationEvent.RunFailed>().single()
+        assertTrue(failed.error.type.isNotBlank())
+    }
+
+    @Test
     fun trackingWrapperDoesNotExposeStructuredCapabilityForNonStructuredDelegate() {
         val dataset = EvaluationDataset(listOf(SingleTurnSample(response = "r")))
         val result =
@@ -278,6 +296,16 @@ private class StructuredCapabilityMetric :
     override var llm: BaseRagasLlm? = null
 
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any = checkNotNull(llm) is StructuredOutputRagasLlm
+}
+
+private class ThrowingMetric :
+    BaseMetric(
+        name = "throwing_metric",
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+        outputType = MetricOutputType.DISCRETE,
+    ),
+    SingleTurnMetric {
+    override suspend fun singleTurnAscore(sample: SingleTurnSample): Any = error("boom")
 }
 
 private class StructuredDiscreteMetric :

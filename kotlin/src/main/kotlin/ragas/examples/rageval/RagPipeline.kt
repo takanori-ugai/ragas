@@ -19,11 +19,11 @@ val DOCUMENTS: List<String> =
     )
 
 /**
- * Represents [TraceEvent].
+ * Captures a single trace event emitted during RAG pipeline execution.
  *
- * @property eventType Trace event type.
- * @property component Component name.
- * @property data Event payload map.
+ * @property eventType Trace event type (for example, `init`, `query_start`, or `error`).
+ * @property component Component name that emitted the event.
+ * @property data Event payload map containing contextual details.
  */
 data class TraceEvent(
     val eventType: String,
@@ -32,11 +32,11 @@ data class TraceEvent(
 )
 
 /**
- * Represents [RetrievedDoc].
+ * One retrieved document candidate with its relevance metadata.
  *
- * @property content Document content text.
- * @property similarityScore Similarity score.
- * @property documentId Document identifier.
+ * @property content Retrieved document content text.
+ * @property similarityScore Keyword-overlap similarity score.
+ * @property documentId Source document identifier in the in-memory corpus.
  */
 data class RetrievedDoc(
     val content: String,
@@ -45,11 +45,11 @@ data class RetrievedDoc(
 )
 
 /**
- * Represents [QueryResult].
+ * End-to-end query result including answer and persisted trace log location.
  *
  * @property answer Generated answer text.
  * @property runId Run identifier.
- * @property logs Trace/log events.
+ * @property logs Absolute path to the written trace log file.
  */
 data class QueryResult(
     val answer: String,
@@ -62,10 +62,11 @@ data class QueryResult(
  */
 interface ChatClient {
     /**
-     * Executes complete.
+     * Generates a chat completion for the given system and user prompts.
      *
      * @param systemPrompt System prompt text.
      * @param userPrompt User prompt text.
+     * @return Generated response text.
      */
     suspend fun complete(
         systemPrompt: String,
@@ -78,7 +79,7 @@ interface ChatClient {
  */
 class EchoChatClient : ChatClient {
     /**
-     * Executes complete.
+     * Returns a deterministic echo-style completion for local/demo usage.
      */
     override suspend fun complete(
         systemPrompt: String,
@@ -94,14 +95,14 @@ class EchoChatClient : ChatClient {
  */
 interface BaseRetriever {
     /**
-     * Executes fit.
+     * Indexes the provided documents for retrieval.
      *
      * @param documents Document texts to index.
      */
     fun fit(documents: List<String>)
 
     /**
-     * Executes getTopK.
+     * Retrieves up to [k] best-matching documents for the query.
      *
      * @param query User query text.
      * @param k Maximum number of results.
@@ -119,7 +120,7 @@ class SimpleKeywordRetriever : BaseRetriever {
     private val documents = mutableListOf<String>()
 
     /**
-     * Executes fit.
+     * Rebuilds the in-memory index from the provided documents.
      * @param documents Documents used to build the retriever index.
      */
     override fun fit(documents: List<String>) {
@@ -128,7 +129,7 @@ class SimpleKeywordRetriever : BaseRetriever {
     }
 
     /**
-     * Executes getTopK.
+     * Scores documents by keyword overlap and returns the top matches.
      */
     override fun getTopK(
         query: String,
@@ -186,7 +187,7 @@ class ExampleRag(
     }
 
     /**
-     * Executes addDocuments.
+     * Appends new documents to the current corpus and re-fits the retriever.
      *
      * @param newDocuments Documents to append or replace.
      */
@@ -209,9 +210,9 @@ class ExampleRag(
     }
 
     /**
-     * Executes setDocuments.
+     * Replaces the current corpus with a new document set and re-fits the retriever.
      *
-     * @param newDocuments Documents to append or replace.
+     * @param newDocuments Documents to set as the entire corpus.
      */
     fun setDocuments(newDocuments: List<String>) {
         documents.clear()
@@ -221,7 +222,7 @@ class ExampleRag(
     }
 
     /**
-     * Executes retrieveDocuments.
+     * Retrieves relevant documents for a query from the indexed corpus.
      *
      * @param query User query text.
      * @param topK Maximum documents to retrieve.
@@ -244,7 +245,7 @@ class ExampleRag(
     }
 
     /**
-     * Executes generateResponse.
+     * Builds prompt context from retrieved documents and generates an answer.
      *
      * @param query User query text.
      * @param topK Maximum documents to retrieve.
@@ -275,7 +276,7 @@ class ExampleRag(
     }
 
     /**
-     * Executes query.
+     * Runs an end-to-end RAG query and returns answer plus trace log path.
      *
      * @param question User question text.
      * @param topK Maximum documents to retrieve.
@@ -341,7 +342,7 @@ class ExampleRag(
     }
 
     /**
-     * Executes exportTracesToLog.
+     * Writes the current trace events to a JSONL log file for one run.
      *
      * @param runId Run identifier.
      * @param query User query text.
@@ -386,7 +387,7 @@ class ExampleRag(
 }
 
 /**
- * Executes defaultRagClient.
+ * Creates a ready-to-use example RAG client with the default document corpus.
  *
  * @param chatClient Chat client implementation.
  * @param logDir Log output directory.

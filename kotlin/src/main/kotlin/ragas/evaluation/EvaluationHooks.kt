@@ -44,6 +44,17 @@ fun interface EvaluationCallback {
     fun onEvent(event: EvaluationEvent)
 }
 
+/**
+ * Serializable failure payload emitted by evaluation lifecycle events.
+ *
+ * @property type Short error category or exception type.
+ * @property message Human-readable error message.
+ */
+data class EvaluationError(
+    val type: String,
+    val message: String,
+)
+
 /** Event stream emitted while evaluation runs. */
 sealed interface EvaluationEvent {
     /**
@@ -131,12 +142,31 @@ sealed interface EvaluationEvent {
     /**
      * Emitted when evaluation fails with an exception.
      *
-     * @property error Terminal failure error.
+     * @property error Terminal failure payload.
      */
     data class RunFailed(
-        /** Terminal failure error. */
-        val error: Throwable,
-    ) : EvaluationEvent
+        /** Terminal failure payload. */
+        val error: EvaluationError,
+    ) : EvaluationEvent {
+        @Deprecated(
+            message = "Passing Throwable directly is deprecated; use RunFailed.fromThrowable(error) or EvaluationError.",
+            replaceWith = ReplaceWith("EvaluationEvent.RunFailed.fromThrowable(error)"),
+            level = DeprecationLevel.WARNING,
+        )
+        constructor(error: Throwable) : this(fromThrowable(error).error)
+
+        companion object {
+            /** Builds [RunFailed] from a Throwable while exposing only a safe error payload. */
+            fun fromThrowable(error: Throwable): RunFailed =
+                RunFailed(
+                    error =
+                        EvaluationError(
+                            type = error::class.simpleName ?: error::class.qualifiedName ?: "UnknownError",
+                            message = error.message.orEmpty(),
+                        ),
+                )
+        }
+    }
 }
 
 /** User-supplied parser that extracts token usage from an LLM call. */

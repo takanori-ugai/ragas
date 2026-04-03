@@ -6,7 +6,7 @@ import ragas.runtime.RunConfig
  * One generated candidate returned by an LLM call.
  *
  * @property text Text content.
- * @property finishReason Property `finishReason`.
+ * @property finishReason Reason the generation stopped (e.g., "STOP", "LENGTH"), or null if unspecified.
  */
 data class LlmGeneration(
     val text: String,
@@ -16,7 +16,7 @@ data class LlmGeneration(
 /**
  * Container for one LLM response containing one or more generations.
  *
- * @property generations Property `generations`.
+ * @property generations List of generated candidates from the LLM call.
  */
 data class LlmResult(
     val generations: List<LlmGeneration>,
@@ -44,9 +44,11 @@ interface BaseRagasLlm {
     ): LlmResult
 
     /**
-     * Returns true when all generations have a non-null finish reason.
+     * Returns true when all generations completed normally.
      *
-     * @param result Evaluation result payload.
+     * A generation is considered complete if its finish reason is null, "STOP", or "LENGTH".
+     *
+     * @param result LLM result containing generations to check.
      */
     fun isFinished(result: LlmResult): Boolean =
         result.generations.all { generation ->

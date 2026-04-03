@@ -76,6 +76,7 @@ class StructuredOutputParser<T>(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
     private val maxDescriptorDepth = 32
+    private val jsonNumberPattern = Regex("""-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?""")
 
     /**
      * Parses raw model text into [T], extracting the first JSON value when needed.
@@ -175,9 +176,31 @@ class StructuredOutputParser<T>(
     }
 
     private fun extractFirstJsonValue(text: String): String {
-        val start = text.indexOfFirst { it == '{' || it == '[' }
-        require(start >= 0) { "Structured output did not contain JSON." }
+        for (start in text.indices) {
+            if (!isBoundaryBefore(text, start)) {
+                continue
+            }
+            val candidate =
+                when (text[start]) {
+                    '{', '[' -> extractEnclosedValue(text, start)
+                    '"' -> extractJsonString(text, start)
+                    't' -> keywordCandidate(text, start, "true")
+                    'f' -> keywordCandidate(text, start, "false")
+                    'n' -> keywordCandidate(text, start, "null")
+                    '-', in '0'..'9' -> extractJsonNumber(text, start)
+                    else -> null
+                } ?: continue
+            if (isValidJson(candidate)) {
+                return candidate
+            }
+        }
+        error("Structured output did not contain JSON.")
+    }
 
+    private fun extractEnclosedValue(
+        text: String,
+        start: Int,
+    ): String? {
         var inString = false
         var escaped = false
         val stack = ArrayDeque<Char>()
@@ -207,18 +230,99 @@ class StructuredOutputParser<T>(
                 }
 
                 '}', ']' -> {
-                    require(stack.isNotEmpty() && stack.removeLast() == ch) {
-                        "Structured output contained malformed JSON delimiters."
+                    if (stack.isEmpty() || stack.removeLast() != ch) {
+                        return null
                     }
-                    if (stack.isEmpty()) {
+                    if (stack.isEmpty() && isBoundaryAfter(text, index + 1)) {
                         return text.substring(start, index + 1)
                     }
                 }
             }
         }
-
-        error("Structured output JSON value was not closed.")
+        return null
     }
+
+    private fun extractJsonString(
+        text: String,
+        start: Int,
+    ): String? {
+        var escaped = false
+        for (index in start + 1 until text.length) {
+            val ch = text[index]
+            when {
+                escaped -> {
+                    escaped = false
+                }
+
+                ch == '\\' -> {
+                    escaped = true
+                }
+
+                ch == '"' -> {
+                    val endExclusive = index + 1
+                    if (!isBoundaryAfter(text, endExclusive)) {
+                        return null
+                    }
+                    return text.substring(start, endExclusive)
+                }
+            }
+        }
+        return null
+    }
+
+    private fun extractJsonNumber(
+        text: String,
+        start: Int,
+    ): String? {
+        val match = jsonNumberPattern.find(text, start) ?: return null
+        if (match.range.first != start) {
+            return null
+        }
+        val endExclusive = match.range.last + 1
+        if (!isBoundaryAfter(text, endExclusive)) {
+            return null
+        }
+        return match.value
+    }
+
+    private fun keywordCandidate(
+        text: String,
+        start: Int,
+        token: String,
+    ): String? {
+        if (!text.startsWith(token, start)) {
+            return null
+        }
+        val endExclusive = start + token.length
+        if (!isBoundaryAfter(text, endExclusive)) {
+            return null
+        }
+        return token
+    }
+
+    private fun isBoundaryBefore(
+        text: String,
+        start: Int,
+    ): Boolean {
+        if (start == 0) {
+            return true
+        }
+        val previous = text[start - 1]
+        return !previous.isLetterOrDigit() && previous != '_' && previous != '"'
+    }
+
+    private fun isBoundaryAfter(
+        text: String,
+        endExclusive: Int,
+    ): Boolean {
+        if (endExclusive >= text.length) {
+            return true
+        }
+        val next = text[endExclusive]
+        return !next.isLetterOrDigit() && next != '_' && next != '"' && next != '-'
+    }
+
+    private fun isValidJson(candidate: String): Boolean = runCatching { json.parseToJsonElement(candidate) }.isSuccess
 }
 
 /**
@@ -242,6 +346,11 @@ abstract class BasePrompt<InputT, OutputT>(
         input: InputT?,
         examples: List<TypedPromptExample<InputT, OutputT>>,
     ): String {
+        val normalizedLanguage = model.language.trim()
+        val languageInstruction =
+            normalizedLanguage
+                .takeIf { it.isNotEmpty() && !it.equals("english", ignoreCase = true) }
+                ?.let { language -> "Write the response in $language." }
         val schemaText =
             model.outputJsonSchema
                 ?: "Expected JSON shape: ${parser.expectedShapeDescription()}"
@@ -267,6 +376,9 @@ abstract class BasePrompt<InputT, OutputT>(
             appendLine(model.instruction)
             appendLine()
             appendLine("Return JSON only.")
+            if (languageInstruction != null) {
+                appendLine(languageInstruction)
+            }
             appendLine(schemaText)
             if (examplesText.isNotEmpty()) {
                 appendLine()

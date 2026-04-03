@@ -122,7 +122,7 @@ class DiscreteMetric(
 
     /**
      * Executes applyOptimizerPrompt.
-     * @param prompt Prompt text returned by the optimizer.
+     * @param prompt Prompt object returned by the optimizer (text or multimodal).
      */
     override fun applyOptimizerPrompt(prompt: OptimizerPrompt) {
         promptObject = prompt

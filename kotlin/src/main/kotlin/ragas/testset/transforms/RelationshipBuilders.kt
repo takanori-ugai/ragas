@@ -18,13 +18,16 @@ class AdjacentChunkRelationshipBuilder(
     /**
      * Builds relationships from the current graph based on this builder's strategy.
      *
-     * @param kg Graph to inspect.
+     * @param kg Full graph to inspect.
+     * @param filtered Graph filtered by [filterNodes] used for document candidate selection.
      * @return Generated `next` relationships between adjacent chunks.
      */
-    override suspend fun build(kg: KnowledgeGraph): List<Relationship> {
+    override suspend fun build(
+        kg: KnowledgeGraph,
+        filtered: KnowledgeGraph,
+    ): List<Relationship> {
         val documentIds =
-            kg.nodes
-                .filter(filterNodes)
+            filtered.nodes
                 .map { node -> node.id }
                 .toSet()
         if (documentIds.isEmpty()) {
@@ -82,11 +85,15 @@ class SharedKeywordRelationshipBuilder(
     /**
      * Builds relationships from the current graph based on this builder's strategy.
      *
-     * @param kg Graph to inspect.
+     * @param kg Full graph to inspect.
+     * @param filtered Graph filtered by [filterNodes] used for candidate node selection.
      * @return Generated `semantic_overlap` relationships.
      */
-    override suspend fun build(kg: KnowledgeGraph): List<Relationship> {
-        val nodes = kg.nodes.filter(filterNodes)
+    override suspend fun build(
+        kg: KnowledgeGraph,
+        filtered: KnowledgeGraph,
+    ): List<Relationship> {
+        val nodes = filtered.nodes
         if (nodes.size < 2) {
             return emptyList()
         }

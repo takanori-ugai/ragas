@@ -8,16 +8,16 @@ import ragas.optimizers.OptimizerPrompt
 import ragas.optimizers.PromptObjectEvaluator
 
 /**
- * Defines [OptimizableMetricPrompt].
+ * Contract for metrics whose prompt can be read, optimized, and replaced.
  */
 interface OptimizableMetricPrompt {
     /**
-     * Executes optimizerPrompt.
+     * Returns the current prompt payload used by this metric.
      */
     fun optimizerPrompt(): OptimizerPrompt
 
     /**
-     * Executes applyOptimizerPrompt.
+     * Replaces the metric's current prompt payload.
      *
      * @param prompt Optimizer prompt payload.
      */
@@ -25,7 +25,9 @@ interface OptimizableMetricPrompt {
 }
 
 /**
- * Applies an optimizer [outcome] to this prompt holder.
+ * Applies [outcome.optimizedPrompt] to this prompt holder.
+ *
+ * Side effect: mutates the prompt state of the receiver.
  *
  * @param outcome Optimizer outcome payload.
  */
@@ -34,12 +36,15 @@ fun OptimizableMetricPrompt.applyOptimizerOutcome(outcome: OptimizerOutcome) {
 }
 
 /**
- * Optimizes this prompt and applies the best resulting prompt before returning the outcome.
+ * Runs optimization using the current prompt as the initial candidate, then applies the best prompt.
+ *
+ * Side effect: mutates the receiver by calling [applyOptimizerOutcome] with the selected result.
  *
  * @param optimizer Optimizer implementation.
  * @param dataset Optimization dataset.
  * @param evaluator Prompt evaluator.
  * @param config Optimizer configuration.
+ * @return Full optimization outcome, including the selected prompt and metadata.
  */
 fun OptimizableMetricPrompt.optimizePrompt(
     optimizer: Optimizer,

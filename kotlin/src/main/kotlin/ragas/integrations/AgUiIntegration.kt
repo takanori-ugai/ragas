@@ -68,6 +68,11 @@ object AgUiIntegration {
      * @param metadata Run-level metadata.
      * @param observers Trace observers notified during execution.
      */
+    @Deprecated(
+        message = "AgUiIntegration.evaluateRecords is not implemented yet and always throws UnsupportedOperationException.",
+        replaceWith = ReplaceWith("unsupportedIntegration(\"ag-ui\")"),
+        level = DeprecationLevel.ERROR,
+    )
     @Suppress("UNUSED_PARAMETER")
     fun evaluateRecords(
         records: List<AgUiRecord>,

@@ -2,6 +2,7 @@ package ragas.prompt
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
 import ragas.embeddings.BaseRagasEmbedding
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -55,6 +56,33 @@ class TypedPromptTest {
             )
 
         assertEquals(MathOutput(answer = "4"), parsed)
+    }
+
+    @Test
+    fun structuredParserExtractsNumericPrimitiveFromWrappedText() {
+        val parser = StructuredOutputParser(Int.serializer())
+
+        val parsed = parser.parse("Result: 42.")
+
+        assertEquals(42, parsed)
+    }
+
+    @Test
+    fun structuredParserExtractsBooleanPrimitiveFromWrappedText() {
+        val parser = StructuredOutputParser(Boolean.serializer())
+
+        val parsed = parser.parse("Final verdict is true, proceed.")
+
+        assertEquals(true, parsed)
+    }
+
+    @Test
+    fun structuredParserExtractsStringPrimitiveFromWrappedText() {
+        val parser = StructuredOutputParser(String.serializer())
+
+        val parsed = parser.parse("""The answer is "ok".""")
+
+        assertEquals("ok", parsed)
     }
 
     @Test
@@ -150,6 +178,24 @@ class TypedPromptTest {
             val formatted = prompt.format(MathInput(question = "2+2"))
             assertTrue(formatted.contains("Expected JSON shape:"))
             assertTrue(formatted.contains("\"child\": recursive"))
+        }
+
+    @Test
+    fun typedPromptFormatIncludesLanguageInstructionWhenNonDefault() =
+        runBlocking {
+            val prompt =
+                TypedPrompt(
+                    inputSerializer = MathInput.serializer(),
+                    outputSerializer = MathOutput.serializer(),
+                    model =
+                        TypedPromptModel(
+                            instruction = "Resuelve la pregunta.",
+                            language = "spanish",
+                        ),
+                )
+
+            val formatted = prompt.format(MathInput(question = "2+2"))
+            assertTrue(formatted.contains("Write the response in spanish."))
         }
 
     @Serializable

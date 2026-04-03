@@ -9,7 +9,10 @@ import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
 /**
- * Implements [ContextPrecisionMetric].
+ * Estimates context precision using a token-overlap heuristic.
+ *
+ * A retrieved context is counted as relevant when it shares at least one token
+ * with the response, and the score is `relevant_contexts / total_contexts` in [0.0, 1.0].
  */
 class ContextPrecisionMetric :
     BaseMetric(
@@ -19,7 +22,11 @@ class ContextPrecisionMetric :
     ),
     SingleTurnMetric {
     /**
-     * Executes singleTurnAscore.
+     * Computes context precision for one sample using response/context token overlap.
+     *
+     * Returns `0.0` when retrieved contexts are empty or when the response has no tokens.
+     * Otherwise returns a score in [0.0, 1.0].
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

@@ -26,7 +26,7 @@ sealed interface ConversationMessage {
     val content: String
     val metadata: Map<String, JsonElement>?
 
-    /** Returns a human-readable single-line representation of the message. */
+    /** Returns a human-readable representation of the message. */
     fun prettyRepr(): String
 }
 
@@ -75,6 +75,8 @@ data class AiMessage(
 ) : ConversationMessage {
     /**
      * Returns a human-readable representation including content and tool calls.
+     *
+     * Output can span multiple lines when tool calls are present.
      */
     override fun prettyRepr(): String {
         val lines = mutableListOf<String>()

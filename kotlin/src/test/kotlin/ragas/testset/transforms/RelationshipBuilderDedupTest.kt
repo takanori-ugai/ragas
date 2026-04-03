@@ -18,7 +18,10 @@ class RelationshipBuilderDedupTest {
 
             val builder =
                 object : RelationshipBuilder(name = "test_builder") {
-                    override suspend fun build(kg: KnowledgeGraph): List<Relationship> =
+                    override suspend fun build(
+                        kg: KnowledgeGraph,
+                        filtered: KnowledgeGraph,
+                    ): List<Relationship> =
                         listOf(
                             Relationship(
                                 type = "semantic_overlap",

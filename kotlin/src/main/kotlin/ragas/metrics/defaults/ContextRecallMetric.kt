@@ -15,7 +15,9 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
 /**
- * Implements [ContextRecallMetric].
+ * Measures how much of the reference answer/context is covered by retrieved contexts.
+ *
+ * Uses an LLM attribution classifier when available, with a token-overlap fallback heuristic.
  */
 class ContextRecallMetric :
     BaseMetric(

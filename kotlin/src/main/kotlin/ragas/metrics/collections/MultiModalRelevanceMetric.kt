@@ -7,7 +7,10 @@ import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
 /**
- * Implements [MultiModalRelevanceMetric].
+ * Evaluates whether a response is relevant to the user input and multimodal context.
+ *
+ * Uses weighted token-overlap signals from question relevance and textual context support,
+ * with an additional image-anchor heuristic when image-like contexts are present.
  */
 class MultiModalRelevanceMetric(
     name: String = "multi_modal_relevance",
@@ -18,7 +21,11 @@ class MultiModalRelevanceMetric(
     ),
     SingleTurnMetric {
     /**
-     * Executes singleTurnAscore.
+     * Computes a binary relevance score from weighted overlap/anchor heuristics.
+     *
+     * Returns `1.0` when the blended relevance score passes the threshold, else `0.0`.
+     * Throws if required fields (`user_input`, `response`, `retrieved_contexts`) are missing.
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

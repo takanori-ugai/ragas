@@ -23,7 +23,9 @@ import ragas.runtime.RunConfig
 import kotlin.math.pow
 
 /**
- * Implements [AnswerAccuracyMetric].
+ * Computes answer accuracy by comparing the response against the reference answer.
+ *
+ * Uses LLM judge ratings when available, with a lexical/number-aware fallback heuristic.
  *
  * @property maxRetries Maximum retries.
  */
@@ -233,7 +235,9 @@ private fun answerAccuracyJudge2Prompt(
     }
 
 /**
- * Implements [AnswerCorrectnessMetric].
+ * Computes answer correctness from factual consistency and semantic similarity.
+ *
+ * Combines factuality classification with embedding-based similarity using configurable weights.
  *
  * @property weights Metric component weights.
  * @property beta F-score beta parameter.

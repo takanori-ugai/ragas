@@ -37,7 +37,13 @@ data class OptimizerConfig(
     val populationSize: Int = 6,
     val mutationProbability: Double = 0.2,
     val seed: Int = 42,
-)
+) {
+    init {
+        require(iterations > 0) { "iterations must be > 0" }
+        require(populationSize > 0) { "populationSize must be > 0" }
+        require(mutationProbability in 0.0..1.0) { "mutationProbability must be between 0 and 1" }
+    }
+}
 
 /** Legacy evaluator operating on plain text prompts. */
 fun interface PromptEvaluator {
@@ -122,7 +128,8 @@ data class OptimizerOutcome(
                     )
                 }
             }
-        return base + metadata
+        // Keep legacy core keys authoritative even when metadata contains the same names.
+        return metadata + base
     }
 }
 

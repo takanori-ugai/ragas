@@ -7,7 +7,7 @@ import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
 /**
- * Implements [MultiModalFaithfulnessMetric].
+ * Evaluates whether a response is faithful to multimodal (text and image) context evidence.
  */
 class MultiModalFaithfulnessMetric(
     name: String = "multi_modal_faithfulness",
@@ -18,7 +18,11 @@ class MultiModalFaithfulnessMetric(
     ),
     SingleTurnMetric {
     /**
-     * Executes singleTurnAscore.
+     * Computes a binary faithfulness score using token-overlap support and multimodal heuristics.
+     *
+     * Combines textual support with penalties for unsupported critical claims/numbers and an
+     * image-context compensation heuristic, then thresholds to `1.0` or `0.0`.
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

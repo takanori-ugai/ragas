@@ -19,7 +19,10 @@ import ragas.runtime.RunConfig
 import kotlin.math.sqrt
 
 /**
- * Implements [AnswerRelevancyMetric].
+ * Measures how relevant the response is to the user input.
+ *
+ * Uses LLM-generated question reconstruction plus embedding similarity when available,
+ * with an optional lexical heuristic fallback.
  *
  * @property allowHeuristicFallback Whether heuristic fallback is allowed.
  */

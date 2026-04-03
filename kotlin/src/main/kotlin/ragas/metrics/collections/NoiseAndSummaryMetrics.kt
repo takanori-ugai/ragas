@@ -17,9 +17,10 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
 /**
- * Implements [NoiseSensitivityMetric].
+ * Measures how sensitive an answer is to noisy or irrelevant retrieved context.
  *
- * @property mode Scoring mode.
+ * @property mode Controls whether the score tracks relevant-context noise effects or
+ * irrelevant-context noise effects.
  */
 class NoiseSensitivityMetric(
     name: String = "noise_sensitivity",
@@ -300,10 +301,10 @@ private fun noiseFaithfulnessPrompt(
 }
 
 /**
- * Implements [SummaryScoreMetric].
+ * Scores summary quality from coverage and optional conciseness.
  *
- * @property lengthPenalty Property `lengthPenalty`.
- * @property coeff Score mixing coefficient.
+ * @property lengthPenalty Whether to blend in a conciseness penalty.
+ * @property coeff Mixing coefficient for conciseness when [lengthPenalty] is enabled.
  */
 class SummaryScoreMetric(
     name: String = "summary_score",
@@ -325,7 +326,8 @@ class SummaryScoreMetric(
     }
 
     /**
-     * Executes init.
+     * Initializes the metric by validating required columns and configuring the LLM.
+     *
      * @param runConfig Runtime configuration for model calls and execution behavior.
      */
     override suspend fun init(runConfig: RunConfig) {
@@ -334,7 +336,9 @@ class SummaryScoreMetric(
     }
 
     /**
-     * Executes singleTurnAscore.
+     * Computes summary quality score by evaluating QA-style content coverage and,
+     * when enabled, a conciseness component.
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

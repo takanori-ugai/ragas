@@ -30,7 +30,11 @@ class SemanticSimilarityMetric(
     }
 
     /**
-     * Executes singleTurnAscore.
+     * Computes semantic similarity between response and reference text.
+     *
+     * Returns a continuous similarity score in [0.0, 1.0] when [threshold] is null.
+     * When [threshold] is set, returns binary output: `1.0` if score >= threshold, else `0.0`.
+     *
      * @param sample Evaluation sample to score.
      */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {

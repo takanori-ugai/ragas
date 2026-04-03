@@ -12,7 +12,7 @@ internal object LlmJsonSupport {
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Executes parseFirstJsonObject.
+     * Extracts and parses the first valid JSON object from raw LLM output text.
      *
      * @param raw Raw model output text.
      */
@@ -38,7 +38,7 @@ internal object LlmJsonSupport {
     }
 
     /**
-     * Executes readStringArray.
+     * Extracts a string array from a JSON object field, filtering blank and null-like values.
      *
      * @param root Parsed JSON root object.
      * @param key JSON/object key.
@@ -59,7 +59,10 @@ internal object LlmJsonSupport {
             }.filter { value -> value.isNotBlank() }
 
     /**
-     * Executes readIntLike.
+     * Reads an integer-like value from a JSON field.
+     *
+     * Supports numeric primitives directly, boolean values (`true` -> 1, `false` -> 0),
+     * and numeric strings.
      *
      * @param root Parsed JSON root object.
      * @param key JSON/object key.

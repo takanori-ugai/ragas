@@ -41,7 +41,11 @@ object DspyAdapterLoader {
     fun loadFirstOrNull(): DspyAdapter? =
         try {
             ServiceLoader.load(DspyAdapter::class.java).firstOrNull()
-        } catch (_: ServiceConfigurationError) {
+        } catch (error: ServiceConfigurationError) {
+            System.err.println(
+                "DSPy adapter discovery failed: ${error.message ?: error::class.simpleName}. " +
+                    "Proceeding without external DSPy adapter.",
+            )
             null
         }
 }

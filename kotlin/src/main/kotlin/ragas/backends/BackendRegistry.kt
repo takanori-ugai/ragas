@@ -36,7 +36,9 @@ interface BackendDiscoveryProvider {
 }
 
 /** Registry for backend factories, aliases, and backend metadata. */
-class BackendRegistry {
+class BackendRegistry(
+    private val bootstrap: (BackendRegistry.() -> Unit)? = null,
+) {
     private data class BackendRegistration(
         val factory: () -> BaseBackend,
         val backendClass: KClass<out BaseBackend>?,
@@ -47,6 +49,10 @@ class BackendRegistry {
     private val backends = mutableMapOf<String, BackendRegistration>()
     private val aliases = mutableMapOf<String, String>()
     private var discovered = false
+
+    init {
+        bootstrap?.invoke(this)
+    }
 
     /**
      * Adds or replaces a backend registration.
@@ -75,6 +81,11 @@ class BackendRegistry {
                 description = description,
                 source = source,
             )
+        aliases
+            .filterValues { registeredName -> registeredName == name }
+            .keys
+            .toList()
+            .forEach(aliases::remove)
         registerAliases(name, aliasList)
     }
 
@@ -94,6 +105,9 @@ class BackendRegistry {
         require(name in backends) { "Backend '$name' not found." }
         aliasList.forEach { alias ->
             if (alias.isNotBlank()) {
+                require(alias !in backends || alias == name) {
+                    "Alias '$alias' conflicts with canonical backend name '$alias'."
+                }
                 val existing = aliases[alias]
                 require(overwrite || existing == null || existing == name) {
                     "Alias '$alias' is already registered for backend '$existing'."
@@ -240,7 +254,7 @@ class BackendRegistry {
     /**
      * Clears all registrations and aliases.
      *
-     * When [resetDiscovery] is true, discovery will run again on next access.
+     * When [resetDiscovery] is true, discovery state resets and any bootstrap registrations are re-applied.
      *
      * @param resetDiscovery Whether to reset discovery state.
      */
@@ -249,6 +263,7 @@ class BackendRegistry {
         backends.clear()
         aliases.clear()
         if (resetDiscovery) {
+            bootstrap?.invoke(this)
             discovered = false
         }
     }
@@ -256,7 +271,7 @@ class BackendRegistry {
 
 /** Process-wide default backend registry preloaded with built-in backends. */
 val BACKEND_REGISTRY =
-    BackendRegistry().apply {
+    BackendRegistry {
         register(
             name = "inmemory",
             factory = ::InMemoryBackend,

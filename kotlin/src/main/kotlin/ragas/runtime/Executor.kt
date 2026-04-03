@@ -69,7 +69,7 @@ class Executor(
     }
 
     /**
-     * Clears queued jobs and previously captured results.
+     * Clears queued jobs and resets the submission index counter.
      */
     fun clearJobs() {
         synchronized(jobsLock) {

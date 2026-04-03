@@ -172,7 +172,7 @@ data class SimplePrompt(
      * Saves this prompt to disk as a versioned JSON payload.
      *
      * @param path Filesystem path.
-     * @param overwrite Whether existing aliases can be overwritten.
+     * @param overwrite Whether an existing file at the path should be overwritten.
      */
     fun save(
         path: String,

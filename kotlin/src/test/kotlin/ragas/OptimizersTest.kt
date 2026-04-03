@@ -8,10 +8,13 @@ import ragas.optimizers.GeneticOptimizer
 import ragas.optimizers.OptimizationDataset
 import ragas.optimizers.OptimizationExample
 import ragas.optimizers.OptimizerConfig
+import ragas.optimizers.OptimizerOutcome
 import ragas.optimizers.OptimizerPrompt
+import ragas.optimizers.asTextPrompt
 import ragas.prompt.PromptContentPart
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class OptimizersTest {
@@ -196,5 +199,47 @@ class OptimizersTest {
         assertTrue(optimized is OptimizerPrompt.MultiModal)
         val projected = optimized.content.joinToString("\n") { it.toPromptText() }
         assertTrue("concise" in projected.lowercase())
+    }
+
+    @Test
+    fun optimizerOutcomeLegacyMapKeepsReservedKeysFromCoreFields() {
+        val outcome =
+            OptimizerOutcome(
+                optimizedPrompt =
+                    OptimizerPrompt.MultiModal(
+                        listOf(
+                            PromptContentPart.Text("Core prompt text"),
+                            PromptContentPart.ImageUrl("https://example.com/core.png"),
+                        ),
+                    ),
+                metadata =
+                    mapOf(
+                        "optimized_prompt" to "metadata_override_attempt",
+                        "optimized_prompt_type" to "metadata_override_attempt",
+                        "optimizer" to "genetic",
+                    ),
+            )
+
+        val legacy = outcome.toLegacyMap()
+
+        assertEquals("genetic", legacy["optimizer"])
+        assertEquals("multimodal", legacy["optimized_prompt_type"])
+        assertEquals(outcome.optimizedPrompt.asTextPrompt(), legacy["optimized_prompt"])
+    }
+
+    @Test
+    fun optimizerConfigRejectsInvalidValues() {
+        assertFailsWith<IllegalArgumentException> {
+            OptimizerConfig(iterations = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            OptimizerConfig(populationSize = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            OptimizerConfig(mutationProbability = -0.1)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            OptimizerConfig(mutationProbability = 1.1)
+        }
     }
 }

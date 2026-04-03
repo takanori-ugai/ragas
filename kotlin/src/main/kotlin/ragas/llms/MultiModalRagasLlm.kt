@@ -9,7 +9,8 @@ interface MultiModalRagasLlm {
     /**
      * Generates output from multimodal prompt content parts.
      *
-     * @param content Parameter `content`.
+     * @param content Ordered multimodal prompt parts (for example instructions, examples,
+     * and text/image content) as they should be presented to the model.
      * @param n Number of generations requested.
      * @param temperature Sampling temperature.
      * @param stop Stop token list.
