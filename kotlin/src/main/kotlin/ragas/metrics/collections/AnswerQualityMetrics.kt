@@ -22,6 +22,11 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.math.pow
 
+/**
+ * Implements [AnswerAccuracyMetric].
+ *
+ * @property maxRetries Maximum retries.
+ */
 class AnswerAccuracyMetric(
     name: String = "answer_accuracy",
     private val maxRetries: Int = 5,
@@ -34,11 +39,19 @@ class AnswerAccuracyMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -219,6 +232,12 @@ private fun answerAccuracyJudge2Prompt(
         append("Rating: ")
     }
 
+/**
+ * Implements [AnswerCorrectnessMetric].
+ *
+ * @property weights Metric component weights.
+ * @property beta F-score beta parameter.
+ */
 class AnswerCorrectnessMetric(
     name: String = "answer_correctness",
     private val weights: List<Double> = listOf(0.75, 0.25),
@@ -243,11 +262,19 @@ class AnswerCorrectnessMetric(
         require(beta.isFinite() && beta > 0.0) { "Beta must be a positive finite value." }
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {

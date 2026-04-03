@@ -12,6 +12,11 @@ import kotlinx.serialization.json.longOrNull
 
 private val json = Json
 
+/**
+ * Converts a Kotlin value into a JSON element representation.
+ *
+ * @param value Value payload.
+ */
 fun anyToJsonElement(value: Any?): JsonElement =
     when (value) {
         null -> {
@@ -48,6 +53,11 @@ fun anyToJsonElement(value: Any?): JsonElement =
         }
     }
 
+/**
+ * Converts a JSON element back into Kotlin primitive/map/list values.
+ *
+ * @param element JSON element value.
+ */
 fun jsonElementToAny(element: JsonElement): Any? =
     when (element) {
         is JsonNull -> {
@@ -73,11 +83,21 @@ fun jsonElementToAny(element: JsonElement): Any? =
         }
     }
 
+/**
+ * Encodes one row map as a compact JSONL line.
+ *
+ * @param row Row map payload.
+ */
 fun rowToJsonLine(row: Map<String, Any?>): String {
     val objectElement = JsonObject(row.mapValues { (_, value) -> anyToJsonElement(value) })
     return json.encodeToString(JsonElement.serializer(), objectElement)
 }
 
+/**
+ * Decodes one JSONL line into a row map.
+ *
+ * @param line Serialized JSONL line.
+ */
 fun jsonLineToRow(line: String): Map<String, Any?> {
     val element = json.parseToJsonElement(line)
     require(element is JsonObject) { "JSONL row must be a JSON object" }

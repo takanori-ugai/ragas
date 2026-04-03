@@ -9,61 +9,140 @@ import ragas.model.EvaluationResult
 import ragas.prompt.PromptContentPart
 import ragas.runtime.Executor
 
+/**
+ * Prompt/completion token accounting for one or more LLM calls.
+ *
+ * @property promptTokens Count of tokens attributed to prompts.
+ * @property completionTokens Count of tokens attributed to completions.
+ */
 data class TokenUsage(
     val promptTokens: Int,
     val completionTokens: Int,
 ) {
+    /** Sum of [promptTokens] and [completionTokens]. */
     val totalTokens: Int = promptTokens + completionTokens
 }
 
+/**
+ * Parsed cost estimate derived from [TokenUsage].
+ *
+ * @property amount Estimated monetary amount.
+ * @property currency Currency code for [amount].
+ */
 data class CostEstimate(
     val amount: Double,
     val currency: String = "USD",
 )
 
+/** Callback sink for evaluation lifecycle events. */
 fun interface EvaluationCallback {
+    /**
+     * Called whenever an [EvaluationEvent] is emitted.
+     *
+     * @param event Emitted evaluation event.
+     */
     fun onEvent(event: EvaluationEvent)
 }
 
+/** Event stream emitted while evaluation runs. */
 sealed interface EvaluationEvent {
+    /**
+     * Emitted once before any metric work starts.
+     *
+     * @property sampleCount Number of samples in the evaluation dataset.
+     * @property metricNames Names of metrics selected for evaluation.
+     */
     data class RunStarted(
+        /** Number of samples in the evaluation dataset. */
         val sampleCount: Int,
+        /** Names of metrics selected for evaluation. */
         val metricNames: List<String>,
     ) : EvaluationEvent
 
+    /**
+     * Emitted once an executor is created and ready to accept jobs.
+     *
+     * @property executor Executor handling metric tasks.
+     */
     data class ExecutorReady(
+        /** Executor handling metric tasks. */
         val executor: Executor,
     ) : EvaluationEvent
 
+    /**
+     * Emitted after one metric value is computed for one row.
+     *
+     * @property rowIndex Dataset row index.
+     * @property metricName Metric name.
+     * @property value Computed metric value.
+     */
     data class MetricComputed(
+        /** Dataset row index. */
         val rowIndex: Int,
+        /** Metric name. */
         val metricName: String,
+        /** Computed metric value. */
         val value: Any?,
     ) : EvaluationEvent
 
+    /**
+     * Emitted when all selected metrics are available for a row.
+     *
+     * @property rowIndex Dataset row index.
+     * @property scores Map of metric name to computed value for the row.
+     */
     data class RowCompleted(
+        /** Dataset row index. */
         val rowIndex: Int,
+        /** Map of metric name to computed value for the row. */
         val scores: Map<String, Any?>,
     ) : EvaluationEvent
 
+    /**
+     * Emitted after aggregated token usage is computed.
+     *
+     * @property usage Aggregated token usage.
+     */
     data class TokenUsageComputed(
+        /** Aggregated token usage. */
         val usage: TokenUsage,
     ) : EvaluationEvent
 
+    /**
+     * Emitted after optional cost estimation is computed.
+     *
+     * @property cost Computed cost estimate.
+     */
     data class CostComputed(
+        /** Computed cost estimate. */
         val cost: CostEstimate,
     ) : EvaluationEvent
 
+    /**
+     * Emitted when evaluation completes successfully.
+     *
+     * @property result Final evaluation result.
+     */
     data class RunCompleted(
+        /** Final evaluation result. */
         val result: EvaluationResult,
     ) : EvaluationEvent
 
+    /**
+     * Emitted when evaluation fails with an exception.
+     *
+     * @property error Terminal failure error.
+     */
     data class RunFailed(
+        /** Terminal failure error. */
         val error: Throwable,
     ) : EvaluationEvent
 }
 
+/** User-supplied parser that extracts token usage from an LLM call. */
 typealias TokenUsageParser = (prompt: String, result: LlmResult) -> TokenUsage?
+
+/** User-supplied parser that turns token usage into a cost estimate. */
 typealias CostParser = (usage: TokenUsage) -> CostEstimate?
 
 internal open class TrackingRagasLlm private constructor(

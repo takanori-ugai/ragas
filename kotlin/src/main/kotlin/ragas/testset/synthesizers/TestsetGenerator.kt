@@ -12,12 +12,32 @@ import ragas.testset.transforms.applyTransforms
 import kotlin.math.exp
 import kotlin.random.Random
 
+/**
+ * Sampling strategy used when selecting synthesis candidates.
+ */
 enum class SamplingMode {
+    /** Always take the highest-scoring candidates first. */
     TOP_K,
+
+    /** Sample with probability biased toward higher-ranked candidates. */
     RANK_BIASED,
+
+    /** Sample stochastically by softmax over scores and temperature. */
     TEMPERATURE,
 }
 
+/**
+ * Controls stochastic and balancing behavior for testset synthesis.
+ *
+ * @property seed Random seed used for deterministic selection when desired.
+ * @property samplingMode Explicit sampling mode override.
+ * @property useRankBiasedSampling Whether to default to [SamplingMode.RANK_BIASED] when [samplingMode] is null.
+ * @property temperature Softmax temperature used by temperature sampling.
+ * @property enforceDocumentDiversity Whether to cap per-document single-hop samples.
+ * @property maxSingleHopPerDocument Maximum single-hop samples per document when diversity is enabled.
+ * @property singleHopCount Optional requested number of single-hop samples.
+ * @property multiHopCount Optional requested number of multi-hop samples.
+ */
 data class SynthesisControls(
     val seed: Int = 42,
     val samplingMode: SamplingMode? = null,
@@ -29,9 +49,23 @@ data class SynthesisControls(
     val multiHopCount: Int? = null,
 )
 
+/**
+ * Builds a knowledge graph from documents and synthesizes evaluation samples from it.
+ *
+ * @property knowledgeGraph Mutable working graph used during generation.
+ */
 class TestsetGenerator(
     var knowledgeGraph: KnowledgeGraph = KnowledgeGraph(),
 ) {
+    /**
+     * Constructs graph nodes/edges from raw documents and generates a testset of the requested size.
+     *
+     * @param documents Source document texts.
+     * @param testsetSize Maximum number of generated samples to return.
+     * @param transforms Optional transform pipeline applied after document nodes are added.
+     * @param synthesisControls Candidate scoring and sampling controls.
+     * @return Generated [Testset].
+     */
     suspend fun generateFromDocuments(
         documents: List<String>,
         testsetSize: Int,
@@ -641,4 +675,9 @@ class TestsetGenerator(
             ?: node.getProperty("source_document_topic").orEmpty()
 }
 
+/**
+ * Returns a no-op transform sequence used as the default preprocessing pipeline.
+ *
+ * @return Empty sequence of transforms.
+ */
 fun emptyTransforms(): Transforms = SequenceTransforms(emptyList())

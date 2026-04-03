@@ -8,6 +8,9 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [ResponseGroundednessMetric].
+ */
 class ResponseGroundednessMetric :
     BaseMetric(
         name = "response_groundedness",
@@ -15,6 +18,10 @@ class ResponseGroundednessMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

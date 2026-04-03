@@ -25,6 +25,14 @@ import ragas.runtime.RunConfig
 import kotlin.math.pow
 import kotlin.math.round
 
+/**
+ * Implements [FactualCorrectnessMetric].
+ *
+ * @property mode Scoring mode.
+ * @property beta F-score beta parameter.
+ * @property atomicity Property `atomicity`.
+ * @property coverage Property `coverage`.
+ */
 class FactualCorrectnessMetric(
     name: String = "factual_correctness",
     private val mode: Mode = Mode.F1,
@@ -40,12 +48,18 @@ class FactualCorrectnessMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         PRECISION,
         RECALL,
         F1,
     }
 
+    /**
+     * Enumerates DecompositionLevel values.
+     */
     enum class DecompositionLevel {
         LOW,
         HIGH,
@@ -57,11 +71,19 @@ class FactualCorrectnessMetric(
         }
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -419,6 +441,11 @@ private fun topicClassificationPrompt(
     }
 }
 
+/**
+ * Implements [TopicAdherenceMetric].
+ *
+ * @property mode Scoring mode.
+ */
 class TopicAdherenceMetric(
     name: String = "topic_adherence",
     private val mode: Mode = Mode.F1,
@@ -431,17 +458,28 @@ class TopicAdherenceMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         PRECISION,
         RECALL,
         F1,
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {

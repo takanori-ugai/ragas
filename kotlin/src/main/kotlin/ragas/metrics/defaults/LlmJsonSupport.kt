@@ -11,6 +11,11 @@ import kotlinx.serialization.json.intOrNull
 internal object LlmJsonSupport {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Executes parseFirstJsonObject.
+     *
+     * @param raw Raw model output text.
+     */
     fun parseFirstJsonObject(raw: String): JsonObject? {
         var searchFrom = 0
         while (searchFrom < raw.length) {
@@ -32,6 +37,12 @@ internal object LlmJsonSupport {
         return null
     }
 
+    /**
+     * Executes readStringArray.
+     *
+     * @param root Parsed JSON root object.
+     * @param key JSON/object key.
+     */
     fun readStringArray(
         root: JsonObject,
         key: String,
@@ -47,6 +58,12 @@ internal object LlmJsonSupport {
                 }
             }.filter { value -> value.isNotBlank() }
 
+    /**
+     * Executes readIntLike.
+     *
+     * @param root Parsed JSON root object.
+     * @param key JSON/object key.
+     */
     fun readIntLike(
         root: JsonObject,
         key: String,

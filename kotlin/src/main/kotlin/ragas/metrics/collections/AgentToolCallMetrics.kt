@@ -14,6 +14,11 @@ import ragas.model.MultiTurnSample
 import ragas.model.ToolCall
 import kotlin.math.round
 
+/**
+ * Implements [ToolCallAccuracyMetric].
+ *
+ * @property strictOrder Whether tool-call order must match exactly.
+ */
 class ToolCallAccuracyMetric(
     private val strictOrder: Boolean = true,
     name: String = "tool_call_accuracy",
@@ -23,6 +28,10 @@ class ToolCallAccuracyMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     MultiTurnMetric {
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val predictedToolCalls = extractPredictedToolCalls(sample)
         val referenceToolCalls = sample.referenceToolCalls.orEmpty()
@@ -123,6 +132,9 @@ class ToolCallAccuracyMetric(
         }
 }
 
+/**
+ * Implements [ToolCallF1Metric].
+ */
 class ToolCallF1Metric(
     name: String = "tool_call_f1",
 ) : BaseMetric(
@@ -131,6 +143,10 @@ class ToolCallF1Metric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     MultiTurnMetric {
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val expected =
             sample.referenceToolCalls

@@ -6,6 +6,14 @@ import ragas.testset.graph.Relationship
 import java.text.BreakIterator
 import java.util.Locale
 
+/**
+ * Splits document text into sentence-based chunk nodes and links them with chunk relationships.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate for source documents.
+ * @property sourceProperty Source property key.
+ * @property maxSentencesPerChunk Maximum sentences per chunk.
+ */
 class SentenceChunkSplitter(
     override val name: String = "sentence_chunk_splitter",
     override val filterNodes: (Node) -> Boolean = { node -> node.type == NodeType.DOCUMENT },
@@ -16,6 +24,12 @@ class SentenceChunkSplitter(
         require(maxSentencesPerChunk > 0) { "maxSentencesPerChunk must be > 0" }
     }
 
+    /**
+     * Splits one source node into chunk nodes and intra-document relationships.
+     *
+     * @param node Source document node.
+     * @return Pair of generated chunk nodes and `child` relationships.
+     */
     override suspend fun split(node: Node): Pair<List<Node>, List<Relationship>> {
         val text = node.getProperty(sourceProperty).orEmpty().trim()
         if (text.isBlank()) {

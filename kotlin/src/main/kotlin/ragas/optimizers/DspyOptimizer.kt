@@ -3,6 +3,9 @@ package ragas.optimizers
 import ragas.cache.CacheBackend
 import ragas.cache.stableCacheKey
 
+/**
+ * Optimizer that uses an optional DSPy adapter to propose prompt candidates.
+ */
 class DspyOptimizer : Optimizer {
     constructor() : this(
         adapter = DspyAdapterLoader.loadFirstOrNull() ?: HeuristicDspyAdapter(),
@@ -25,6 +28,9 @@ class DspyOptimizer : Optimizer {
     private val adapter: DspyAdapter
     private val cache: CacheBackend?
 
+    /**
+     * Optimizes a prompt on a dataset and returns the best discovered outcome.
+     */
     override fun optimizePrompts(
         dataset: OptimizationDataset,
         initialPrompts: List<OptimizerPrompt>,

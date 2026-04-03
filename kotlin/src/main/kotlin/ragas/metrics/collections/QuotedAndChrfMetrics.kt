@@ -8,6 +8,12 @@ import ragas.metrics.clamp01
 import ragas.model.SingleTurnSample
 import kotlin.math.pow
 
+/**
+ * Implements [QuotedSpansAlignmentMetric].
+ *
+ * @property casefold Whether matching ignores case.
+ * @property minSpanWords Minimum span length in words.
+ */
 class QuotedSpansAlignmentMetric(
     name: String = "quoted_spans_alignment",
     private val casefold: Boolean = true,
@@ -18,6 +24,10 @@ class QuotedSpansAlignmentMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty()
         val contexts = sample.retrievedContexts.orEmpty()
@@ -71,6 +81,12 @@ class QuotedSpansAlignmentMetric(
     }
 }
 
+/**
+ * Implements [ChrfScoreMetric].
+ *
+ * @property charOrder Property `charOrder`.
+ * @property beta F-score beta parameter.
+ */
 class ChrfScoreMetric(
     name: String = "chrf_score",
     private val charOrder: Int = 6,
@@ -86,6 +102,10 @@ class ChrfScoreMetric(
         require(beta > 0.0 && beta.isFinite()) { "beta must be positive and finite." }
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
         val response = sample.response.orEmpty()

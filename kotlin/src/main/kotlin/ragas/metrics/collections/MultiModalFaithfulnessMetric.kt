@@ -6,6 +6,9 @@ import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [MultiModalFaithfulnessMetric].
+ */
 class MultiModalFaithfulnessMetric(
     name: String = "multi_modal_faithfulness",
 ) : BaseMetric(
@@ -14,6 +17,10 @@ class MultiModalFaithfulnessMetric(
         outputType = MetricOutputType.BINARY,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

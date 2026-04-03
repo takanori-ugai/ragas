@@ -21,6 +21,10 @@ abstract class BaseContextPrecisionMetric(
 
     protected open val matchThreshold: Double = 0.35
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val userInput = sample.userInput.orEmpty().trim()
         val answer = answerText(sample).trim()
@@ -131,6 +135,10 @@ open class ContextPrecisionWithReferenceMetric(
         name = name,
         requiredColumns = setOf("user_input", "retrieved_contexts", "reference"),
     ) {
+    /**
+     * Executes answerText.
+     * @param sample Evaluation sample to score.
+     */
     override fun answerText(sample: SingleTurnSample): String = sample.reference.orEmpty()
 }
 
@@ -142,9 +150,19 @@ open class ContextPrecisionWithoutReferenceMetric(
     ) {
     override val matchThreshold: Double = 0.20
 
+    /**
+     * Executes answerText.
+     * @param sample Evaluation sample to score.
+     */
     override fun answerText(sample: SingleTurnSample): String = sample.response.orEmpty()
 }
 
+/**
+ * Implements [ContextPrecisionCollectionMetric].
+ */
 class ContextPrecisionCollectionMetric : ContextPrecisionWithReferenceMetric(name = "context_precision")
 
+/**
+ * Implements [ContextUtilizationMetric].
+ */
 class ContextUtilizationMetric : ContextPrecisionWithoutReferenceMetric(name = "context_utilization")

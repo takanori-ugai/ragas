@@ -9,17 +9,34 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
+/**
+ * Input/output pair used as a few-shot example in prompt rendering.
+ *
+ * @property input Example input payload.
+ * @property output Expected structured output payload.
+ */
 data class PromptIoExample(
     val input: Map<String, Any?>,
     val output: Map<String, Any?>,
 )
 
+/**
+ * Renders instruction templates with optional schema hints and few-shot examples.
+ *
+ * Constructor parameters are private by design; call [render] to create the final prompt text.
+ */
 class PromptTemplate(
     private val instructionTemplate: String,
     private val outputSchema: JsonElement? = null,
     private val examples: List<PromptIoExample> = emptyList(),
     private val includeInputOutputFrame: Boolean = true,
 ) {
+    /**
+     * Builds a prompt string from template [inputs].
+     *
+     * @param inputs Values used to replace `{key}` placeholders in the instruction template.
+     * @return Rendered prompt string that may include schema guidance and examples.
+     */
     fun render(inputs: Map<String, Any?>): String {
         var rendered = instructionTemplate
         inputs.forEach { (key, value) ->

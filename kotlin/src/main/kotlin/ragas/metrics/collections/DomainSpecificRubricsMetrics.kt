@@ -37,6 +37,10 @@ open class DomainSpecificRubricsMetric(
         normalizedRubrics = normalizeRubrics(selectedRubrics)
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val userInput = sample.userInput.orEmpty().trim()
         val response = sample.response.orEmpty().trim()
@@ -55,6 +59,9 @@ open class DomainSpecificRubricsMetric(
     }
 }
 
+/**
+ * Implements [RubricsScoreWithoutReferenceMetric].
+ */
 class RubricsScoreWithoutReferenceMetric(
     rubrics: Map<String, String>? = null,
     name: String = "rubrics_score_without_reference",
@@ -64,6 +71,9 @@ class RubricsScoreWithoutReferenceMetric(
         withReference = false,
     )
 
+/**
+ * Implements [RubricsScoreWithReferenceMetric].
+ */
 class RubricsScoreWithReferenceMetric(
     rubrics: Map<String, String>? = null,
     name: String = "rubrics_score_with_reference",

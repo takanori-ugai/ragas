@@ -7,6 +7,9 @@ import ragas.metrics.SingleTurnMetric
 import ragas.metrics.clamp01
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [IdBasedContextPrecisionMetric].
+ */
 class IdBasedContextPrecisionMetric :
     BaseMetric(
         name = "id_based_context_precision",
@@ -14,6 +17,10 @@ class IdBasedContextPrecisionMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val retrieved =
             sample.retrievedContextIds
@@ -38,6 +45,9 @@ class IdBasedContextPrecisionMetric :
     }
 }
 
+/**
+ * Implements [ContextEntityRecallMetric].
+ */
 class ContextEntityRecallMetric :
     BaseMetric(
         name = "context_entity_recall",
@@ -45,6 +55,10 @@ class ContextEntityRecallMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { context -> context.isNotBlank() }

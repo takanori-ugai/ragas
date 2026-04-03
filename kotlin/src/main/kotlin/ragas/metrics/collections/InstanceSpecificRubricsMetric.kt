@@ -6,6 +6,9 @@ import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [InstanceSpecificRubricsMetric].
+ */
 class InstanceSpecificRubricsMetric(
     name: String = "instance_specific_rubrics",
 ) : BaseMetric(
@@ -14,6 +17,10 @@ class InstanceSpecificRubricsMetric(
         outputType = MetricOutputType.DISCRETE,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val sampleRubrics = sample.rubrics
         require(!sampleRubrics.isNullOrEmpty()) {

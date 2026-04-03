@@ -8,6 +8,9 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [ContextRelevanceMetric].
+ */
 class ContextRelevanceMetric :
     BaseMetric(
         name = "context_relevance",
@@ -15,6 +18,10 @@ class ContextRelevanceMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val userInput = sample.userInput.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

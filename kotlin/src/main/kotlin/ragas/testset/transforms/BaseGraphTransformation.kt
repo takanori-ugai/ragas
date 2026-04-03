@@ -4,14 +4,35 @@ import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
 import ragas.testset.graph.Relationship
 
+/**
+ * Default node filter that includes every node.
+ */
 val defaultFilter: (Node) -> Boolean = { true }
 
+/**
+ * Base contract for graph transformations and execution-plan generation.
+ */
 interface BaseGraphTransformation {
+    /** Stable transformation name used for logs and debugging. */
     val name: String
+
+    /** Predicate used to select the nodes this transformation should consider. */
     val filterNodes: (Node) -> Boolean
 
+    /**
+     * Mutates the target graph by applying this transformation.
+     *
+     * @param kg Graph to mutate.
+     * @return Transformation-specific result payload.
+     */
     suspend fun transform(kg: KnowledgeGraph): Any?
 
+    /**
+     * Returns a subgraph containing only nodes and relationships accepted by the node filter.
+     *
+     * @param kg Input graph.
+     * @return Filtered graph containing selected nodes and their connecting relationships.
+     */
     fun filter(kg: KnowledgeGraph): KnowledgeGraph {
         val filteredNodes = kg.nodes.filter(filterNodes)
         val nodeIds = filteredNodes.map { node -> node.id }.toSet()
@@ -23,15 +44,37 @@ interface BaseGraphTransformation {
         )
     }
 
+    /**
+     * Produces deferred operations that execute this transformation against a graph.
+     *
+     * @param kg Graph used to prepare execution tasks.
+     * @return Deferred tasks that perform the transformation.
+     */
     fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit>
 }
 
+/**
+ * Base transformation that extracts one property value from each selected node.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ */
 abstract class Extractor(
     override val name: String,
     override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
+    /**
+     * Extracts one `(propertyName, propertyValue)` pair from a node.
+     *
+     * @param node Node to extract from.
+     * @return Property key/value pair to write.
+     */
     abstract suspend fun extract(node: Node): Pair<String, String>
 
+    /**
+     * Mutates the target graph by applying this transformation.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override suspend fun transform(kg: KnowledgeGraph): List<Pair<Node, Pair<String, String>>> {
         val filtered = filter(kg)
         return filtered.nodes.map { node ->
@@ -39,6 +82,10 @@ abstract class Extractor(
         }
     }
 
+    /**
+     * Produces deferred operations that execute this transformation against a graph.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> {
         val filtered = filter(kg)
         return filtered.nodes.map { node ->
@@ -54,12 +101,28 @@ abstract class Extractor(
     }
 }
 
+/**
+ * Base transformation that splits selected nodes into derived nodes and relationships.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ */
 abstract class Splitter(
     override val name: String,
     override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
+    /**
+     * Splits one node into derived nodes and relationships.
+     *
+     * @param node Node to split.
+     * @return Pair of created nodes and relationships.
+     */
     abstract suspend fun split(node: Node): Pair<List<Node>, List<ragas.testset.graph.Relationship>>
 
+    /**
+     * Mutates the target graph by applying this transformation.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override suspend fun transform(kg: KnowledgeGraph): Pair<List<Node>, List<ragas.testset.graph.Relationship>> {
         val filtered = filter(kg)
         val allNodes = mutableListOf<Node>()
@@ -72,6 +135,10 @@ abstract class Splitter(
         return allNodes to allRelationships
     }
 
+    /**
+     * Produces deferred operations that execute this transformation against a graph.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> {
         val filtered = filter(kg)
         return filtered.nodes.map { node ->
@@ -86,14 +153,34 @@ abstract class Splitter(
     }
 }
 
+/**
+ * Base transformation that builds new relationships from the current graph state.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ */
 abstract class RelationshipBuilder(
     override val name: String,
     override val filterNodes: (Node) -> Boolean = defaultFilter,
 ) : BaseGraphTransformation {
+    /**
+     * Builds relationships to be added to the graph.
+     *
+     * @param kg Graph to inspect.
+     * @return Relationships produced by this builder.
+     */
     abstract suspend fun build(kg: KnowledgeGraph): List<Relationship>
 
+    /**
+     * Mutates the target graph by applying this transformation.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override suspend fun transform(kg: KnowledgeGraph): List<Relationship> = build(kg)
 
+    /**
+     * Produces deferred operations that execute this transformation against a graph.
+     * @param kg Knowledge graph to transform or inspect.
+     */
     override fun generateExecutionPlan(kg: KnowledgeGraph): List<suspend () -> Unit> =
         listOf(
             suspend {

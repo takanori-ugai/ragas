@@ -10,6 +10,16 @@ import ragas.model.EvaluationResult
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Input record schema for LlamaIndex integration adapters.
+ *
+ * @property query User prompt text.
+ * @property response Model output text.
+ * @property retrievedNodes Retrieved node snippets.
+ * @property referenceNodes Optional reference node snippets.
+ * @property reference Optional reference answer.
+ * @property metadata Optional record metadata.
+ */
 data class LlamaIndexRecord(
     val query: String,
     val response: String,
@@ -19,7 +29,15 @@ data class LlamaIndexRecord(
     val metadata: Map<String, String> = emptyMap(),
 )
 
+/**
+ * Helper functions for evaluating LlamaIndex records with ragas metrics.
+ */
 object LlamaIndexIntegration {
+    /**
+     * Converts integration records into an evaluation dataset.
+     *
+     * @param records Integration records to process.
+     */
     fun toDataset(records: List<LlamaIndexRecord>): EvaluationDataset<SingleTurnSample> =
         EvaluationDataset(
             records.map { record ->
@@ -33,6 +51,20 @@ object LlamaIndexIntegration {
             },
         )
 
+    /**
+     * Evaluates integration records with the selected metrics and model dependencies.
+     *
+     * @param records Integration records to process.
+     * @param metrics Metrics to run.
+     * @param llm LLM dependency used during generation/evaluation.
+     * @param embeddings Embedding dependency used during evaluation.
+     * @param runConfig Runtime retry/concurrency configuration.
+     * @param raiseExceptions Whether metric failures should be thrown.
+     * @param runName Logical run name used in tracing output.
+     * @param tags Run-level tags.
+     * @param metadata Run-level metadata.
+     * @param observers Trace observers notified during execution.
+     */
     fun evaluateRecords(
         records: List<LlamaIndexRecord>,
         metrics: List<Metric>? = null,
@@ -62,5 +94,10 @@ object LlamaIndexIntegration {
             )
         }
 
+    /**
+     * Converts evaluation scores into integration-friendly metric rows.
+     *
+     * @param result Evaluation result payload.
+     */
     fun toMetricPayload(result: EvaluationResult): List<Map<String, Any?>> = result.scores
 }

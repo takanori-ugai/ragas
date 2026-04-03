@@ -3,10 +3,19 @@ package ragas.embeddings
 import ragas.cache.CacheBackend
 import ragas.cache.stableCacheKey
 
+/**
+ * Embedding adapter that memoizes embedding results via a cache backend.
+ *
+ * @property delegate Wrapped delegate instance.
+ * @property cache Cache backend instance.
+ */
 class CachedRagasEmbedding(
     private val delegate: BaseRagasEmbedding,
     private val cache: CacheBackend,
 ) : BaseRagasEmbedding {
+    /**
+     * Returns an embedding vector for one input text.
+     */
     override suspend fun embedText(text: String): List<Float> {
         val key = stableCacheKey("embedding|$text")
         val cached = decodeCachedVector(cache.get(key))
@@ -19,6 +28,9 @@ class CachedRagasEmbedding(
         return result
     }
 
+    /**
+     * Returns embedding vectors for multiple input texts.
+     */
     override suspend fun embedTexts(texts: List<String>): List<List<Float>> {
         if (texts.isEmpty()) {
             return emptyList()

@@ -14,6 +14,9 @@ import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Implements [ContextRecallMetric].
+ */
 class ContextRecallMetric :
     BaseMetric(
         name = "context_recall",
@@ -24,11 +27,19 @@ class ContextRecallMetric :
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {

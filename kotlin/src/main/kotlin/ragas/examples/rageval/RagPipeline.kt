@@ -6,6 +6,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.absoluteValue
 
+/**
+ * Sample document corpus used by the RAG pipeline example.
+ */
 val DOCUMENTS: List<String> =
     listOf(
         "Ragas are melodic frameworks in Indian classical music.",
@@ -15,32 +18,68 @@ val DOCUMENTS: List<String> =
         "Ragas can be performed on various instruments or sung vocally.",
     )
 
+/**
+ * Represents [TraceEvent].
+ *
+ * @property eventType Trace event type.
+ * @property component Component name.
+ * @property data Event payload map.
+ */
 data class TraceEvent(
     val eventType: String,
     val component: String,
     val data: Map<String, Any?>,
 )
 
+/**
+ * Represents [RetrievedDoc].
+ *
+ * @property content Document content text.
+ * @property similarityScore Similarity score.
+ * @property documentId Document identifier.
+ */
 data class RetrievedDoc(
     val content: String,
     val similarityScore: Int,
     val documentId: Int,
 )
 
+/**
+ * Represents [QueryResult].
+ *
+ * @property answer Generated answer text.
+ * @property runId Run identifier.
+ * @property logs Trace/log events.
+ */
 data class QueryResult(
     val answer: String,
     val runId: String,
     val logs: String,
 )
 
+/**
+ * Defines [ChatClient].
+ */
 interface ChatClient {
+    /**
+     * Executes complete.
+     *
+     * @param systemPrompt System prompt text.
+     * @param userPrompt User prompt text.
+     */
     suspend fun complete(
         systemPrompt: String,
         userPrompt: String,
     ): String
 }
 
+/**
+ * Implements [EchoChatClient].
+ */
 class EchoChatClient : ChatClient {
+    /**
+     * Executes complete.
+     */
     override suspend fun complete(
         systemPrompt: String,
         userPrompt: String,
@@ -50,23 +89,47 @@ class EchoChatClient : ChatClient {
     }
 }
 
+/**
+ * Defines [BaseRetriever].
+ */
 interface BaseRetriever {
+    /**
+     * Executes fit.
+     *
+     * @param documents Document texts to index.
+     */
     fun fit(documents: List<String>)
 
+    /**
+     * Executes getTopK.
+     *
+     * @param query User query text.
+     * @param k Maximum number of results.
+     */
     fun getTopK(
         query: String,
         k: Int = 3,
     ): List<Pair<Int, Int>>
 }
 
+/**
+ * Implements [SimpleKeywordRetriever].
+ */
 class SimpleKeywordRetriever : BaseRetriever {
     private val documents = mutableListOf<String>()
 
+    /**
+     * Executes fit.
+     * @param documents Documents used to build the retriever index.
+     */
     override fun fit(documents: List<String>) {
         this.documents.clear()
         this.documents.addAll(documents)
     }
 
+    /**
+     * Executes getTopK.
+     */
     override fun getTopK(
         query: String,
         k: Int,
@@ -82,6 +145,14 @@ class SimpleKeywordRetriever : BaseRetriever {
     }
 }
 
+/**
+ * Implements [ExampleRag].
+ *
+ * @property chatClient Chat client used to generate responses.
+ * @property retriever Retriever implementation.
+ * @property systemPrompt System prompt template.
+ * @property logDir Trace log directory.
+ */
 class ExampleRag(
     private val chatClient: ChatClient,
     private val retriever: BaseRetriever = SimpleKeywordRetriever(),
@@ -114,6 +185,11 @@ class ExampleRag(
             )
     }
 
+    /**
+     * Executes addDocuments.
+     *
+     * @param newDocuments Documents to append or replace.
+     */
     fun addDocuments(newDocuments: List<String>) {
         traces +=
             TraceEvent(
@@ -132,6 +208,11 @@ class ExampleRag(
         isFitted = true
     }
 
+    /**
+     * Executes setDocuments.
+     *
+     * @param newDocuments Documents to append or replace.
+     */
     fun setDocuments(newDocuments: List<String>) {
         documents.clear()
         documents += newDocuments
@@ -139,6 +220,12 @@ class ExampleRag(
         isFitted = true
     }
 
+    /**
+     * Executes retrieveDocuments.
+     *
+     * @param query User query text.
+     * @param topK Maximum documents to retrieve.
+     */
     fun retrieveDocuments(
         query: String,
         topK: Int = 3,
@@ -156,6 +243,12 @@ class ExampleRag(
             }
     }
 
+    /**
+     * Executes generateResponse.
+     *
+     * @param query User query text.
+     * @param topK Maximum documents to retrieve.
+     */
     suspend fun generateResponse(
         query: String,
         topK: Int = 3,
@@ -181,6 +274,13 @@ class ExampleRag(
         }
     }
 
+    /**
+     * Executes query.
+     *
+     * @param question User question text.
+     * @param topK Maximum documents to retrieve.
+     * @param runId Run identifier.
+     */
     suspend fun query(
         question: String,
         topK: Int = 3,
@@ -240,6 +340,13 @@ class ExampleRag(
         }
     }
 
+    /**
+     * Executes exportTracesToLog.
+     *
+     * @param runId Run identifier.
+     * @param query User query text.
+     * @param result Query result payload.
+     */
     fun exportTracesToLog(
         runId: String,
         query: String?,
@@ -278,6 +385,12 @@ class ExampleRag(
     }
 }
 
+/**
+ * Executes defaultRagClient.
+ *
+ * @param chatClient Chat client implementation.
+ * @param logDir Log output directory.
+ */
 fun defaultRagClient(
     chatClient: ChatClient,
     logDir: String = "logs",

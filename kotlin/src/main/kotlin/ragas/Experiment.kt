@@ -10,12 +10,24 @@ import java.io.File
 import java.io.IOException
 import kotlin.random.Random
 
+/**
+ * Stores experiment result rows and persists them through a [BaseBackend].
+ *
+ * @property name Experiment identifier used by backends.
+ * @property backend Backend used to save and load experiment rows.
+ */
 class Experiment(
     val name: String,
     val backend: BaseBackend,
 ) {
     private val rows = mutableListOf<Map<String, Any?>>()
 
+    /**
+     * Adds one result row to this experiment.
+     *
+     * `Map` values are stored as-is, [Sample] values are serialized with [Sample.toMap],
+     * and all other values are stored under a `"value"` key.
+     */
     fun append(result: Any?) {
         if (result == null) {
             return
@@ -23,10 +35,12 @@ class Experiment(
         rows += toRowMap(result)
     }
 
+    /** Persists all currently buffered rows to [backend]. */
     fun save() {
         backend.saveExperiment(name, rows.toList())
     }
 
+    /** Returns a snapshot of the currently buffered rows. */
     fun rows(): List<Map<String, Any?>> = rows.toList()
 
     companion object {
@@ -70,6 +84,14 @@ class Experiment(
     }
 }
 
+/**
+ * Wraps a suspend function so it can be run over a dataset and saved as an [Experiment].
+ *
+ * @param func Function invoked for each dataset item.
+ * @param defaultBackend Optional backend override used when [arun] does not receive `backend`.
+ * @param namePrefix Prefix added to generated experiment names.
+ * @param progressCallback Optional callback invoked after each processed item.
+ */
 class ExperimentWrapper<T>(
     private val func: suspend (T) -> Any?,
     private val defaultBackend: Any? = null,
@@ -78,6 +100,16 @@ class ExperimentWrapper<T>(
 ) {
     suspend operator fun invoke(item: T): Any? = func(item)
 
+    /**
+     * Runs [func] for each dataset item, collects successful outputs, and saves them.
+     *
+     * Failures are logged and skipped so remaining items can still complete.
+     *
+     * @param dataset Items to process.
+     * @param name Optional experiment name; when null, a memorable name is generated.
+     * @param backend Optional backend override for this run only.
+     * @return Saved [Experiment] containing successful rows.
+     */
     suspend fun arun(
         dataset: Iterable<T>,
         name: String? = null,
@@ -134,6 +166,9 @@ class ExperimentWrapper<T>(
     }
 }
 
+/**
+ * Creates an [ExperimentWrapper] with optional backend and naming controls.
+ */
 fun <T> experiment(
     backend: Any? = null,
     namePrefix: String = "",
@@ -147,6 +182,18 @@ fun <T> experiment(
         progressCallback = progressCallback,
     )
 
+/**
+ * Versions the current repository state for an experiment by committing staged changes.
+ *
+ * Optionally creates a `ragas/<experimentName>` branch pointing to the resulting commit.
+ *
+ * @param experimentName Experiment label used in branch naming and default commit message.
+ * @param commitMessage Optional commit message. Defaults to `"Experiment: <experimentName>"`.
+ * @param repoPath Optional repository path. When null, the nearest Git root is used.
+ * @param createBranch Whether to create a version branch for the commit.
+ * @param stageAll When true, stages all tracked and untracked files. When false, stages tracked files only.
+ * @return Commit hash used for the experiment version.
+ */
 @JvmOverloads
 fun versionExperiment(
     experimentName: String,

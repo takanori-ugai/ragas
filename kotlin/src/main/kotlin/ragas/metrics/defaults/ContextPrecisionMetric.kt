@@ -8,6 +8,9 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [ContextPrecisionMetric].
+ */
 class ContextPrecisionMetric :
     BaseMetric(
         name = "context_precision",
@@ -15,6 +18,10 @@ class ContextPrecisionMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val contexts = sample.retrievedContexts.orEmpty()
         if (contexts.isEmpty()) {

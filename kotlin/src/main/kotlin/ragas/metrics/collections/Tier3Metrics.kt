@@ -2,6 +2,9 @@ package ragas.metrics.collections
 
 import ragas.metrics.Metric
 
+/**
+ * Executes answerQualityTier3Metrics.
+ */
 fun answerQualityTier3Metrics(): List<Metric> =
     listOf(
         AnswerAccuracyMetric(),

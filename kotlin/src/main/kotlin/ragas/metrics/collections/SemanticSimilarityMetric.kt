@@ -9,6 +9,11 @@ import ragas.metrics.tokenize
 import ragas.model.SingleTurnSample
 import kotlin.math.sqrt
 
+/**
+ * Implements [SemanticSimilarityMetric].
+ *
+ * @property threshold Similarity threshold.
+ */
 class SemanticSimilarityMetric(
     name: String = "semantic_similarity",
     private val threshold: Double? = null,
@@ -24,6 +29,10 @@ class SemanticSimilarityMetric(
         }
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty().ifBlank { " " }
         val response = sample.response.orEmpty().ifBlank { " " }

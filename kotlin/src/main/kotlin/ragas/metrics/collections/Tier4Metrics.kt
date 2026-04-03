@@ -2,6 +2,9 @@ package ragas.metrics.collections
 
 import ragas.metrics.Metric
 
+/**
+ * Executes tier4CollectionMetrics.
+ */
 fun tier4CollectionMetrics(): List<Metric> =
     listOf(
         DomainSpecificRubricsMetric(),
@@ -14,6 +17,9 @@ fun tier4CollectionMetrics(): List<Metric> =
         MultiModalFaithfulnessMetric(),
     )
 
+/**
+ * Executes advancedRubricsTier4Metrics.
+ */
 fun advancedRubricsTier4Metrics(): List<Metric> =
     listOf(
         DomainSpecificRubricsMetric(),

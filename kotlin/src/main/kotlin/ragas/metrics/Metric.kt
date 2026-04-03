@@ -6,11 +6,13 @@ import ragas.model.MultiTurnSample
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/** Supported dataset granularity for metrics. */
 enum class MetricType {
     SINGLE_TURN,
     MULTI_TURN,
 }
 
+/** Canonical metric result shape. */
 enum class MetricOutputType {
     BINARY,
     DISCRETE,
@@ -18,6 +20,7 @@ enum class MetricOutputType {
     RANKING,
 }
 
+/** Allowed sample column names that metrics may declare in [Metric.requiredColumns]. */
 val VALID_COLUMNS: Set<String> =
     setOf(
         "user_input",
@@ -36,15 +39,22 @@ val VALID_COLUMNS: Set<String> =
         "reference_topics",
     )
 
+/** Base contract implemented by all metrics. */
 interface Metric {
     val name: String
     val requiredColumns: Map<MetricType, Set<String>>
     val outputType: MetricOutputType?
 
+    /**
+     * Initializes the metric before scoring begins.
+     *
+     * @param runConfig Runtime configuration for retries, timeouts, and concurrency.
+     */
     suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
     }
 
+    /** Validates that declared required columns exist in [VALID_COLUMNS]. */
     fun validateRequiredColumns() {
         requiredColumns.forEach { (_, columns) ->
             columns.forEach { column ->
@@ -56,19 +66,33 @@ interface Metric {
     }
 }
 
+/** Marker for metrics that consume an LLM. */
 interface MetricWithLlm {
     var llm: BaseRagasLlm?
 }
 
+/** Marker for metrics that consume an embeddings model. */
 interface MetricWithEmbeddings {
     var embeddings: BaseRagasEmbedding?
 }
 
+/** Metric executable on [SingleTurnSample]. */
 interface SingleTurnMetric : Metric {
+    /**
+     * Computes a score for one single-turn sample.
+     *
+     * @param sample Single-turn sample to score.
+     */
     suspend fun singleTurnAscore(sample: SingleTurnSample): Any?
 }
 
+/** Metric executable on [MultiTurnSample]. */
 interface MultiTurnMetric : Metric {
+    /**
+     * Computes a score for one multi-turn sample.
+     *
+     * @param sample Multi-turn sample to score.
+     */
     suspend fun multiTurnAscore(sample: MultiTurnSample): Any?
 }
 

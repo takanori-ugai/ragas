@@ -6,6 +6,9 @@ import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [SqlSemanticEquivalenceMetric].
+ */
 class SqlSemanticEquivalenceMetric(
     name: String = "sql_semantic_equivalence",
 ) : BaseMetric(
@@ -14,6 +17,10 @@ class SqlSemanticEquivalenceMetric(
         outputType = MetricOutputType.BINARY,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val reference = sample.reference.orEmpty().trim()

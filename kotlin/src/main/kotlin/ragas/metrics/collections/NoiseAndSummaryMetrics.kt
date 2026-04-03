@@ -16,6 +16,11 @@ import ragas.metrics.tokenize
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Implements [NoiseSensitivityMetric].
+ *
+ * @property mode Scoring mode.
+ */
 class NoiseSensitivityMetric(
     name: String = "noise_sensitivity",
     private val mode: Mode = Mode.RELEVANT,
@@ -28,16 +33,27 @@ class NoiseSensitivityMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         RELEVANT,
         IRRELEVANT,
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -283,6 +299,12 @@ private fun noiseFaithfulnessPrompt(
     }
 }
 
+/**
+ * Implements [SummaryScoreMetric].
+ *
+ * @property lengthPenalty Property `lengthPenalty`.
+ * @property coeff Score mixing coefficient.
+ */
 class SummaryScoreMetric(
     name: String = "summary_score",
     private val lengthPenalty: Boolean = true,
@@ -302,11 +324,19 @@ class SummaryScoreMetric(
         }
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {

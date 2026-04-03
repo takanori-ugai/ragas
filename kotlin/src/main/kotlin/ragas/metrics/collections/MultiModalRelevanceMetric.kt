@@ -6,6 +6,9 @@ import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
+/**
+ * Implements [MultiModalRelevanceMetric].
+ */
 class MultiModalRelevanceMetric(
     name: String = "multi_modal_relevance",
 ) : BaseMetric(
@@ -14,6 +17,10 @@ class MultiModalRelevanceMetric(
         outputType = MetricOutputType.BINARY,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val userInput = sample.userInput.orEmpty().trim()
         val response = sample.response.orEmpty().trim()

@@ -12,6 +12,9 @@ import ragas.model.HumanMessage
 import ragas.model.MultiTurnSample
 import ragas.model.ToolMessage
 
+/**
+ * Implements [AgentGoalAccuracyWithReferenceMetric].
+ */
 class AgentGoalAccuracyWithReferenceMetric(
     name: String = "agent_goal_accuracy_with_reference",
 ) : BaseMetric(
@@ -20,6 +23,10 @@ class AgentGoalAccuracyWithReferenceMetric(
         outputType = MetricOutputType.BINARY,
     ),
     MultiTurnMetric {
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val desiredOutcome = sample.reference.orEmpty().trim()
         if (desiredOutcome.isBlank()) {
@@ -30,6 +37,9 @@ class AgentGoalAccuracyWithReferenceMetric(
     }
 }
 
+/**
+ * Implements [AgentGoalAccuracyWithoutReferenceMetric].
+ */
 class AgentGoalAccuracyWithoutReferenceMetric(
     name: String = "agent_goal_accuracy_without_reference",
 ) : BaseMetric(
@@ -38,6 +48,10 @@ class AgentGoalAccuracyWithoutReferenceMetric(
         outputType = MetricOutputType.BINARY,
     ),
     MultiTurnMetric {
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val desiredOutcome = inferDesiredOutcome(sample.userInput)
         if (desiredOutcome.isBlank()) {
@@ -48,6 +62,9 @@ class AgentGoalAccuracyWithoutReferenceMetric(
     }
 }
 
+/**
+ * Implements [AgentWorkflowCompletionMetric].
+ */
 class AgentWorkflowCompletionMetric(
     name: String = "agent_workflow_completion",
 ) : BaseMetric(
@@ -56,6 +73,10 @@ class AgentWorkflowCompletionMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     MultiTurnMetric {
+    /**
+     * Executes multiTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val messages = sample.userInput
         if (messages.isEmpty()) {
