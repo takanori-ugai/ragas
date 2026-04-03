@@ -123,6 +123,7 @@ class FaithfulnessMetricTest {
 
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
             assertEquals(1.0, score, 1e-9)
+            assertTrue(llm.prompts.size >= 2)
             assertTrue(llm.prompts[1].contains("""["Kotlin is called \"JetBrains language\"."]"""))
         }
 
