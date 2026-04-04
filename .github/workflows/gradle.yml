@@ -36,4 +36,9 @@ jobs:
     - name: Build with Gradle Wrapper
       working-directory: kotlin
       run: ./gradlew build
+    - name: Upload build product
+      uses: actions/upload-artifact@v4
+      with:
+        name: my-build-artifact
+        path: build/libs/*.jar
 
