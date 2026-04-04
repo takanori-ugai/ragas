@@ -16,6 +16,12 @@ import ragas.metrics.tokenize
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Measures how sensitive an answer is to noisy or irrelevant retrieved context.
+ *
+ * @property mode Controls whether the score tracks relevant-context noise effects or
+ * irrelevant-context noise effects.
+ */
 class NoiseSensitivityMetric(
     name: String = "noise_sensitivity",
     private val mode: Mode = Mode.RELEVANT,
@@ -28,16 +34,27 @@ class NoiseSensitivityMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         RELEVANT,
         IRRELEVANT,
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -283,6 +300,12 @@ private fun noiseFaithfulnessPrompt(
     }
 }
 
+/**
+ * Scores summary quality from coverage and optional conciseness.
+ *
+ * @property lengthPenalty Whether to blend in a conciseness penalty.
+ * @property coeff Mixing coefficient for conciseness when [lengthPenalty] is enabled.
+ */
 class SummaryScoreMetric(
     name: String = "summary_score",
     private val lengthPenalty: Boolean = true,
@@ -302,11 +325,22 @@ class SummaryScoreMetric(
         }
     }
 
+    /**
+     * Initializes the metric by validating required columns and configuring the LLM.
+     *
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Computes summary quality score by evaluating QA-style content coverage and,
+     * when enabled, a conciseness component.
+     *
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {

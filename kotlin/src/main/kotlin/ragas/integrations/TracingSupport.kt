@@ -32,6 +32,11 @@ internal fun traceEvaluation(
         )
     }
 
+    /**
+     * Reports observer callback failures without overriding the primary exception.
+     *
+     * @param error Error to inspect or report.
+     */
     fun notifyFailure(error: Throwable) {
         val endMs = System.currentTimeMillis()
         observers.forEach { observer ->

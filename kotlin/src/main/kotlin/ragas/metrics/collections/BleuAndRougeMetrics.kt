@@ -10,6 +10,12 @@ import ragas.model.SingleTurnSample
 import kotlin.math.exp
 import kotlin.math.ln
 
+/**
+ * Implements [BleuScoreMetric].
+ *
+ * @property maxOrder Maximum n-gram order.
+ * @property smooth Whether smoothing is enabled.
+ */
 class BleuScoreMetric(
     name: String = "bleu_score",
     private val maxOrder: Int = 4,
@@ -24,6 +30,10 @@ class BleuScoreMetric(
         require(maxOrder > 0) { "maxOrder must be positive." }
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
         val response = sample.response.orEmpty()
@@ -98,6 +108,12 @@ class BleuScoreMetric(
     }
 }
 
+/**
+ * Implements [RougeScoreMetric].
+ *
+ * @property rougeType ROUGE variant.
+ * @property mode Scoring mode.
+ */
 class RougeScoreMetric(
     name: String = "rouge_score",
     private val rougeType: RougeType = RougeType.ROUGE_L,
@@ -108,17 +124,27 @@ class RougeScoreMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Enumerates RougeType values.
+     */
     enum class RougeType {
         ROUGE_1,
         ROUGE_L,
     }
 
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         FMEASURE,
         PRECISION,
         RECALL,
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
         val response = sample.response.orEmpty()

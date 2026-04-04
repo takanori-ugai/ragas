@@ -8,6 +8,12 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
+/**
+ * Measures how well retrieved contexts cover the user query.
+ *
+ * Uses token-overlap coverage between `user_input` and `retrieved_contexts`,
+ * blending global query coverage and average per-context coverage.
+ */
 class ContextRelevanceMetric :
     BaseMetric(
         name = "context_relevance",
@@ -15,6 +21,14 @@ class ContextRelevanceMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Computes context relevance from query/context token overlap signals.
+     *
+     * Returns `0.0` when query or contexts are missing/empty; otherwise returns
+     * a continuous score in [0.0, 1.0].
+     *
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val userInput = sample.userInput.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

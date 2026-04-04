@@ -8,6 +8,11 @@ import ragas.metrics.clamp01
 import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 
+/**
+ * Scores how well the model response is grounded in the retrieved contexts.
+ *
+ * Returns a continuous score in [0.0, 1.0], where higher is better groundedness.
+ */
 class ResponseGroundednessMetric :
     BaseMetric(
         name = "response_groundedness",
@@ -15,6 +20,13 @@ class ResponseGroundednessMetric :
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Computes groundedness for a single-turn sample by comparing response support
+     * against retrieved contexts, with penalties for unsupported entities and numbers.
+     *
+     * @param sample Evaluation sample to score.
+     * @return Groundedness score in [0.0, 1.0].
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

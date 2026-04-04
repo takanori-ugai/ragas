@@ -14,6 +14,9 @@ open class CachedRagasLlm private constructor(
             delegate.runConfig = value
         }
 
+    /**
+     * Generates one or more text completions for the supplied prompt.
+     */
     override suspend fun generateText(
         prompt: String,
         n: Int,

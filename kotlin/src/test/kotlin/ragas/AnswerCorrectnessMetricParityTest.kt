@@ -23,7 +23,10 @@ class AnswerCorrectnessMetricParityTest {
                         listOf(
                             """{"statements":["Paris is the capital of France.","Paris has museums."]}""",
                             """{"statements":["Paris is the capital of France.","Paris has monuments."]}""",
-                            """{"TP":[{"statement":"Paris is the capital of France.","reason":"supported"}],"FP":[{"statement":"Paris has museums.","reason":"not in reference"}],"FN":[{"statement":"Paris has monuments.","reason":"missing"}]}""",
+                            """{"TP":[""" +
+                                """{"statement":"Paris is the capital of France.","reason":"supported"}],""" +
+                                """"FP":[{"statement":"Paris has museums.","reason":"not in reference"}],""" +
+                                """"FN":[{"statement":"Paris has monuments.","reason":"missing"}]}""",
                         ),
                 )
             val embeddings =
@@ -86,7 +89,8 @@ class AnswerCorrectnessMetricParityTest {
 
             val error = assertFailsWith<IllegalArgumentException> { metric.singleTurnAscore(sample) }
             assertEquals(
-                "Embeddings are required for semantic similarity scoring. Either provide embeddings or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation.",
+                "Embeddings are required for semantic similarity scoring. Either provide embeddings " +
+                    "or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation.",
                 error.message,
             )
         }

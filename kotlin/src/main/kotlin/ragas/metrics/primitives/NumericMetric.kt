@@ -20,6 +20,14 @@ import ragas.optimizers.OptimizerPrompt
 import ragas.optimizers.asTextPrompt
 import ragas.runtime.RunConfig
 
+/**
+ * Implements [NumericMetric].
+ *
+ * @property name Metric name.
+ * @property llm LLM dependency.
+ * @property allowedRange Allowed numeric score range.
+ * @property requiredColumns Required dataset columns.
+ */
 class NumericMetric(
     override val name: String,
     prompt: String,
@@ -49,11 +57,19 @@ class NumericMetric(
                 },
         )
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = checkNotNull(llm) { "Metric '$name' has no LLM configured." }
         val prompt =
@@ -88,8 +104,15 @@ class NumericMetric(
         return clamped
     }
 
+    /**
+     * Executes optimizerPrompt.
+     */
     override fun optimizerPrompt(): OptimizerPrompt = promptObject
 
+    /**
+     * Executes applyOptimizerPrompt.
+     * @param prompt Prompt text returned by the optimizer.
+     */
     override fun applyOptimizerPrompt(prompt: OptimizerPrompt) {
         promptObject = prompt
     }

@@ -16,12 +16,28 @@ import ragas.llms.BaseRagasLlm
 import java.io.File
 import java.security.MessageDigest
 
+/**
+ * One few-shot prompt example.
+ *
+ * @property input Input fields shown to the model.
+ * @property output Expected output fields for the input.
+ */
 @Serializable
 data class PromptExample(
     val input: Map<String, String>,
     val output: Map<String, String>,
 )
 
+/**
+ * Serializable prompt template with optional examples and output schema guidance.
+ *
+ * @property instruction Base instruction text.
+ * @property examples Few-shot examples included in formatted prompts.
+ * @property outputJsonSchema Optional JSON schema text appended as output guidance.
+ * @property includeInputOutputFrame Whether to append the `Input`/`Output` suffix frame.
+ * @property language Prompt language metadata.
+ * @property originalHash Stable hash of the source prompt before adaptations.
+ */
 @Serializable
 data class SimplePrompt(
     val instruction: String,
@@ -31,6 +47,14 @@ data class SimplePrompt(
     val language: String = "english",
     val originalHash: String? = null,
 ) {
+    /**
+     * Translates prompt examples and optionally the instruction into [targetLanguage].
+     *
+     * @return A translated prompt with a refreshed [originalHash].
+     * @param targetLanguage Target language name.
+     * @param llm LLM dependency used during generation/evaluation.
+     * @param adaptInstruction Whether the instruction text should be translated.
+     */
     suspend fun adapt(
         targetLanguage: String,
         llm: BaseRagasLlm,
@@ -76,6 +100,11 @@ data class SimplePrompt(
         ).withOriginalHash()
     }
 
+    /**
+     * Renders the prompt by applying placeholders and appending examples/schema guidance.
+     *
+     * @param values Template values map.
+     */
     fun format(values: Map<String, Any?>? = null): String {
         var rendered = instruction
         values?.forEach { (key, value) ->
@@ -128,11 +157,23 @@ data class SimplePrompt(
         }
     }
 
+    /**
+     * Returns a copy with one extra [PromptExample].
+     *
+     * @param input Example input fields.
+     * @param output Example output fields.
+     */
     fun addExample(
         input: Map<String, String>,
         output: Map<String, String>,
     ): SimplePrompt = copy(examples = examples + PromptExample(input, output))
 
+    /**
+     * Saves this prompt to disk as a versioned JSON payload.
+     *
+     * @param path Filesystem path.
+     * @param overwrite Whether an existing file at the path should be overwritten.
+     */
     fun save(
         path: String,
         overwrite: Boolean = false,
@@ -155,6 +196,7 @@ data class SimplePrompt(
         file.writeText(prettyJson.encodeToString(payload))
     }
 
+    /** Computes a deterministic SHA-256 hash over canonical prompt content. */
     fun stableHash(): String {
         val canonical =
             buildString {
@@ -175,6 +217,7 @@ data class SimplePrompt(
         return sha256(canonical)
     }
 
+    /** Returns a copy with [originalHash] set to [stableHash]. */
     fun withOriginalHash(): SimplePrompt = copy(originalHash = stableHash())
 
     private fun toJson(

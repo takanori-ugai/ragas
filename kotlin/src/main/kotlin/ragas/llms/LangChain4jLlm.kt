@@ -15,6 +15,12 @@ import kotlinx.coroutines.withTimeout
 import ragas.prompt.PromptContentPart
 import ragas.runtime.RunConfig
 
+/**
+ * BaseRagasLlm adapter for LangChain4j chat models.
+ *
+ * @property model Underlying model instance.
+ * @property runConfig Runtime configuration.
+ */
 class LangChain4jLlm(
     private val model: ChatModel,
     override var runConfig: RunConfig = RunConfig(),
@@ -31,6 +37,9 @@ class LangChain4jLlm(
         AiServices.create(RankingStructuredService::class.java, model)
     }
 
+    /**
+     * Generates one or more text completions for the supplied prompt.
+     */
     override suspend fun generateText(
         prompt: String,
         n: Int,
@@ -38,6 +47,9 @@ class LangChain4jLlm(
         stop: List<String>?,
     ): LlmResult = generateContent(listOf(PromptContentPart.Text(prompt)), n, temperature, stop)
 
+    /**
+     * Generates and parses a numeric value from model output.
+     */
     override suspend fun generateNumericValue(prompt: String): Double? =
         withTimeout(runConfig.timeoutSeconds * 1_000) {
             withContext(Dispatchers.IO) {
@@ -45,6 +57,9 @@ class LangChain4jLlm(
             }
         }
 
+    /**
+     * Generates and parses one label from a fixed set of choices.
+     */
     override suspend fun generateDiscreteValue(prompt: String): String? =
         withTimeout(runConfig.timeoutSeconds * 1_000) {
             withContext(Dispatchers.IO) {
@@ -52,6 +67,9 @@ class LangChain4jLlm(
             }
         }
 
+    /**
+     * Generates and parses ranked items from model output.
+     */
     override suspend fun generateRankingItems(prompt: String): List<String>? =
         withTimeout(runConfig.timeoutSeconds * 1_000) {
             withContext(Dispatchers.IO) {
@@ -59,6 +77,9 @@ class LangChain4jLlm(
             }
         }
 
+    /**
+     * Generates output from multimodal prompt content parts.
+     */
     override suspend fun generateContent(
         content: List<PromptContentPart>,
         n: Int,

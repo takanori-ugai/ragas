@@ -2,15 +2,27 @@ package ragas.prompt
 
 import java.net.URI
 
+/** One multimodal prompt fragment (text or image reference). */
 sealed interface PromptContentPart {
+    /** Lossy textual representation used when constructing plain-text prompts. */
     fun toPromptText(): String
 
+    /**
+     * Plain text prompt content.
+     *
+     * @property text Raw text content.
+     */
     data class Text(
         val text: String,
     ) : PromptContentPart {
         override fun toPromptText(): String = text
     }
 
+    /**
+     * Inline base64 image data URI.
+     *
+     * @property dataUri Base64 image data URI.
+     */
     data class ImageDataUri(
         val dataUri: String,
     ) : PromptContentPart {
@@ -23,6 +35,11 @@ sealed interface PromptContentPart {
         override fun toPromptText(): String = "[image:data-uri]"
     }
 
+    /**
+     * Remote HTTPS image URL.
+     *
+     * @property url HTTPS image URL.
+     */
     data class ImageUrl(
         val url: String,
     ) : PromptContentPart {

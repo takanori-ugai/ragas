@@ -26,6 +26,18 @@ private data class SavedDynamicPrompt(
     val maxSimilarExamples: Int = 3,
 )
 
+/**
+ * Prompt template that selects and injects dynamic few-shot examples per input.
+ *
+ * @property instruction Instruction text.
+ * @property examples Few-shot examples used for similarity selection.
+ * @property outputJsonSchema Optional JSON schema guidance.
+ * @property includeInputOutputFrame Whether to append the input/output frame.
+ * @property language Prompt language metadata.
+ * @property originalHash Original prompt hash before adaptations.
+ * @property maxSimilarExamples Maximum examples selected per render.
+ * @property embeddings Optional embeddings model for similarity scoring.
+ */
 class DynamicFewShotPrompt(
     val instruction: String,
     val examples: List<PromptExample> = emptyList(),
@@ -44,6 +56,11 @@ class DynamicFewShotPrompt(
         require(maxSimilarExamples > 0) { "maxSimilarExamples must be greater than 0." }
     }
 
+    /**
+     * Renders the prompt text for the provided input.
+     *
+     * @param values Template values map.
+     */
     suspend fun format(values: Map<String, Any?>): String {
         val selected =
             if (examples.isEmpty()) {
@@ -55,11 +72,23 @@ class DynamicFewShotPrompt(
         return basePrompt(selected).format(values)
     }
 
+    /**
+     * Returns a copy with an additional few-shot example.
+     *
+     * @param input Input payload.
+     * @param output Output payload.
+     */
     fun addExample(
         input: Map<String, String>,
         output: Map<String, String>,
     ): DynamicFewShotPrompt = copy(examples = examples + PromptExample(input, output))
 
+    /**
+     * Saves the prompt definition to disk.
+     *
+     * @param path Filesystem path.
+     * @param overwrite Whether an existing file at the path should be overwritten.
+     */
     fun save(
         path: String,
         overwrite: Boolean = false,
@@ -83,6 +112,9 @@ class DynamicFewShotPrompt(
         file.writeText(prettyJson.encodeToString(payload))
     }
 
+    /**
+     * Computes a deterministic hash of the prompt content.
+     */
     fun stableHash(): String =
         SimplePrompt(
             instruction = instruction,
@@ -92,6 +124,9 @@ class DynamicFewShotPrompt(
             language = language,
         ).stableHash() + "|k=$maxSimilarExamples"
 
+    /**
+     * Returns a copy with the originalHash field set to stableHash.
+     */
     fun withOriginalHash(): DynamicFewShotPrompt = copy(originalHash = stableHash())
 
     private suspend fun selectRelevantExamples(values: Map<String, Any?>): List<PromptExample> {

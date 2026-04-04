@@ -20,11 +20,22 @@ import kotlin.system.exitProcess
 
 private val jsonPretty = Json { prettyPrint = true }
 
+/**
+ * Parsed CLI options split into key/value options and boolean flags.
+ *
+ * @property values Option key/value map.
+ * @property flags Boolean option flags set.
+ */
 data class CliOptions(
     val values: Map<String, String>,
     val flags: Set<String>,
 )
 
+/**
+ * CLI entry point that executes a command and exits with its status code.
+ *
+ * @param args Command-line arguments.
+ */
 fun main(args: Array<String>) {
     val code = runCli(args)
     if (code != 0) {
@@ -32,6 +43,13 @@ fun main(args: Array<String>) {
     }
 }
 
+/**
+ * Parses CLI arguments, runs the selected command, and returns an exit code.
+ *
+ * @param args Command-line arguments.
+ * @param out Output stream used for standard CLI messages.
+ * @param err Output stream used for CLI error messages.
+ */
 fun runCli(
     args: Array<String>,
     out: (String) -> Unit = ::println,

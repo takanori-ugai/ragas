@@ -4,7 +4,13 @@ import ragas.prompt.PromptContentPart
 import kotlin.math.max
 import kotlin.random.Random
 
+/**
+ * Evolutionary prompt optimizer based on mutation and fitness scoring.
+ */
 class GeneticOptimizer : Optimizer {
+    /**
+     * Optimizes a prompt on a dataset and returns the best discovered outcome.
+     */
     override fun optimizePrompts(
         dataset: OptimizationDataset,
         initialPrompts: List<OptimizerPrompt>,

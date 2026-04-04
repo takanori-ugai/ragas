@@ -32,6 +32,7 @@ class AgUiIntegrationTest {
         assertEquals("AG-UI provides UI conventions for agent systems.", sample.reference)
     }
 
+    @Suppress("DEPRECATION_ERROR")
     @Test
     fun evaluateRecordsEmitsRunStartedWithMetadataThenFailsUnsupported() {
         val observer = InMemoryTraceObserver()

@@ -5,14 +5,29 @@ import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
 import ragas.testset.graph.Relationship
 
+/**
+ * Relationship builder that links consecutive chunks from the same parent document.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate for document nodes.
+ */
 class AdjacentChunkRelationshipBuilder(
     override val name: String = "adjacent_chunk_relationship_builder",
     override val filterNodes: (Node) -> Boolean = { node -> node.type == NodeType.DOCUMENT },
 ) : RelationshipBuilder(name = name, filterNodes = filterNodes) {
-    override suspend fun build(kg: KnowledgeGraph): List<Relationship> {
+    /**
+     * Builds relationships from the current graph based on this builder's strategy.
+     *
+     * @param kg Full graph to inspect.
+     * @param filtered Graph filtered by [filterNodes] used for document candidate selection.
+     * @return Generated `next` relationships between adjacent chunks.
+     */
+    override suspend fun build(
+        kg: KnowledgeGraph,
+        filtered: KnowledgeGraph,
+    ): List<Relationship> {
         val documentIds =
-            kg.nodes
-                .filter(filterNodes)
+            filtered.nodes
                 .map { node -> node.id }
                 .toSet()
         if (documentIds.isEmpty()) {
@@ -49,6 +64,14 @@ class AdjacentChunkRelationshipBuilder(
     }
 }
 
+/**
+ * Relationship builder that connects nodes sharing enough normalized keywords.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate for candidate nodes.
+ * @property sourceProperty Source property key.
+ * @property minSharedKeywords Minimum shared keywords threshold.
+ */
 class SharedKeywordRelationshipBuilder(
     override val name: String = "shared_keyword_relationship_builder",
     override val filterNodes: (Node) -> Boolean = { node -> node.type == NodeType.CHUNK },
@@ -59,8 +82,18 @@ class SharedKeywordRelationshipBuilder(
         require(minSharedKeywords > 0) { "minSharedKeywords must be > 0" }
     }
 
-    override suspend fun build(kg: KnowledgeGraph): List<Relationship> {
-        val nodes = kg.nodes.filter(filterNodes)
+    /**
+     * Builds relationships from the current graph based on this builder's strategy.
+     *
+     * @param kg Full graph to inspect.
+     * @param filtered Graph filtered by [filterNodes] used for candidate node selection.
+     * @return Generated `semantic_overlap` relationships.
+     */
+    override suspend fun build(
+        kg: KnowledgeGraph,
+        filtered: KnowledgeGraph,
+    ): List<Relationship> {
+        val nodes = filtered.nodes
         if (nodes.size < 2) {
             return emptyList()
         }

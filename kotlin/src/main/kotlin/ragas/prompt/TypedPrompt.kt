@@ -16,12 +16,14 @@ import ragas.llms.BaseRagasLlm
 import java.util.Collections
 import java.util.IdentityHashMap
 
+/** One few-shot input/output example used in prompt rendering. */
 @Serializable
 data class TypedPromptExample<InputT, OutputT>(
     val input: InputT,
     val output: OutputT,
 )
 
+/** Serializable prompt definition for structured generation. */
 @Serializable
 data class TypedPromptModel<InputT, OutputT>(
     val instruction: String,
@@ -31,30 +33,56 @@ data class TypedPromptModel<InputT, OutputT>(
     val language: String = "english",
 )
 
+/**
+ * Retry and generation settings for structured parsing.
+ *
+ * @property maxParseRetries Maximum retry count after parse failures.
+ * @property temperature Sampling temperature passed to the LLM.
+ * @property stop Optional stop tokens passed to the LLM.
+ */
 data class StructuredOutputParserConfig(
     val maxParseRetries: Int = 3,
     val temperature: Double? = 0.01,
     val stop: List<String>? = null,
 )
 
+/**
+ * One parse failure captured during retry.
+ *
+ * @property attempt 1-based attempt index.
+ * @property errorMessage Error message from parsing failure.
+ * @property rawOutput Raw model output captured for the attempt.
+ */
 data class StructuredParseAttempt(
     val attempt: Int,
     val errorMessage: String,
     val rawOutput: String,
 )
 
+/**
+ * Thrown when structured output cannot be parsed after all retries.
+ *
+ * @property attempts Ordered list of parse attempts captured before failing.
+ */
 class StructuredParseException(
     val attempts: List<StructuredParseAttempt>,
 ) : IllegalStateException(
         "Failed to parse structured output after ${attempts.size} attempt(s).",
     )
 
+/** JSON parser for typed prompt outputs backed by Kotlin serialization. */
 class StructuredOutputParser<T>(
     private val serializer: KSerializer<T>,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
     private val maxDescriptorDepth = 32
+    private val jsonNumberPattern = Regex("""-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?""")
 
+    /**
+     * Parses raw model text into [T], extracting the first JSON value when needed.
+     *
+     * @param rawText Raw model output text.
+     */
     fun parse(rawText: String): T {
         val trimmed = rawText.trim()
         require(trimmed.isNotEmpty()) { "Structured output is empty." }
@@ -67,6 +95,7 @@ class StructuredOutputParser<T>(
         }
     }
 
+    /** Returns a human-readable JSON-shape hint derived from [serializer]. */
     @OptIn(ExperimentalSerializationApi::class)
     fun expectedShapeDescription(): String =
         describeDescriptor(
@@ -147,9 +176,31 @@ class StructuredOutputParser<T>(
     }
 
     private fun extractFirstJsonValue(text: String): String {
-        val start = text.indexOfFirst { it == '{' || it == '[' }
-        require(start >= 0) { "Structured output did not contain JSON." }
+        for (start in text.indices) {
+            if (!isBoundaryBefore(text, start)) {
+                continue
+            }
+            val candidate =
+                when (text[start]) {
+                    '{', '[' -> extractEnclosedValue(text, start)
+                    '"' -> extractJsonString(text, start)
+                    't' -> keywordCandidate(text, start, "true")
+                    'f' -> keywordCandidate(text, start, "false")
+                    'n' -> keywordCandidate(text, start, "null")
+                    '-', in '0'..'9' -> extractJsonNumber(text, start)
+                    else -> null
+                } ?: continue
+            if (isValidJson(candidate)) {
+                return candidate
+            }
+        }
+        error("Structured output did not contain JSON.")
+    }
 
+    private fun extractEnclosedValue(
+        text: String,
+        start: Int,
+    ): String? {
         var inString = false
         var escaped = false
         val stack = ArrayDeque<Char>()
@@ -179,20 +230,104 @@ class StructuredOutputParser<T>(
                 }
 
                 '}', ']' -> {
-                    require(stack.isNotEmpty() && stack.removeLast() == ch) {
-                        "Structured output contained malformed JSON delimiters."
+                    if (stack.isEmpty() || stack.removeLast() != ch) {
+                        return null
                     }
-                    if (stack.isEmpty()) {
+                    if (stack.isEmpty() && isBoundaryAfter(text, index + 1)) {
                         return text.substring(start, index + 1)
                     }
                 }
             }
         }
-
-        error("Structured output JSON value was not closed.")
+        return null
     }
+
+    private fun extractJsonString(
+        text: String,
+        start: Int,
+    ): String? {
+        var escaped = false
+        for (index in start + 1 until text.length) {
+            val ch = text[index]
+            when {
+                escaped -> {
+                    escaped = false
+                }
+
+                ch == '\\' -> {
+                    escaped = true
+                }
+
+                ch == '"' -> {
+                    val endExclusive = index + 1
+                    if (!isBoundaryAfter(text, endExclusive)) {
+                        return null
+                    }
+                    return text.substring(start, endExclusive)
+                }
+            }
+        }
+        return null
+    }
+
+    private fun extractJsonNumber(
+        text: String,
+        start: Int,
+    ): String? {
+        val match = jsonNumberPattern.find(text, start) ?: return null
+        if (match.range.first != start) {
+            return null
+        }
+        val endExclusive = match.range.last + 1
+        if (!isBoundaryAfter(text, endExclusive)) {
+            return null
+        }
+        return match.value
+    }
+
+    private fun keywordCandidate(
+        text: String,
+        start: Int,
+        token: String,
+    ): String? {
+        if (!text.startsWith(token, start)) {
+            return null
+        }
+        val endExclusive = start + token.length
+        if (!isBoundaryAfter(text, endExclusive)) {
+            return null
+        }
+        return token
+    }
+
+    private fun isBoundaryBefore(
+        text: String,
+        start: Int,
+    ): Boolean {
+        if (start == 0) {
+            return true
+        }
+        val previous = text[start - 1]
+        return !previous.isLetterOrDigit() && previous != '_' && previous != '"'
+    }
+
+    private fun isBoundaryAfter(
+        text: String,
+        endExclusive: Int,
+    ): Boolean {
+        if (endExclusive >= text.length) {
+            return true
+        }
+        val next = text[endExclusive]
+        return !next.isLetterOrDigit() && next != '_' && next != '"' && next != '-'
+    }
+
+    private fun isValidJson(candidate: String): Boolean = runCatching { json.parseToJsonElement(candidate) }.isSuccess
 }
 
+/**
+ * Base class for typed prompts that render instruction/examples and parse JSON output.
+ */
 abstract class BasePrompt<InputT, OutputT>(
     protected val inputSerializer: KSerializer<InputT>,
     protected val outputSerializer: KSerializer<OutputT>,
@@ -211,6 +346,11 @@ abstract class BasePrompt<InputT, OutputT>(
         input: InputT?,
         examples: List<TypedPromptExample<InputT, OutputT>>,
     ): String {
+        val normalizedLanguage = model.language.trim()
+        val languageInstruction =
+            normalizedLanguage
+                .takeIf { it.isNotEmpty() && !it.equals("english", ignoreCase = true) }
+                ?.let { language -> "Write the response in $language." }
         val schemaText =
             model.outputJsonSchema
                 ?: "Expected JSON shape: ${parser.expectedShapeDescription()}"
@@ -236,6 +376,9 @@ abstract class BasePrompt<InputT, OutputT>(
             appendLine(model.instruction)
             appendLine()
             appendLine("Return JSON only.")
+            if (languageInstruction != null) {
+                appendLine(languageInstruction)
+            }
             appendLine(schemaText)
             if (examplesText.isNotEmpty()) {
                 appendLine()
@@ -254,6 +397,11 @@ abstract class BasePrompt<InputT, OutputT>(
         }
     }
 
+    /**
+     * Parses output text into typed output using [StructuredOutputParser].
+     *
+     * @param rawOutput Raw model output text.
+     */
     fun parse(rawOutput: String): OutputT = parser.parse(rawOutput)
 
     open suspend fun generate(
@@ -318,6 +466,7 @@ abstract class BasePrompt<InputT, OutputT>(
         }
 }
 
+/** Basic typed prompt implementation with static examples. */
 class TypedPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,
@@ -328,6 +477,9 @@ class TypedPrompt<InputT, OutputT>(
         model = model,
     )
 
+/**
+ * Typed prompt with immutable, caller-managed few-shot examples.
+ */
 open class FewShotTypedPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,
@@ -337,6 +489,12 @@ open class FewShotTypedPrompt<InputT, OutputT>(
         outputSerializer = outputSerializer,
         model = model,
     ) {
+    /**
+     * Returns a new prompt with an appended few-shot example.
+     *
+     * @param input Example input payload.
+     * @param output Example output payload.
+     */
     fun addExample(
         input: InputT,
         output: OutputT,
@@ -348,6 +506,9 @@ open class FewShotTypedPrompt<InputT, OutputT>(
         )
 }
 
+/**
+ * Few-shot prompt that picks top-k similar examples via embeddings at render time.
+ */
 open class DynamicFewShotTypedPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,
@@ -368,6 +529,7 @@ open class DynamicFewShotTypedPrompt<InputT, OutputT>(
         require(maxSimilarExamples > 0) { "maxSimilarExamples must be greater than 0." }
     }
 
+    /** Renders a prompt using similarity-selected examples when embeddings are available. */
     override suspend fun format(input: InputT?): String {
         val selected = selectExamples(input)
         return render(input = input, examples = selected)
@@ -430,6 +592,7 @@ open class DynamicFewShotTypedPrompt<InputT, OutputT>(
     }
 }
 
+/** Convenience wrapper that configures [FewShotTypedPrompt] with explicit JSON schema text. */
 class FewShotPydanticPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,
@@ -451,6 +614,7 @@ class FewShotPydanticPrompt<InputT, OutputT>(
             ),
     )
 
+/** Dynamic few-shot variant of [FewShotPydanticPrompt]. */
 class DynamicFewShotPydanticPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,

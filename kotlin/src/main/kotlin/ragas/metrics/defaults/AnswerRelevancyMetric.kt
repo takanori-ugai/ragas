@@ -18,6 +18,14 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.math.sqrt
 
+/**
+ * Measures how relevant the response is to the user input.
+ *
+ * Uses LLM-generated question reconstruction plus embedding similarity when available,
+ * with an optional lexical heuristic fallback.
+ *
+ * @property allowHeuristicFallback Whether heuristic fallback is allowed.
+ */
 class AnswerRelevancyMetric(
     private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
@@ -32,11 +40,19 @@ class AnswerRelevancyMetric(
     override var embeddings: BaseRagasEmbedding? = null
     var strictness: Int = 3
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         val embeddingInstance = embeddings

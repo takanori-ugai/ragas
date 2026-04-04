@@ -29,8 +29,17 @@ import ragas.runtime.RunConfig
 import ragas.evaluation.aevaluate as aevaluateInternal
 import ragas.evaluation.evaluate as evaluateInternal
 
+/**
+ * Library version for the `ragas-kotlin` artifact.
+ */
 const val VERSION: String = "0.0.1"
 
+/**
+ * Synchronously evaluates a dataset with one or more metrics.
+ *
+ * This is the blocking wrapper around [aevaluate]. If [metrics] is null, default
+ * single-turn metrics are selected by the evaluation engine.
+ */
 fun evaluate(
     dataset: EvaluationDataset<out Sample>,
     metrics: List<Metric>? = null,
@@ -60,6 +69,9 @@ fun evaluate(
         executorObserver = executorObserver,
     )
 
+/**
+ * Suspends while evaluating a dataset with one or more metrics.
+ */
 suspend fun aevaluate(
     dataset: EvaluationDataset<out Sample>,
     metrics: List<Metric>? = null,
@@ -89,30 +101,50 @@ suspend fun aevaluate(
         executorObserver = executorObserver,
     )
 
+/**
+ * Returns the default single-turn metric set.
+ */
 fun defaultMetrics(): List<Metric> = defaultSingleTurnMetrics()
 
+/** Returns the Tier-1 retrieval groundedness metric set. */
 fun tier1Metrics(): List<Metric> = retrievalGroundednessTier1Metrics()
 
+/** Returns the Tier-2 agent/tool-call metric set. */
 fun tier2Metrics(): List<Metric> = agentToolCallTier2Metrics()
 
+/** Returns the Tier-3 answer-quality metric set. */
 fun tier3Metrics(): List<Metric> = answerQualityTier3Metrics()
 
+/** Returns the Tier-4 advanced metric set. */
 fun tier4Metrics(): List<Metric> = tier4CollectionMetrics()
 
+/**
+ * Wraps an LLM with a cache layer.
+ */
 fun withCache(
     llm: BaseRagasLlm,
     cache: CacheBackend,
 ): BaseRagasLlm = CachedRagasLlm(llm, cache)
 
+/**
+ * Wraps an embeddings provider with a cache layer.
+ */
 fun withCache(
     embedding: BaseRagasEmbedding,
     cache: CacheBackend,
 ): BaseRagasEmbedding = CachedRagasEmbedding(embedding, cache)
 
+/** Returns the process-wide backend registry instance. */
 fun backendRegistry(): BackendRegistry = BACKEND_REGISTRY
 
+/** Creates a genetic optimizer implementation. */
 fun geneticOptimizer(): Optimizer = GeneticOptimizer()
 
+/**
+ * Creates a DSPy-style optimizer.
+ *
+ * When [cache] is provided, prompt-scoring results are memoized.
+ */
 fun dspyOptimizer(cache: CacheBackend? = null): Optimizer =
     if (cache == null) {
         DspyOptimizer()

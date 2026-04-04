@@ -1,5 +1,13 @@
 package ragas.testset.graph
 
+/**
+ * Returns descendant nodes reachable through child relationships from a parent node.
+ *
+ * @param node Root parent node.
+ * @param graph Graph to traverse.
+ * @param level Maximum traversal depth in `child` edges (1 means direct children only).
+ * @return Child nodes found within the requested depth.
+ */
 fun getChildNodes(
     node: Node,
     graph: KnowledgeGraph,
@@ -8,6 +16,12 @@ fun getChildNodes(
     val children = mutableListOf<Node>()
     val visited = mutableSetOf<String>()
 
+    /**
+     * Depth-first traversal helper for relationship graph walk.
+     *
+     * @param currentNode Current node in traversal.
+     * @param currentLevel Current traversal depth.
+     */
     fun dfs(
         currentNode: Node,
         currentLevel: Int,
@@ -32,6 +46,14 @@ fun getChildNodes(
     return children
 }
 
+/**
+ * Returns ancestor nodes reachable through child relationships from a child node.
+ *
+ * @param node Root child node.
+ * @param graph Graph to traverse.
+ * @param level Maximum traversal depth in reverse `child` edges (1 means direct parents only).
+ * @return Parent nodes found within the requested depth.
+ */
 fun getParentNodes(
     node: Node,
     graph: KnowledgeGraph,
@@ -40,6 +62,12 @@ fun getParentNodes(
     val parents = mutableListOf<Node>()
     val visited = mutableSetOf<String>()
 
+    /**
+     * Depth-first traversal helper for relationship graph walk.
+     *
+     * @param currentNode Current node in traversal.
+     * @param currentLevel Current traversal depth.
+     */
     fun dfs(
         currentNode: Node,
         currentLevel: Int,

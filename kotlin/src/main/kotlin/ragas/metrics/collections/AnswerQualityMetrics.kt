@@ -22,6 +22,13 @@ import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 import kotlin.math.pow
 
+/**
+ * Computes answer accuracy by comparing the response against the reference answer.
+ *
+ * Uses LLM judge ratings when available, with a lexical/number-aware fallback heuristic.
+ *
+ * @property maxRetries Maximum retries.
+ */
 class AnswerAccuracyMetric(
     name: String = "answer_accuracy",
     private val maxRetries: Int = 5,
@@ -34,11 +41,19 @@ class AnswerAccuracyMetric(
     MetricWithLlm {
     override var llm: BaseRagasLlm? = null
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -168,18 +183,25 @@ private fun answerAccuracyJudge1Prompt(
 ): String =
     buildString {
         appendLine(
-            "Instruction: You are a world class state of the art assistant for rating a User Answer given a Question. The Question is completely answered by the Reference Answer.",
+            "Instruction: You are a world class state of the art assistant for rating a User Answer " +
+                "given a Question. The Question is completely answered by the Reference Answer.",
         )
         appendLine(
-            "Say 4, if User Answer is full contained and equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+            "Say 4, if User Answer is full contained and equivalent to Reference Answer in all terms, " +
+                "topics, numbers, metrics, dates and units.",
         )
         appendLine(
-            "Say 2, if User Answer is partially contained and almost equivalent to Reference Answer in all terms, topics, numbers, metrics, dates and units.",
+            "Say 2, if User Answer is partially contained and almost equivalent to Reference Answer in all terms, " +
+                "topics, numbers, metrics, dates and units.",
         )
         appendLine(
-            "Say 0, if User Answer is not contained in Reference Answer or not accurate in all terms, topics, numbers, metrics, dates and units or the User Answer do not answer the question.",
+            "Say 0, if User Answer is not contained in Reference Answer or not accurate in all terms, " +
+                "topics, numbers, metrics, dates and units or the User Answer do not answer the question.",
         )
-        appendLine("Do not explain or justify your rating. Your rating must be only 4, 2 or 0 according to the instructions above.")
+        appendLine(
+            "Do not explain or justify your rating. Your rating must be only 4, 2 or 0 according to " +
+                "the instructions above.",
+        )
         appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
         appendLine()
         appendLine("### Question: ${kotlinx.serialization.json.JsonPrimitive(query)}")
@@ -196,16 +218,20 @@ private fun answerAccuracyJudge2Prompt(
     buildString {
         appendLine("I will rate the User Answer in comparison to the Reference Answer for a given Question.")
         appendLine(
-            "A rating of 4 indicates that the User Answer is entirely consistent with the Reference Answer, covering all aspects, topics, numbers, metrics, dates, and units.",
+            "A rating of 4 indicates that the User Answer is entirely consistent with the Reference Answer, " +
+                "covering all aspects, topics, numbers, metrics, dates, and units.",
         )
         appendLine(
-            "A rating of 2 signifies that the User Answer is mostly aligned with the Reference Answer, with minor discrepancies in some areas.",
+            "A rating of 2 signifies that the User Answer is mostly aligned with the Reference Answer, " +
+                "with minor discrepancies in some areas.",
         )
         appendLine(
-            "A rating of 0 means that the User Answer is either inaccurate, incomplete, or unrelated to the Reference Answer, or it fails to address the Question.",
+            "A rating of 0 means that the User Answer is either inaccurate, incomplete, or unrelated to " +
+                "the Reference Answer, or it fails to address the Question.",
         )
         appendLine(
-            "I will provide the rating without any explanation or justification, adhering to the following scale: 0 (no match), 2 (partial match), 4 (exact match).",
+            "I will provide the rating without any explanation or justification, adhering to the following " +
+                "scale: 0 (no match), 2 (partial match), 4 (exact match).",
         )
         appendLine("Do not explain or justify my rating. My rating must be only 4, 2 or 0 only.")
         appendLine("Return your response as JSON in this format: {\"rating\": X} where X is 0, 2, or 4.")
@@ -219,6 +245,14 @@ private fun answerAccuracyJudge2Prompt(
         append("Rating: ")
     }
 
+/**
+ * Computes answer correctness from factual consistency and semantic similarity.
+ *
+ * Combines factuality classification with embedding-based similarity using configurable weights.
+ *
+ * @property weights Metric component weights.
+ * @property beta F-score beta parameter.
+ */
 class AnswerCorrectnessMetric(
     name: String = "answer_correctness",
     private val weights: List<Double> = listOf(0.75, 0.25),
@@ -243,11 +277,19 @@ class AnswerCorrectnessMetric(
         require(beta.isFinite() && beta > 0.0) { "Beta must be a positive finite value." }
     }
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -283,7 +325,8 @@ class AnswerCorrectnessMetric(
             } else {
                 val embeddingInstance =
                     requireNotNull(embeddings) {
-                        "Embeddings are required for semantic similarity scoring. Either provide embeddings or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation."
+                        "Embeddings are required for semantic similarity scoring. Either provide embeddings " +
+                            "or set similarity weight to 0 (weights=[1.0, 0.0]) for pure factuality-only evaluation."
                     }
                 semanticSimilarityScore(embeddingInstance, response, reference)
             }

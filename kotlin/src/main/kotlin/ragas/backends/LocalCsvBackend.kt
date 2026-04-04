@@ -3,6 +3,11 @@ package ragas.backends
 import java.io.File
 import java.io.Reader
 
+/**
+ * File-system backend that stores datasets and experiments as CSV files.
+ *
+ * @property rootDir Root directory path.
+ */
 class LocalCsvBackend(
     private val rootDir: String,
 ) : BaseBackend {
@@ -92,10 +97,19 @@ class LocalCsvBackend(
             ?: emptyList()
     }
 
+    /**
+     * Loads a dataset by name from the backend.
+     */
     override fun loadDataset(name: String): List<Map<String, Any?>> = load("datasets", name)
 
+    /**
+     * Loads an experiment by name from the backend.
+     */
     override fun loadExperiment(name: String): List<Map<String, Any?>> = load("experiments", name)
 
+    /**
+     * Persists dataset rows under the provided dataset name.
+     */
     override fun saveDataset(
         name: String,
         data: List<Map<String, Any?>>,
@@ -103,6 +117,9 @@ class LocalCsvBackend(
         save("datasets", name, data)
     }
 
+    /**
+     * Persists experiment rows under the provided experiment name.
+     */
     override fun saveExperiment(
         name: String,
         data: List<Map<String, Any?>>,
@@ -110,10 +127,19 @@ class LocalCsvBackend(
         save("experiments", name, data)
     }
 
+    /**
+     * Lists available dataset names.
+     */
     override fun listDatasets(): List<String> = list("datasets")
 
+    /**
+     * Lists available experiment names.
+     */
     override fun listExperiments(): List<String> = list("experiments")
 
+    /**
+     * Returns a concise human-readable summary string.
+     */
     override fun toString(): String = "LocalCsvBackend(rootDir='$rootDir')"
 
     private fun csvEscape(value: String): String {

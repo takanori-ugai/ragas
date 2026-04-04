@@ -8,20 +8,45 @@ import kotlinx.coroutines.sync.withPermit
 import ragas.runtime.RunConfig
 import ragas.testset.graph.KnowledgeGraph
 
+/**
+ * Execution-plan node used to compose graph transformations.
+ */
 sealed interface Transforms
 
+/**
+ * Wrapper for a single transformation step.
+ *
+ * @property transform Transformation to execute.
+ */
 data class SingleTransform(
     val transform: BaseGraphTransformation,
 ) : Transforms
 
+/**
+ * Wrapper for transformations that can run in parallel.
+ *
+ * @property transformations Transformations to run concurrently.
+ */
 data class Parallel(
     val transformations: List<BaseGraphTransformation>,
 ) : Transforms
 
+/**
+ * Wrapper for an ordered transformation sequence.
+ *
+ * @property transformations Ordered transform plan nodes.
+ */
 data class SequenceTransforms(
     val transformations: List<Transforms>,
 ) : Transforms
 
+/**
+ * Applies a transform plan to the graph with concurrency controls from run config.
+ *
+ * @param kg Graph to mutate.
+ * @param transforms Transformation plan tree.
+ * @param runConfig Concurrency settings used when executing plan tasks.
+ */
 suspend fun applyTransforms(
     kg: KnowledgeGraph,
     transforms: Transforms,

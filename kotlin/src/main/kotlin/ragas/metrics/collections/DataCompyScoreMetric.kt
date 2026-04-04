@@ -7,6 +7,12 @@ import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 import kotlin.math.max
 
+/**
+ * Implements [DataCompyScoreMetric].
+ *
+ * @property mode Scoring mode.
+ * @property metric Property `metric`.
+ */
 class DataCompyScoreMetric(
     private val mode: Mode = Mode.ROWS,
     private val metric: Metric = Metric.F1,
@@ -17,17 +23,27 @@ class DataCompyScoreMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Enumerates Mode values.
+     */
     enum class Mode {
         ROWS,
         COLUMNS,
     }
 
+    /**
+     * Enumerates Metric values.
+     */
     enum class Metric {
         PRECISION,
         RECALL,
         F1,
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
         val response = sample.response.orEmpty()

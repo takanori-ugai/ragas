@@ -55,9 +55,11 @@ class TestsetScaffoldTest {
 
             val extractor =
                 object : Extractor(name = "length_extractor") {
-                    override suspend fun extract(node: Node): Pair<String, String> {
+                    override fun propertyName(node: Node): String = "length"
+
+                    override suspend fun extract(node: Node): String {
                         val text = node.getProperty("page_content").orEmpty()
-                        return "length" to text.length.toString()
+                        return text.length.toString()
                     }
                 }
 
@@ -172,11 +174,15 @@ class TestsetScaffoldTest {
 
             val extractorA =
                 object : Extractor(name = "e1") {
-                    override suspend fun extract(node: Node): Pair<String, String> = "shared_key" to "a"
+                    override fun propertyName(node: Node): String = "shared_key"
+
+                    override suspend fun extract(node: Node): String = "a"
                 }
             val extractorB =
                 object : Extractor(name = "e2") {
-                    override suspend fun extract(node: Node): Pair<String, String> = "shared_key" to "b"
+                    override fun propertyName(node: Node): String = "shared_key"
+
+                    override suspend fun extract(node: Node): String = "b"
                 }
 
             applyTransforms(

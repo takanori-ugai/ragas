@@ -11,6 +11,11 @@ import kotlinx.serialization.json.intOrNull
 internal object LlmJsonSupport {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Extracts and parses the first valid JSON object from raw LLM output text.
+     *
+     * @param raw Raw model output text.
+     */
     fun parseFirstJsonObject(raw: String): JsonObject? {
         var searchFrom = 0
         while (searchFrom < raw.length) {
@@ -32,6 +37,12 @@ internal object LlmJsonSupport {
         return null
     }
 
+    /**
+     * Extracts a string array from a JSON object field, filtering blank and null-like values.
+     *
+     * @param root Parsed JSON root object.
+     * @param key JSON/object key.
+     */
     fun readStringArray(
         root: JsonObject,
         key: String,
@@ -47,6 +58,15 @@ internal object LlmJsonSupport {
                 }
             }.filter { value -> value.isNotBlank() }
 
+    /**
+     * Reads an integer-like value from a JSON field.
+     *
+     * Supports numeric primitives directly, boolean values (`true` -> 1, `false` -> 0),
+     * and numeric strings.
+     *
+     * @param root Parsed JSON root object.
+     * @param key JSON/object key.
+     */
     fun readIntLike(
         root: JsonObject,
         key: String,

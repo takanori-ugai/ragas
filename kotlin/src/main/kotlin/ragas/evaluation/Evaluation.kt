@@ -25,6 +25,22 @@ import kotlin.reflect.KClass
 private const val EVALUATION_DESC = "Evaluating"
 private val metricLocks: MutableMap<Metric, Mutex> = Collections.synchronizedMap(WeakHashMap())
 
+/**
+ * Asynchronously evaluates a dataset with the selected metrics.
+ *
+ * @param dataset Dataset to evaluate or optimize.
+ * @param metrics Metrics to run.
+ * @param llm LLM dependency used during generation/evaluation.
+ * @param embeddings Embedding dependency used during evaluation.
+ * @param runConfig Runtime retry/concurrency configuration.
+ * @param raiseExceptions Whether metric failures should be thrown.
+ * @param batchSize Optional batch size for executor submissions.
+ * @param callbacks Evaluation lifecycle callbacks.
+ * @param columnMap Column remapping from user keys to canonical metric keys.
+ * @param tokenUsageParser Optional parser for model token usage.
+ * @param costParser Optional parser that converts token usage to cost.
+ * @param executorObserver Optional observer invoked when executor is created.
+ */
 @Suppress("LongMethod", "TooGenericExceptionCaught")
 suspend fun aevaluate(
     dataset: EvaluationDataset<out Sample>,
@@ -55,6 +71,11 @@ suspend fun aevaluate(
     var usagePromptTokens = 0
     var usageCompletionTokens = 0
 
+    /**
+     * Notifies registered callbacks about one evaluation event.
+     *
+     * @param event Evaluation or tracing event payload.
+     */
     fun dispatchEvent(event: EvaluationEvent) {
         synchronized(callbackDispatchLock) {
             callbacks.forEach { callback -> callback.onEvent(event) }
@@ -183,7 +204,7 @@ suspend fun aevaluate(
     } catch (error: Throwable) {
         synchronized(callbackDispatchLock) {
             callbacks.forEach { callback ->
-                runCatching { callback.onEvent(EvaluationEvent.RunFailed(error)) }
+                runCatching { callback.onEvent(EvaluationEvent.RunFailed.fromThrowable(error)) }
             }
         }
         throw error
@@ -194,6 +215,22 @@ suspend fun aevaluate(
     }
 }
 
+/**
+ * Synchronous wrapper around asynchronous evaluation.
+ *
+ * @param dataset Dataset to evaluate or optimize.
+ * @param metrics Metrics to run.
+ * @param llm LLM dependency used during generation/evaluation.
+ * @param embeddings Embedding dependency used during evaluation.
+ * @param runConfig Runtime retry/concurrency configuration.
+ * @param raiseExceptions Whether metric failures should be thrown.
+ * @param batchSize Optional batch size for executor submissions.
+ * @param callbacks Evaluation lifecycle callbacks.
+ * @param columnMap Column remapping from user keys to canonical metric keys.
+ * @param tokenUsageParser Optional parser for model token usage.
+ * @param costParser Optional parser that converts token usage to cost.
+ * @param executorObserver Optional observer invoked when executor is created.
+ */
 fun evaluate(
     dataset: EvaluationDataset<out Sample>,
     metrics: List<Metric>? = null,

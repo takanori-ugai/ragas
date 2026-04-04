@@ -8,6 +8,12 @@ import ragas.metrics.clamp01
 import ragas.model.SingleTurnSample
 import kotlin.math.pow
 
+/**
+ * Implements [QuotedSpansAlignmentMetric].
+ *
+ * @property casefold Whether matching ignores case.
+ * @property minSpanWords Minimum span length in words.
+ */
 class QuotedSpansAlignmentMetric(
     name: String = "quoted_spans_alignment",
     private val casefold: Boolean = true,
@@ -18,6 +24,10 @@ class QuotedSpansAlignmentMetric(
         outputType = MetricOutputType.CONTINUOUS,
     ),
     SingleTurnMetric {
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty()
         val contexts = sample.retrievedContexts.orEmpty()
@@ -71,6 +81,12 @@ class QuotedSpansAlignmentMetric(
     }
 }
 
+/**
+ * Computes chrF-style character n-gram similarity between reference and response text.
+ *
+ * @property charOrder Maximum character n-gram order to include.
+ * @property beta F-score beta parameter.
+ */
 class ChrfScoreMetric(
     name: String = "chrf_score",
     private val charOrder: Int = 6,
@@ -86,6 +102,14 @@ class ChrfScoreMetric(
         require(beta > 0.0 && beta.isFinite()) { "beta must be positive and finite." }
     }
 
+    /**
+     * Computes the average F-beta score across character n-gram orders from 1 to [charOrder].
+     *
+     * Returns `0.0` when either side is blank after normalization; otherwise returns
+     * a continuous score in [0.0, 1.0].
+     *
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
         val response = sample.response.orEmpty()

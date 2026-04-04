@@ -3,6 +3,15 @@ package ragas.testset.transforms
 import ragas.testset.graph.Node
 import kotlin.math.min
 
+/**
+ * Extractor that derives entity strings from node text using a regex pattern.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ * @property sourceProperty Source property key.
+ * @property targetProperty Target property key.
+ * @property maxEntities Maximum extracted entities.
+ */
 class RegexEntityExtractor(
     override val name: String = "regex_entity_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
@@ -12,10 +21,24 @@ class RegexEntityExtractor(
 ) : Extractor(name = name, filterNodes = filterNodes) {
     private val entityPattern = Regex("\\b[A-Z][a-zA-Z]{2,}\\b")
 
-    override suspend fun extract(node: Node): Pair<String, String> {
+    /**
+     * Returns the property key written by this extractor.
+     *
+     * @param node Node to extract from.
+     * @return Target property name.
+     */
+    override fun propertyName(node: Node): String = targetProperty
+
+    /**
+     * Extracts one property value from a node.
+     *
+     * @param node Node to extract from.
+     * @return Extracted entity list.
+     */
+    override suspend fun extract(node: Node): String {
         val text = node.getProperty(sourceProperty).orEmpty()
         if (text.isBlank()) {
-            return targetProperty to ""
+            return ""
         }
 
         val entities =
@@ -26,17 +49,39 @@ class RegexEntityExtractor(
                 .take(maxEntities)
                 .toList()
 
-        return targetProperty to entities.joinToString(", ")
+        return entities.joinToString(", ")
     }
 }
 
+/**
+ * Extractor that derives a deterministic topic token from node text as a lightweight stand-in for embedding-based topics.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ * @property sourceProperty Source property key.
+ * @property targetProperty Target property key.
+ */
 class EmbeddingsTopicExtractor(
     override val name: String = "embeddings_topic_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
     private val sourceProperty: String = "page_content",
     private val targetProperty: String = PropertyNames.EMBEDDING_TOPIC_TAG,
 ) : Extractor(name = name, filterNodes = filterNodes) {
-    override suspend fun extract(node: Node): Pair<String, String> {
+    /**
+     * Returns the property key written by this extractor.
+     *
+     * @param node Node to extract from.
+     * @return Target property name.
+     */
+    override fun propertyName(node: Node): String = targetProperty
+
+    /**
+     * Extracts one property value from a node.
+     *
+     * @param node Node to extract from.
+     * @return Extracted topic token.
+     */
+    override suspend fun extract(node: Node): String {
         val text = node.getProperty(sourceProperty).orEmpty()
         val token =
             text
@@ -51,10 +96,19 @@ class EmbeddingsTopicExtractor(
                 ?.key
                 .orEmpty()
 
-        return targetProperty to token
+        return token
     }
 }
 
+/**
+ * Extractor that derives a short summary from node text using sentence-level clipping heuristics.
+ *
+ * @property name Transformation name.
+ * @property filterNodes Node selection predicate.
+ * @property sourceProperty Source property key.
+ * @property targetProperty Target property key.
+ * @property maxWords Maximum summary words.
+ */
 class LlmBasedSummaryExtractor(
     override val name: String = "llm_based_summary_extractor",
     override val filterNodes: (Node) -> Boolean = defaultFilter,
@@ -62,10 +116,24 @@ class LlmBasedSummaryExtractor(
     private val targetProperty: String = PropertyNames.SUMMARY_LLM_BASED,
     private val maxWords: Int = 24,
 ) : Extractor(name = name, filterNodes = filterNodes) {
-    override suspend fun extract(node: Node): Pair<String, String> {
+    /**
+     * Returns the property key written by this extractor.
+     *
+     * @param node Node to extract from.
+     * @return Target property name.
+     */
+    override fun propertyName(node: Node): String = targetProperty
+
+    /**
+     * Extracts one property value from a node.
+     *
+     * @param node Node to extract from.
+     * @return Extracted summary text.
+     */
+    override suspend fun extract(node: Node): String {
         val text = node.getProperty(sourceProperty).orEmpty().trim()
         if (text.isBlank()) {
-            return targetProperty to ""
+            return ""
         }
 
         val sentences =
@@ -77,6 +145,6 @@ class LlmBasedSummaryExtractor(
         val summary = sentences.take(2).joinToString(" ")
         val words = summary.split(Regex("\\s+")).filter { word -> word.isNotBlank() }
         val clipped = words.take(min(words.size, maxWords)).joinToString(" ")
-        return targetProperty to clipped
+        return clipped
     }
 }

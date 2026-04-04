@@ -4,6 +4,9 @@ import kotlinx.serialization.KSerializer
 import ragas.llms.BaseRagasLlm
 import ragas.llms.MultiModalRagasLlm
 
+/**
+ * Typed prompt that renders mixed text/image content and parses structured output.
+ */
 class ImageTextTypedPrompt<InputT, OutputT>(
     inputSerializer: KSerializer<InputT>,
     outputSerializer: KSerializer<OutputT>,
@@ -14,6 +17,11 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         outputSerializer = outputSerializer,
         model = model,
     ) {
+    /**
+     * Builds prompt content parts from typed input for multimodal generation.
+     *
+     * @param input Input payload.
+     */
     fun toContent(input: InputT?): List<PromptContentPart> {
         val parts = mutableListOf<PromptContentPart>()
         parts += PromptContentPart.Text(model.instruction)
@@ -57,8 +65,14 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         return parts
     }
 
+    /**
+     * Renders the prompt text for the provided input.
+     */
     override suspend fun format(input: InputT?): String = toContent(input).joinToString(separator = "\n") { it.toPromptText() }
 
+    /**
+     * Generates and parses structured output using configured retry behavior.
+     */
     override suspend fun generate(
         llm: BaseRagasLlm,
         input: InputT?,

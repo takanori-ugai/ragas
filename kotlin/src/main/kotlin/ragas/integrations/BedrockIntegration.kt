@@ -9,6 +9,16 @@ import ragas.model.EvaluationResult
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Input record schema for Amazon Bedrock integration adapters.
+ *
+ * @property input User prompt text.
+ * @property output Model output text.
+ * @property retrievedContexts Retrieved context strings.
+ * @property referenceContexts Optional reference context strings.
+ * @property reference Optional reference answer.
+ * @property metadata Optional record metadata.
+ */
 data class BedrockRecord(
     val input: String,
     val output: String,
@@ -18,7 +28,15 @@ data class BedrockRecord(
     val metadata: Map<String, String> = emptyMap(),
 )
 
+/**
+ * Helper functions for evaluating Bedrock records with ragas metrics.
+ */
 object BedrockIntegration {
+    /**
+     * Converts integration records into an evaluation dataset.
+     *
+     * @param records Integration records to process.
+     */
     fun toDataset(records: List<BedrockRecord>): EvaluationDataset<SingleTurnSample> {
         val recordWithMetadataIndex = records.indexOfFirst { it.metadata.isNotEmpty() }
         require(recordWithMetadataIndex < 0) {
@@ -40,6 +58,20 @@ object BedrockIntegration {
         )
     }
 
+    /**
+     * Evaluates integration records with the selected metrics and model dependencies.
+     *
+     * @param records Integration records to process.
+     * @param metrics Metrics to run.
+     * @param llm LLM dependency used during generation/evaluation.
+     * @param embeddings Embedding dependency used during evaluation.
+     * @param runConfig Runtime retry/concurrency configuration.
+     * @param raiseExceptions Whether metric failures should be thrown.
+     * @param runName Logical run name used in tracing output.
+     * @param tags Run-level tags.
+     * @param metadata Run-level metadata.
+     * @param observers Trace observers notified during execution.
+     */
     @Suppress("UNUSED_PARAMETER")
     fun evaluateRecords(
         records: List<BedrockRecord>,
@@ -63,5 +95,10 @@ object BedrockIntegration {
             unsupportedIntegration("bedrock")
         }
 
+    /**
+     * Converts evaluation scores into integration-friendly metric rows.
+     *
+     * @param result Evaluation result payload.
+     */
     fun toMetricPayload(result: EvaluationResult): List<Map<String, Any?>> = result.scores
 }

@@ -6,6 +6,9 @@ import ragas.metrics.MetricType
 import ragas.metrics.SingleTurnMetric
 import ragas.model.SingleTurnSample
 
+/**
+ * Evaluates whether a response is faithful to multimodal (text and image) context evidence.
+ */
 class MultiModalFaithfulnessMetric(
     name: String = "multi_modal_faithfulness",
 ) : BaseMetric(
@@ -14,6 +17,14 @@ class MultiModalFaithfulnessMetric(
         outputType = MetricOutputType.BINARY,
     ),
     SingleTurnMetric {
+    /**
+     * Computes a binary faithfulness score using token-overlap support and multimodal heuristics.
+     *
+     * Combines textual support with penalties for unsupported critical claims/numbers and an
+     * image-context compensation heuristic, then thresholds to `1.0` or `0.0`.
+     *
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val response = sample.response.orEmpty().trim()
         val contexts = sample.retrievedContexts.orEmpty().filter { it.isNotBlank() }

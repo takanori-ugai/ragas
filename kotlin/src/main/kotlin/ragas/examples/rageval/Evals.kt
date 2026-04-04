@@ -21,6 +21,9 @@ private data class EvalRow(
 private class RuleBasedEvalLlm : BaseRagasLlm {
     override var runConfig: RunConfig = RunConfig()
 
+    /**
+     * Executes generateText.
+     */
     override suspend fun generateText(
         prompt: String,
         n: Int,
@@ -77,6 +80,9 @@ private fun loadDataset(rootDir: String = "evals"): List<EvalRow> {
     return datasetRows
 }
 
+/**
+ * Executes main.
+ */
 fun main() =
     runBlocking {
         val llm = RuleBasedEvalLlm()

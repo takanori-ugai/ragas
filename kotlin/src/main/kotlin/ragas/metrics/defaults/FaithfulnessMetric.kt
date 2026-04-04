@@ -14,6 +14,11 @@ import ragas.metrics.tokenSet
 import ragas.model.SingleTurnSample
 import ragas.runtime.RunConfig
 
+/**
+ * Implements [FaithfulnessMetric].
+ *
+ * @property allowHeuristicFallback Whether heuristic fallback is allowed.
+ */
 class FaithfulnessMetric(
     private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
@@ -35,11 +40,19 @@ class FaithfulnessMetric(
 
     private val minSentenceCoveragePerContext = 0.5
 
+    /**
+     * Executes init.
+     * @param runConfig Runtime configuration for model calls and execution behavior.
+     */
     override suspend fun init(runConfig: RunConfig) {
         validateRequiredColumns()
         llm?.runConfig = runConfig
     }
 
+    /**
+     * Executes singleTurnAscore.
+     * @param sample Evaluation sample to score.
+     */
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val llmInstance = llm
         if (llmInstance != null) {
@@ -158,7 +171,10 @@ class FaithfulnessMetric(
                         "time studying and completing assignments. He often stays late in the library to work on his projects.",
                 )
                 appendLine(
-                    "Statements: [\"John is majoring in Biology.\",\"John is taking a course on Artificial Intelligence.\",\"John is a dedicated student.\",\"John has a part-time job.\"]",
+                    "Statements: [\"John is majoring in Biology.\"," +
+                        "\"John is taking a course on Artificial Intelligence.\"," +
+                        "\"John is a dedicated student.\"," +
+                        "\"John has a part-time job.\"]",
                 )
                 appendLine(
                     "Output: {\"statements\":[" +

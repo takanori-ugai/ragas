@@ -5,6 +5,12 @@ import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.math.pow
 
+/**
+ * Runs [block] with retry and exponential backoff as configured by [runConfig].
+ *
+ * @param runConfig Runtime retry/concurrency configuration.
+ * @param block Suspending block to execute.
+ */
 @Suppress("TooGenericExceptionCaught")
 suspend fun <T> retryAsync(
     runConfig: RunConfig,
