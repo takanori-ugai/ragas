@@ -309,8 +309,11 @@ private fun List<ConversationMessage>.toPrettyConversation(): String = joinToStr
 
 private fun readDoubleLike(primitive: JsonPrimitive?): Double? {
     primitive ?: return null
-    primitive.doubleOrNull?.let { return it }
-    return primitive.content.trim().toDoubleOrNull()
+    primitive.doubleOrNull?.takeIf(Double::isFinite)?.let { return it }
+    return primitive.content
+        .trim()
+        .toDoubleOrNull()
+        ?.takeIf(Double::isFinite)
 }
 
 private fun inferGoalOutcomePrompt(conversation: String): String =

@@ -23,6 +23,7 @@ class AgentWorkflowLlmParityTest {
                     responses =
                         listOf(
                             """{"user_goal":"Book a table at Golden Dragon for 8pm.","end_state":"A table was booked at Golden Dragon for 8pm."}""",
+                            // Keep string verdict to verify readIntLike accepts numeric strings.
                             """{"reason":"The booking request was completed.","verdict":"1"}""",
                         ),
                 )
@@ -148,7 +149,11 @@ private class ScriptedAgentWorkflowLlm(
         stop: List<String>?,
     ): LlmResult {
         prompts += prompt
-        val text = responses.getOrElse(index) { responses.lastOrNull().orEmpty() }
+        val text =
+            responses.getOrNull(index)
+                ?: throw IllegalStateException(
+                    "ScriptedAgentWorkflowLlm responses exhausted at index=$index (configured=${responses.size})",
+                )
         index += 1
         return LlmResult(generations = listOf(LlmGeneration(text)))
     }
