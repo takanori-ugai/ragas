@@ -80,7 +80,7 @@ class ContextRecallMetric(
                 append("Output:")
             }
 
-        repeat(maxRetries.coerceAtLeast(1)) { index ->
+        repeat(maxRetries.coerceAtLeast(1)) {
             try {
                 val raw =
                     llmInstance
@@ -117,9 +117,6 @@ class ContextRecallMetric(
                 throw e
             } catch (_: Exception) {
                 // Retry parse/generation failures to mirror WS3 metric LLM paths.
-            }
-            if (index == maxRetries.coerceAtLeast(1) - 1) {
-                return Double.NaN
             }
         }
 

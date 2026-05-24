@@ -149,7 +149,7 @@ class FactualCorrectnessMetric(
         llmInstance: BaseRagasLlm,
         text: String,
     ): List<String> {
-        repeat(maxRetries.coerceAtLeast(1)) { index ->
+        repeat(maxRetries.coerceAtLeast(1)) {
             try {
                 val raw =
                     llmInstance
@@ -168,9 +168,6 @@ class FactualCorrectnessMetric(
             } catch (_: Exception) {
                 // Retry parse/generation failures to mirror WS3 metric LLM paths.
             }
-            if (index == maxRetries.coerceAtLeast(1) - 1) {
-                return emptyList()
-            }
         }
         return emptyList()
     }
@@ -180,7 +177,7 @@ class FactualCorrectnessMetric(
         claims: List<String>,
         reference: String,
     ): List<Boolean> {
-        repeat(maxRetries.coerceAtLeast(1)) { index ->
+        repeat(maxRetries.coerceAtLeast(1)) {
             try {
                 val raw =
                     llmInstance
@@ -207,9 +204,6 @@ class FactualCorrectnessMetric(
                 throw e
             } catch (_: Exception) {
                 // Retry parse/generation failures to mirror WS3 metric LLM paths.
-            }
-            if (index == maxRetries.coerceAtLeast(1) - 1) {
-                return emptyList()
             }
         }
         return emptyList()

@@ -208,12 +208,12 @@ private suspend fun inferGoalOutcomeWithLlm(
     messages: List<ConversationMessage>,
     maxRetries: Int,
 ): GoalOutcome? {
-    val conversation = messages.joinToString(separator = "\n") { message -> message.prettyRepr() }
+    val conversation = messages.toPrettyConversation()
     if (conversation.isBlank()) {
         return null
     }
 
-    repeat(maxRetries.coerceAtLeast(1)) { index ->
+    repeat(maxRetries.coerceAtLeast(1)) {
         try {
             val raw =
                 llmInstance
@@ -233,9 +233,6 @@ private suspend fun inferGoalOutcomeWithLlm(
         } catch (_: Exception) {
             // Retry parse/generation failures to mirror other metric LLM paths.
         }
-        if (index == maxRetries.coerceAtLeast(1) - 1) {
-            return null
-        }
     }
 
     return null
@@ -251,7 +248,7 @@ private suspend fun compareOutcomesWithLlm(
         return null
     }
 
-    repeat(maxRetries.coerceAtLeast(1)) { index ->
+    repeat(maxRetries.coerceAtLeast(1)) {
         try {
             val raw =
                 llmInstance
@@ -270,9 +267,6 @@ private suspend fun compareOutcomesWithLlm(
         } catch (_: Exception) {
             // Retry parse/generation failures to mirror other metric LLM paths.
         }
-        if (index == maxRetries.coerceAtLeast(1) - 1) {
-            return null
-        }
     }
 
     return null
@@ -283,12 +277,12 @@ private suspend fun workflowCompletionWithLlm(
     messages: List<ConversationMessage>,
     maxRetries: Int,
 ): Double? {
-    val conversation = messages.joinToString(separator = "\n") { message -> message.prettyRepr() }
+    val conversation = messages.toPrettyConversation()
     if (conversation.isBlank()) {
         return null
     }
 
-    repeat(maxRetries.coerceAtLeast(1)) { index ->
+    repeat(maxRetries.coerceAtLeast(1)) {
         try {
             val raw =
                 llmInstance
@@ -306,13 +300,12 @@ private suspend fun workflowCompletionWithLlm(
         } catch (_: Exception) {
             // Retry parse/generation failures to mirror other metric LLM paths.
         }
-        if (index == maxRetries.coerceAtLeast(1) - 1) {
-            return null
-        }
     }
 
     return null
 }
+
+private fun List<ConversationMessage>.toPrettyConversation(): String = joinToString(separator = "\n") { message -> message.prettyRepr() }
 
 private fun readDoubleLike(primitive: JsonPrimitive?): Double? {
     primitive ?: return null
