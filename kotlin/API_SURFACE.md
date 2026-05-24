@@ -14,6 +14,7 @@ This file defines the intended stable entrypoints under package `ragas`.
 - `ragas.tier4Metrics()`
 - `ragas.geneticOptimizer()`
 - `ragas.dspyOptimizer(cache?)`
+- `ragas.dspyOptimizer(runtimeConfig, cache?)`
 - `ragas.withCache(llm, cache)`
 - `ragas.withCache(embedding, cache)`
 - `ragas.backendRegistry()`
@@ -29,7 +30,7 @@ This file defines the intended stable entrypoints under package `ragas`.
   - `TokenUsage`, `CostEstimate`
   - `TokenUsageParser`, `CostParser`
 - Optimizer prompt-object contracts under `ragas.optimizers`:
-  - `OptimizerPrompt`, `PromptObjectEvaluator`, `OptimizerOutcome`
+  - `OptimizerPrompt`, `PromptObjectEvaluator`, `OptimizerOutcome`, `DspyRuntimeConfig`
 - Metric prompt optimization contract under `ragas.metrics.primitives`:
   - `OptimizableMetricPrompt`
 - Backend extension/inspection contracts under `ragas.backends`:

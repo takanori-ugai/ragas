@@ -1,6 +1,6 @@
 # RAGAS Kotlin Full-Parity Completion Plan
 
-Last updated: 2026-04-02
+Last updated: 2026-05-24
 
 ## Goal
 
@@ -55,7 +55,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - Exit criteria:
   - Kotlin evaluator supports Python-equivalent control surface for non-framework-specific options.
 
-### WS2: Prompt System Parity `[ ]`
+### WS2: Prompt System Parity `[x]`
 
 - [x] Implement typed prompt abstractions equivalent to Python `BasePrompt` + `PydanticPrompt`.
 - [x] Add structured output parsing/validation loop (retry-on-parse-failure semantics).
@@ -85,9 +85,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
       4. Support data-URI images and already-hosted HTTPS image URLs; keep parsing-retry behavior from WS2.
       5. Add conformance tests for mixed text+image formatting and parser retry behavior.
     - Deferred (explicit, non-blocking for MVP):
-      1. URL download/proxy/validation pipeline (SSRF checks, max-size streaming, content sniffing).
-      2. Optional local file loading policy and directory allow-list behavior.
-      3. Full Python callback/tracing parity for multimodal prompt generation path.
+      1. Full Python callback/tracing parity for multimodal prompt generation path.
     - Exit target for multimodal scope:
       Kotlin can format and execute typed text+image prompts against multimodal-capable backends,
       with deterministic JSON output parsing/retry behavior equivalent to text prompts.
@@ -103,6 +101,18 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Added tests in
       `src/test/kotlin/ragas/prompt/ImageTextTypedPromptTest.kt` for mixed content assembly,
       multimodal retry flow, and fallback behavior.
+  - Implemented WS2 hardening + batch generation parity (2026-05-24):
+    - Added secure multimodal item normalization:
+      `src/main/kotlin/ragas/prompt/MultiModalContentNormalizer.kt`
+      (`MultiModalInputPolicy`, data URI validation, URL SSRF/size/image checks, optional local file allow-list).
+    - Added convenience constructors/utilities:
+      `PromptContentPart.fromUntrustedItem(s)` and raw-item `ImageTextTypedPrompt` constructor.
+    - Added prompt batch generation parity:
+      `BasePrompt.generateMultiple(...)` and multimodal override in `ImageTextTypedPrompt`.
+    - Added conformance tests:
+      `src/test/kotlin/ragas/prompt/MultiModalContentNormalizerTest.kt`,
+      updated `src/test/kotlin/ragas/prompt/TypedPromptTest.kt`,
+      updated `src/test/kotlin/ragas/prompt/ImageTextTypedPromptTest.kt`.
 - Exit criteria:
   - Metrics/optimizers can operate on typed prompt objects rather than string-only heuristics.
 
@@ -268,6 +278,24 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
   - relationship builders
 - [x] Port synthesizer variants (single-hop/multi-hop strategies and prompts).
 - [x] Ensure generated testsets align structurally and semantically with Python output expectations.
+- Progress note (2026-05-24):
+  - Expanded transform parity beyond WS6 scaffold:
+    - Added `HeadlineSplitter` in `src/main/kotlin/ragas/testset/transforms/HeadlineSplitter.kt`.
+    - Added additional extractors in `src/main/kotlin/ragas/testset/transforms/Extractors.kt`:
+      - `HeadlinesExtractor`
+      - `EmbeddingExtractor`
+    - Added parity relationship builders in
+      `src/main/kotlin/ragas/testset/transforms/RelationshipBuilders.kt`:
+      - `CosineSimilarityBuilder`
+      - `SummaryCosineSimilarityBuilder`
+      - `JaccardSimilarityBuilder`
+      - `OverlapScoreBuilder`
+    - Added default transform pipelines in
+      `src/main/kotlin/ragas/testset/transforms/DefaultTransforms.kt`:
+      - `defaultTransformsForDocuments(...)`
+      - `defaultTransformsForPrechunked()`
+    - Added focused parity coverage in
+      `src/test/kotlin/ragas/testset/transforms/ParityTransformsTest.kt`.
 - Progress note (2026-04-01):
   - Started WS6 production transform modules in Kotlin:
     - `src/main/kotlin/ragas/testset/transforms/Extractors.kt`
@@ -358,7 +386,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Implemented `src/main/kotlin/ragas/optimizers/DspyOptimizer.kt` candidate-compile loop
       over prompt objects with cache-backed score memoization.
     - Added top-level public API facades in `src/main/kotlin/ragas/PublicApi.kt`:
-      `geneticOptimizer()` and `dspyOptimizer(cache?)`.
+      `geneticOptimizer()`, `dspyOptimizer(cache?)`, and `dspyOptimizer(runtimeConfig, cache?)`.
   - Integrated optimizer output application to metric prompt objects:
     - Added `src/main/kotlin/ragas/metrics/primitives/OptimizableMetricPrompt.kt`
       (`OptimizableMetricPrompt`, outcome apply helper, optimize-and-apply helper).
@@ -369,6 +397,17 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - `src/test/kotlin/ragas/metrics/primitives/StructuredFallbackTest.kt` validates
       optimizer-to-metric prompt application path.
     - `src/test/kotlin/ragas/PublicApiTest.kt` validates optimizer facades.
+  - Expanded DSPy runtime parity controls (2026-05-24):
+    - Added `DspyRuntimeConfig` in `src/main/kotlin/ragas/optimizers/DspyAdapter.kt`
+      (candidate budget, demo budgets, temperature/auto mode, error budget, threshold, stats controls).
+    - Extended `DspyCompileContext` with runtime config and demo-hint payloads.
+    - Updated `src/main/kotlin/ragas/optimizers/DspyOptimizer.kt` to honor runtime controls
+      (candidate cap, metric-threshold early stop, max-errors policy, runtime metadata reporting).
+    - Added top-level API overload in `src/main/kotlin/ragas/PublicApi.kt`:
+      `dspyOptimizer(runtimeConfig, cache?)`.
+    - Added/updated tests in:
+      - `src/test/kotlin/ragas/OptimizersTest.kt`
+      - `src/test/kotlin/ragas/PublicApiTest.kt`
 - Exit criteria:
   - Both genetic and DSPy optimization workflows are usable in Kotlin with parity semantics.
 
@@ -427,11 +466,11 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
       `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
       `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
 - Intentional deferrals (tracked; not accidental gaps):
-  - Multimodal ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
   - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
   - Broader integrations beyond current LangChain/LlamaIndex record adapters and trace observers.
   - Bundled (in-core) Google Drive backend implementation; Kotlin strategy is optional plugin module via backend discovery SPI.
-  - Exact Python DSPy internals parity (Kotlin keeps adapter seam + heuristic fallback).
+  - Native Python `dspy-ai` execution internals remain optional behind Kotlin adapter seam.
+    Runtime parity controls are now implemented in Kotlin (`DspyRuntimeConfig`).
   - Full Python CLI UX surface beyond current Kotlin scriptable parity set (`eval`, `report`, `compare`, `status`, `backends`).
 - WS9 parity map (full WS3 metrics module coverage):
   - Status legend:

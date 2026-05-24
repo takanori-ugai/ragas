@@ -16,9 +16,10 @@
 ## Main Differences (Current)
 
 - Kotlin prompt stack includes `SimplePrompt` and typed prompts (`TypedPrompt`, few-shot typed variants, Pydantic-style wrappers) plus multimodal typed prompts (`ImageTextTypedPrompt`).
-- Multimodal prompt content in Kotlin uses explicit parts (`PromptContentPart.Text`, `ImageDataUri`, `ImageUrl`) and currently accepts only base64 image data URIs and HTTPS URLs.
+- Multimodal prompt content in Kotlin uses explicit parts (`PromptContentPart.Text`, `ImageDataUri`, `ImageUrl`) and secure normalization helpers (`MultiModalContentNormalizer` / `MultiModalInputPolicy`) for data URI, URL, and optional local-file flows.
 - Kotlin provides LangChain/LlamaIndex record adapters and trace observers (`InMemoryTraceObserver`, Langfuse-style, MLflow-style), but broader Python integration ecosystem is still pending.
-- Kotlin optimizers expose usable `GeneticOptimizer` and DSPy-style `DspyOptimizer` with prompt-object (`OptimizerPrompt`) flows, including metric primitive integration via `OptimizableMetricPrompt`.
+- Kotlin optimizers expose usable `GeneticOptimizer` and DSPy-style `DspyOptimizer` with prompt-object (`OptimizerPrompt`) flows, including metric primitive integration via `OptimizableMetricPrompt` and DSPy runtime controls via `DspyRuntimeConfig`.
+- Kotlin testset transforms include sentence/headline splitters, extractors (summary/entity/topic/headlines/embedding), and relationship builders (adjacency/shared-keyword/cosine/jaccard/overlap) with default transform pipelines for documents and prechunked inputs.
 - Python-style evaluator hooks for callbacks/column-remap/token-cost/executor exposure are available; broader framework-specific callback ecosystems may still differ.
 - Kotlin backend registry supports lazy plugin discovery through `ServiceLoader` (`BackendDiscoveryProvider`) with alias/info inspection APIs (`listBackendInfo`, `getBackendInfo`).
 - Google Drive backend is not bundled in Kotlin core; parity strategy is an optional plugin backend module discovered via `BackendDiscoveryProvider`.

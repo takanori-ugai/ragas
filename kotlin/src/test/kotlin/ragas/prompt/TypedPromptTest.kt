@@ -108,6 +108,59 @@ class TypedPromptTest {
         }
 
     @Test
+    fun typedPromptGenerateMultipleParsesBatch() =
+        runBlocking {
+            val llm =
+                BatchFakeLlm(
+                    outputsByCall =
+                        listOf(
+                            listOf("""{"answer":"4"}""", """{"answer":"5"}"""),
+                        ),
+                )
+            val prompt =
+                TypedPrompt(
+                    inputSerializer = MathInput.serializer(),
+                    outputSerializer = MathOutput.serializer(),
+                    model = TypedPromptModel(instruction = "Solve the math question."),
+                )
+
+            val result = prompt.generateMultiple(llm = llm, input = MathInput(question = "2+2"), n = 2)
+
+            assertEquals(listOf(MathOutput("4"), MathOutput("5")), result)
+            assertEquals(1, llm.calls)
+        }
+
+    @Test
+    fun typedPromptGenerateMultipleRetriesOnParseFailure() =
+        runBlocking {
+            val llm =
+                BatchFakeLlm(
+                    outputsByCall =
+                        listOf(
+                            listOf("not-json", """{"answer":"5"}"""),
+                            listOf("""{"answer":"4"}""", """{"answer":"5"}"""),
+                        ),
+                )
+            val prompt =
+                TypedPrompt(
+                    inputSerializer = MathInput.serializer(),
+                    outputSerializer = MathOutput.serializer(),
+                    model = TypedPromptModel(instruction = "Solve the math question."),
+                )
+
+            val result =
+                prompt.generateMultiple(
+                    llm = llm,
+                    input = MathInput(question = "2+2"),
+                    n = 2,
+                    config = StructuredOutputParserConfig(maxParseRetries = 1),
+                )
+
+            assertEquals(listOf(MathOutput("4"), MathOutput("5")), result)
+            assertEquals(2, llm.calls)
+        }
+
+    @Test
     fun dynamicFewShotTypedPromptSelectsMostSimilarExample() =
         runBlocking {
             val prompt =
@@ -251,5 +304,25 @@ class TypedPromptTest {
             }
 
         override suspend fun embedTexts(texts: List<String>): List<List<Float>> = texts.map { text -> embedText(text) }
+    }
+
+    private class BatchFakeLlm(
+        private val outputsByCall: List<List<String>>,
+    ) : BaseRagasLlm {
+        override var runConfig: RunConfig = RunConfig()
+        var calls: Int = 0
+
+        override suspend fun generateText(
+            prompt: String,
+            n: Int,
+            temperature: Double?,
+            stop: List<String>?,
+        ): LlmResult {
+            val batch = outputsByCall[calls]
+            calls += 1
+            return LlmResult(
+                generations = batch.take(n).map { output -> LlmGeneration(text = output) },
+            )
+        }
     }
 }

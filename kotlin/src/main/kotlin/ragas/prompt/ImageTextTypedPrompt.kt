@@ -17,6 +17,24 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         outputSerializer = outputSerializer,
         model = model,
     ) {
+    constructor(
+        inputSerializer: KSerializer<InputT>,
+        outputSerializer: KSerializer<OutputT>,
+        model: TypedPromptModel<InputT, OutputT>,
+        inputItemsBuilder: (InputT) -> List<String>,
+        inputPolicy: MultiModalInputPolicy = MultiModalInputPolicy(),
+    ) : this(
+        inputSerializer = inputSerializer,
+        outputSerializer = outputSerializer,
+        model = model,
+        inputContentBuilder = { input ->
+            PromptContentPart.fromUntrustedItems(
+                items = inputItemsBuilder(input),
+                policy = inputPolicy,
+            )
+        },
+    )
+
     /**
      * Builds prompt content parts from typed input for multimodal generation.
      *
@@ -73,11 +91,13 @@ class ImageTextTypedPrompt<InputT, OutputT>(
     /**
      * Generates and parses structured output using configured retry behavior.
      */
-    override suspend fun generate(
+    override suspend fun generateMultiple(
         llm: BaseRagasLlm,
         input: InputT?,
+        n: Int,
         config: StructuredOutputParserConfig,
-    ): OutputT {
+    ): List<OutputT> {
+        require(n > 0) { "n must be > 0" }
         require(config.maxParseRetries >= 0) { "maxParseRetries must be >= 0" }
 
         val baseContent = toContent(input)
@@ -85,50 +105,76 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         val failures = mutableListOf<StructuredParseAttempt>()
 
         repeat(config.maxParseRetries + 1) { attempt ->
-            val raw =
+            val generations =
                 if (llm is MultiModalRagasLlm) {
                     llm
                         .generateContent(
                             content = currentContent,
+                            n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
-                        .firstOrNull()
-                        ?.text
-                        .orEmpty()
                 } else {
                     llm
                         .generateText(
                             prompt = currentContent.joinToString(separator = "\n") { it.toPromptText() },
+                            n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
-                        .firstOrNull()
-                        ?.text
-                        .orEmpty()
                 }
 
-            val parsed =
-                runCatching { parse(raw) }.getOrElse { error ->
-                    failures +=
-                        StructuredParseAttempt(
-                            attempt = attempt + 1,
-                            errorMessage = error.message ?: error::class.simpleName.orEmpty(),
-                            rawOutput = raw,
-                        )
-                    null
+            if (generations.isEmpty()) {
+                failures +=
+                    StructuredParseAttempt(
+                        attempt = attempt + 1,
+                        errorMessage = "LLM returned no generations.",
+                        rawOutput = "",
+                    )
+            } else {
+                val parsed = mutableListOf<OutputT>()
+                var parseError: String? = null
+                var rawFailureText: String? = null
+                for (generation in generations) {
+                    val raw = generation.text
+                    val value =
+                        runCatching { parse(raw) }.getOrElse { error ->
+                            parseError = error.message ?: error::class.simpleName.orEmpty()
+                            rawFailureText = raw
+                            null
+                        }
+                    if (value == null) {
+                        break
+                    }
+                    parsed += value
                 }
-            if (parsed != null) {
-                return parsed
+                if (parseError == null) {
+                    return parsed
+                }
+                failures +=
+                    StructuredParseAttempt(
+                        attempt = attempt + 1,
+                        errorMessage = parseError,
+                        rawOutput = rawFailureText.orEmpty(),
+                    )
             }
 
             if (attempt < config.maxParseRetries) {
-                currentContent = buildRetryContent(baseContent, raw, failures.last().errorMessage)
+                currentContent = buildRetryContent(baseContent, failures.last().rawOutput, failures.last().errorMessage)
             }
         }
 
         throw StructuredParseException(failures)
     }
+
+    /**
+     * Generates and parses one structured output using configured retry behavior.
+     */
+    override suspend fun generate(
+        llm: BaseRagasLlm,
+        input: InputT?,
+        config: StructuredOutputParserConfig,
+    ): OutputT = generateMultiple(llm = llm, input = input, n = 1, config = config).first()
 
     private fun buildRetryContent(
         originalContent: List<PromptContentPart>,

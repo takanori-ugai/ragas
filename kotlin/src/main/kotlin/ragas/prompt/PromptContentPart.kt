@@ -55,9 +55,27 @@ sealed interface PromptContentPart {
     }
 
     companion object {
+        /**
+         * Converts one untrusted string item into a safe prompt content part.
+         *
+         * For image-like inputs this may return [ImageDataUri], otherwise [Text].
+         */
+        fun fromUntrustedItem(
+            item: String,
+            policy: MultiModalInputPolicy = MultiModalInputPolicy(),
+        ): PromptContentPart = MultiModalContentNormalizer.normalizeItem(item, policy)
+
+        /**
+         * Converts untrusted items into safe prompt content parts.
+         */
+        fun fromUntrustedItems(
+            items: List<String>,
+            policy: MultiModalInputPolicy = MultiModalInputPolicy(),
+        ): List<PromptContentPart> = MultiModalContentNormalizer.normalizeItems(items, policy)
+
         private val DATA_URI_REGEX =
             Regex(
-                "^data:image/(?:png|jpeg|jpg|gif|webp);base64,[a-zA-Z0-9+/=]+$",
+                "^data:image/(?:png|jpeg|jpg|gif|webp|bmp);base64,[a-zA-Z0-9+/=]+$",
                 RegexOption.IGNORE_CASE,
             )
     }

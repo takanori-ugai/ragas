@@ -404,11 +404,13 @@ abstract class BasePrompt<InputT, OutputT>(
      */
     fun parse(rawOutput: String): OutputT = parser.parse(rawOutput)
 
-    open suspend fun generate(
+    open suspend fun generateMultiple(
         llm: BaseRagasLlm,
         input: InputT?,
+        n: Int = 1,
         config: StructuredOutputParserConfig = StructuredOutputParserConfig(),
-    ): OutputT {
+    ): List<OutputT> {
+        require(n > 0) { "n must be > 0" }
         require(config.maxParseRetries >= 0) { "maxParseRetries must be >= 0" }
 
         val basePrompt = format(input)
@@ -416,38 +418,66 @@ abstract class BasePrompt<InputT, OutputT>(
         val failures = mutableListOf<StructuredParseAttempt>()
 
         repeat(config.maxParseRetries + 1) { attempt ->
-            val raw =
+            val generations =
                 llm
                     .generateText(
                         prompt = currentPrompt,
+                        n = n,
                         temperature = config.temperature,
                         stop = config.stop,
                     ).generations
-                    .firstOrNull()
-                    ?.text
-                    .orEmpty()
 
-            val parsed =
-                runCatching { parse(raw) }.getOrElse { error ->
-                    failures +=
-                        StructuredParseAttempt(
-                            attempt = attempt + 1,
-                            errorMessage = error.message ?: error::class.simpleName.orEmpty(),
-                            rawOutput = raw,
-                        )
-                    null
+            if (generations.isEmpty()) {
+                failures +=
+                    StructuredParseAttempt(
+                        attempt = attempt + 1,
+                        errorMessage = "LLM returned no generations.",
+                        rawOutput = "",
+                    )
+            } else {
+                val parsed = mutableListOf<OutputT>()
+                var parseError: String? = null
+                var rawFailureText: String? = null
+
+                for (generation in generations) {
+                    val raw = generation.text
+                    val value =
+                        runCatching { parse(raw) }.getOrElse { error ->
+                            parseError = error.message ?: error::class.simpleName.orEmpty()
+                            rawFailureText = raw
+                            null
+                        }
+                    if (value == null) {
+                        break
+                    }
+                    parsed += value
                 }
-            if (parsed != null) {
-                return parsed
+
+                if (parseError == null) {
+                    return parsed
+                }
+
+                failures +=
+                    StructuredParseAttempt(
+                        attempt = attempt + 1,
+                        errorMessage = parseError,
+                        rawOutput = rawFailureText.orEmpty(),
+                    )
             }
 
             if (attempt < config.maxParseRetries) {
-                currentPrompt = buildRetryPrompt(basePrompt, raw, failures.last().errorMessage)
+                currentPrompt = buildRetryPrompt(basePrompt, failures.last().rawOutput, failures.last().errorMessage)
             }
         }
 
         throw StructuredParseException(failures)
     }
+
+    open suspend fun generate(
+        llm: BaseRagasLlm,
+        input: InputT?,
+        config: StructuredOutputParserConfig = StructuredOutputParserConfig(),
+    ): OutputT = generateMultiple(llm = llm, input = input, n = 1, config = config).first()
 
     protected open fun buildRetryPrompt(
         originalPrompt: String,
