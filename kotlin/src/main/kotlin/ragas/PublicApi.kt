@@ -22,6 +22,7 @@ import ragas.model.EvaluationDataset
 import ragas.model.EvaluationResult
 import ragas.model.Sample
 import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.DspyRuntimeConfig
 import ragas.optimizers.GeneticOptimizer
 import ragas.optimizers.Optimizer
 import ragas.runtime.Executor
@@ -150,4 +151,20 @@ fun dspyOptimizer(cache: CacheBackend? = null): Optimizer =
         DspyOptimizer()
     } else {
         DspyOptimizer(cache = cache)
+    }
+
+/**
+ * Creates a DSPy-style optimizer with runtime parity controls.
+ *
+ * @param runtimeConfig DSPy runtime knobs (candidate budget, demos, threshold, etc).
+ * @param cache Optional score cache.
+ */
+fun dspyOptimizer(
+    runtimeConfig: DspyRuntimeConfig,
+    cache: CacheBackend? = null,
+): Optimizer =
+    if (cache == null) {
+        DspyOptimizer(runtimeConfig = runtimeConfig)
+    } else {
+        DspyOptimizer(runtimeConfig = runtimeConfig, cache = cache)
     }

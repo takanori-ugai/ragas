@@ -17,11 +17,13 @@ This module provides:
 - optimizer prompt-object flows:
   - `OptimizerPrompt.Text` / `OptimizerPrompt.MultiModal`
   - metric primitive integration via `OptimizableMetricPrompt`
-  - public optimizer facades: `geneticOptimizer()`, `dspyOptimizer(cache?)`
+  - public optimizer facades: `geneticOptimizer()`, `dspyOptimizer(cache?)`,
+    `dspyOptimizer(runtimeConfig, cache?)`
+  - DSPy runtime controls via `DspyRuntimeConfig`
 - LangChain4j LLM/embedding adapters
 - backend extension/discovery via `ServiceLoader` (`BackendDiscoveryProvider`)
 - backend registry inspection metadata (`listBackendInfo`, `getBackendInfo`, aliases)
-- CLI scaffold for runtime status and backend listing
+- CLI workflow commands (`status`, `backends`, `eval`, `report`, `compare`)
 
 ## Requirements
 
@@ -82,7 +84,7 @@ Show current Kotlin conversion/runtime status.
 Current output sections include:
 - core evaluation availability
 - default metrics availability
-- testset scaffold availability
+- testset pipeline availability
 - integration maturity
 
 ### `backends`

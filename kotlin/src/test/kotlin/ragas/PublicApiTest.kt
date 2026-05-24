@@ -9,6 +9,7 @@ import ragas.llms.LlmResult
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
 import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.DspyRuntimeConfig
 import ragas.optimizers.GeneticOptimizer
 import ragas.runtime.RunConfig
 import kotlin.test.Test
@@ -125,10 +126,16 @@ class PublicApiTest {
         val genetic = geneticOptimizer()
         val dspy = dspyOptimizer()
         val dspyWithCache = dspyOptimizer(InMemoryCacheBackend())
+        val dspyWithRuntime =
+            dspyOptimizer(
+                runtimeConfig = DspyRuntimeConfig(numCandidates = 3),
+                cache = InMemoryCacheBackend(),
+            )
 
         assertTrue(genetic is GeneticOptimizer)
         assertTrue(dspy is DspyOptimizer)
         assertTrue(dspyWithCache is DspyOptimizer)
+        assertTrue(dspyWithRuntime is DspyOptimizer)
     }
 }
 

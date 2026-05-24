@@ -17,6 +17,24 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         outputSerializer = outputSerializer,
         model = model,
     ) {
+    constructor(
+        inputSerializer: KSerializer<InputT>,
+        outputSerializer: KSerializer<OutputT>,
+        model: TypedPromptModel<InputT, OutputT>,
+        inputItemsBuilder: (InputT) -> List<String>,
+        inputPolicy: MultiModalInputPolicy = MultiModalInputPolicy(),
+    ) : this(
+        inputSerializer = inputSerializer,
+        outputSerializer = outputSerializer,
+        model = model,
+        inputContentBuilder = { input ->
+            PromptContentPart.fromUntrustedItems(
+                items = inputItemsBuilder(input),
+                policy = inputPolicy,
+            )
+        },
+    )
+
     /**
      * Builds prompt content parts from typed input for multimodal generation.
      *
@@ -73,61 +91,46 @@ class ImageTextTypedPrompt<InputT, OutputT>(
     /**
      * Generates and parses structured output using configured retry behavior.
      */
-    override suspend fun generate(
+    override suspend fun generateMultiple(
         llm: BaseRagasLlm,
         input: InputT?,
+        n: Int,
         config: StructuredOutputParserConfig,
-    ): OutputT {
-        require(config.maxParseRetries >= 0) { "maxParseRetries must be >= 0" }
-
+    ): List<OutputT> {
         val baseContent = toContent(input)
-        var currentContent = baseContent
-        val failures = mutableListOf<StructuredParseAttempt>()
-
-        repeat(config.maxParseRetries + 1) { attempt ->
-            val raw =
+        return generateWithParseRetries(
+            n = n,
+            config = config,
+            basePrompt = baseContent,
+            generateTexts = { content ->
                 if (llm is MultiModalRagasLlm) {
                     llm
                         .generateContent(
-                            content = currentContent,
+                            content = content,
+                            n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
-                        .firstOrNull()
-                        ?.text
-                        .orEmpty()
+                        .map { it.text }
                 } else {
                     llm
                         .generateText(
-                            prompt = currentContent.joinToString(separator = "\n") { it.toPromptText() },
+                            prompt = content.joinToString(separator = "\n") { it.toPromptText() },
+                            n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
-                        .firstOrNull()
-                        ?.text
-                        .orEmpty()
+                        .map { it.text }
                 }
-
-            val parsed =
-                runCatching { parse(raw) }.getOrElse { error ->
-                    failures +=
-                        StructuredParseAttempt(
-                            attempt = attempt + 1,
-                            errorMessage = error.message ?: error::class.simpleName.orEmpty(),
-                            rawOutput = raw,
-                        )
-                    null
-                }
-            if (parsed != null) {
-                return parsed
-            }
-
-            if (attempt < config.maxParseRetries) {
-                currentContent = buildRetryContent(baseContent, raw, failures.last().errorMessage)
-            }
-        }
-
-        throw StructuredParseException(failures)
+            },
+            buildRetryPrompt = { originalContent, failure ->
+                buildRetryContent(
+                    originalContent = originalContent,
+                    previousRawOutput = failure.rawOutput,
+                    parseError = failure.errorMessage,
+                )
+            },
+        )
     }
 
     private fun buildRetryContent(

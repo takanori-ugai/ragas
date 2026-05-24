@@ -1,6 +1,6 @@
 # RAGAS Python -> Kotlin Parity Matrix
 
-Last updated: 2026-04-02
+Last updated: 2026-05-24
 
 ## Core Runtime
 
@@ -25,8 +25,8 @@ Last updated: 2026-04-02
 | Area | Status | Notes |
 | --- | --- | --- |
 | Backends | Done | `inmemory/csv/jsonl` built-ins plus lazy `ServiceLoader` backend discovery (`BackendDiscoveryProvider`), alias grouping, and backend inspection metadata; Google Drive is an explicit optional plugin strategy (not bundled in core) |
-| Prompt subsystem | Partial | `SimplePrompt` + typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry) + multimodal typed flow (`ImageTextTypedPrompt`, `PromptContentPart`, `MultiModalRagasLlm`) are implemented; multimodal URL/local-file ingestion hardening remains deferred |
-| Testset/graph/transforms | Partial | Scaffold + core models + basic engine |
+| Prompt subsystem | Done | `SimplePrompt` + typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry, `generateMultiple`) + multimodal typed flow (`ImageTextTypedPrompt`, `PromptContentPart`, `MultiModalRagasLlm`) are implemented, including secure multimodal item normalization (data URI, URL SSRF/size checks, optional local-file allow-list policy) |
+| Testset/graph/transforms | Done | Production transform stack is implemented (`HeadlinesExtractor`, `LlmBasedSummaryExtractor`, `RegexEntityExtractor`, `EmbeddingExtractor`, `EmbeddingsTopicExtractor`, `SentenceChunkSplitter`, `HeadlineSplitter`, relationship builders including cosine/jaccard/overlap), plus default transform pipelines and WS6 conformance coverage |
 | Integrations | Partial | LangChain/LlamaIndex record adapters plus trace lifecycle observers (in-memory/Langfuse-style/MLflow-style); broader Python integrations are missing |
 | CLI | Done | Scriptable parity workflow commands implemented: `eval` (run evaluation), `report` (metric aggregation), `compare` (baseline deltas + gate exit codes), plus `status/backends` |
 | Optimizers | Done | Genetic + DSPy-style optimizer flows, prompt-object contracts (`OptimizerPrompt`), primitive metric prompt integration (`OptimizableMetricPrompt`), cache-backed DSPy scoring |
@@ -43,9 +43,9 @@ Last updated: 2026-04-02
 ## Intentional Deferrals
 
 - Evaluation API: remaining Python-specific ecosystem integrations are not yet mirrored.
-- Multimodal prompt ingestion hardening: URL download/proxy validation (SSRF/size/content checks) and optional local file policy.
+- Multimodal URL ingestion hardening: DNS rebinding TOCTOU remains a known limitation with current `HttpURLConnection`-based best-effort SSRF checks; full mitigation requires connection-time IP pinning via a custom HTTP client/socket stack.
 - Additional WS6 hardening beyond the current shipped baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.
 - Bundled core Google Drive backend implementation (strategy is optional plugin via backend discovery SPI).
-- Exact Python DSPy runtime parity; Kotlin currently uses adapter seam + heuristic fallback semantics.
+- Native Python `dspy-ai` execution internals are still optional via adapter seam; Kotlin now exposes parity runtime controls (`numCandidates`, demo budgets, threshold/error/stats knobs) in `DspyRuntimeConfig`.
 - Full Python CLI UX parity breadth remains intentionally narrowed; Kotlin covers essential scriptable evaluation/report/compare workflows.

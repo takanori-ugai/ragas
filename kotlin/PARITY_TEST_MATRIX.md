@@ -1,6 +1,6 @@
 # Python -> Kotlin Parity Test Matrix
 
-Last updated: 2026-04-02
+Last updated: 2026-05-24
 
 This matrix maps Python parity targets to Kotlin implementation modules and concrete Kotlin test evidence.
 

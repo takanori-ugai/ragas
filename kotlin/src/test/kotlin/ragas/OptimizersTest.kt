@@ -4,6 +4,7 @@ import ragas.cache.InMemoryCacheBackend
 import ragas.optimizers.DspyAdapter
 import ragas.optimizers.DspyCompileContext
 import ragas.optimizers.DspyOptimizer
+import ragas.optimizers.DspyRuntimeConfig
 import ragas.optimizers.GeneticOptimizer
 import ragas.optimizers.OptimizationDataset
 import ragas.optimizers.OptimizationExample
@@ -120,6 +121,79 @@ class OptimizersTest {
 
         assertTrue(firstRunCalls > 0)
         assertEquals(firstRunCalls, calls)
+    }
+
+    @Test
+    fun dspyOptimizerHonorsMetricThresholdForEarlyStop() {
+        val optimizer =
+            DspyOptimizer(
+                runtimeConfig = DspyRuntimeConfig(metricThreshold = 0.8),
+            )
+        val dataset =
+            OptimizationDataset(
+                metricName = "dummy",
+                examples = listOf(OptimizationExample(promptInput = mapOf("q" to "x"), expectedOutput = "y")),
+            )
+        var calls = 0
+
+        val outcome =
+            optimizer.optimizePrompts(
+                dataset = dataset,
+                initialPrompts = listOf(OptimizerPrompt.Text("Be concise and deterministic.")),
+                evaluator = { prompt, _ ->
+                    calls += 1
+                    when (prompt) {
+                        is OptimizerPrompt.Text -> if ("concise" in prompt.value.lowercase()) 0.95 else 0.1
+                        is OptimizerPrompt.MultiModal -> 0.0
+                    }
+                },
+                config = OptimizerConfig(iterations = 5),
+            )
+
+        val iterationsCompleted = outcome.metadata["iterations_completed"]?.toIntOrNull()
+        assertTrue(iterationsCompleted != null)
+        assertTrue(iterationsCompleted <= 1)
+        assertTrue(calls > 0)
+    }
+
+    @Test
+    fun dspyOptimizerReportsRuntimeParityMetadata() {
+        val optimizer =
+            DspyOptimizer(
+                runtimeConfig =
+                    DspyRuntimeConfig(
+                        numCandidates = 4,
+                        maxBootstrappedDemos = 2,
+                        maxLabeledDemos = 2,
+                        auto = DspyRuntimeConfig.AutoMode.MEDIUM,
+                        trackStats = true,
+                    ),
+            )
+        val dataset =
+            OptimizationDataset(
+                metricName = "dummy",
+                examples = listOf(OptimizationExample(promptInput = mapOf("q" to "x"), expectedOutput = "y")),
+            )
+
+        val outcome =
+            optimizer.optimizePrompts(
+                dataset = dataset,
+                initialPrompts = listOf(OptimizerPrompt.Text("Answer with detail")),
+                evaluator = { prompt, _ ->
+                    when (prompt) {
+                        is OptimizerPrompt.Text -> if ("deterministic" in prompt.value.lowercase()) 1.0 else 0.2
+                        is OptimizerPrompt.MultiModal -> 0.0
+                    }
+                },
+                config = OptimizerConfig(iterations = 2),
+            )
+
+        assertEquals("dspy", outcome.metadata["optimizer"])
+        assertEquals("4", outcome.metadata["num_candidates"])
+        assertEquals("2", outcome.metadata["max_bootstrapped_demos"])
+        assertEquals("2", outcome.metadata["max_labeled_demos"])
+        assertEquals("medium", outcome.metadata["auto"])
+        assertTrue((outcome.metadata["candidates_evaluated"] ?: "0").toInt() > 0)
     }
 
     @Test
@@ -240,6 +314,25 @@ class OptimizersTest {
         }
         assertFailsWith<IllegalArgumentException> {
             OptimizerConfig(mutationProbability = 1.1)
+        }
+    }
+
+    @Test
+    fun dspyRuntimeConfigRejectsInvalidValues() {
+        assertFailsWith<IllegalArgumentException> {
+            DspyRuntimeConfig(numCandidates = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            DspyRuntimeConfig(maxBootstrappedDemos = -1)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            DspyRuntimeConfig(maxLabeledDemos = -1)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            DspyRuntimeConfig(initTemperature = 0.0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            DspyRuntimeConfig(metricThreshold = 1.1)
         }
     }
 }

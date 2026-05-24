@@ -48,6 +48,31 @@ class ImageTextTypedPromptTest {
     }
 
     @Test
+    fun imageTextPromptRawItemsBuilderNormalizesUntrustedItems() {
+        val prompt =
+            ImageTextTypedPrompt(
+                inputSerializer = ImageQuestionInput.serializer(),
+                outputSerializer = ImageQuestionOutput.serializer(),
+                model = TypedPromptModel(instruction = "Use multimodal context."),
+                inputItemsBuilder = { input ->
+                    listOf(input.question, input.imageUrl, input.inlineImageDataUri)
+                },
+            )
+
+        val parts =
+            prompt.toContent(
+                ImageQuestionInput(
+                    question = "What is shown?",
+                    imageUrl = "http://127.0.0.1/image.png",
+                    inlineImageDataUri = "data:image/png;base64,AAAA",
+                ),
+            )
+
+        assertTrue(parts.any { it == PromptContentPart.Text("http://127.0.0.1/image.png") })
+        assertTrue(parts.any { it is PromptContentPart.ImageDataUri })
+    }
+
+    @Test
     fun imageTextPromptUsesMultimodalGenerateWithRetry() =
         runBlocking {
             val llm = FakeMultiModalLlm(outputs = listOf("not-json", """{"answer":"cat"}"""))
@@ -79,6 +104,45 @@ class ImageTextTypedPromptTest {
             assertEquals(ImageQuestionOutput(answer = "cat"), result)
             assertEquals(2, llm.multimodalCalls)
             assertEquals(0, llm.textCalls)
+        }
+
+    @Test
+    fun imageTextPromptGenerateMultipleParsesBatch() =
+        runBlocking {
+            val llm =
+                FakeBatchMultiModalLlm(
+                    outputsByCall =
+                        listOf(
+                            listOf("""{"answer":"cat"}""", """{"answer":"dog"}"""),
+                        ),
+                )
+            val prompt =
+                ImageTextTypedPrompt(
+                    inputSerializer = ImageQuestionInput.serializer(),
+                    outputSerializer = ImageQuestionOutput.serializer(),
+                    model = TypedPromptModel(instruction = "Answer from image and text."),
+                    inputContentBuilder = { input ->
+                        listOf(
+                            PromptContentPart.Text(input.question),
+                            PromptContentPart.ImageUrl(input.imageUrl),
+                        )
+                    },
+                )
+
+            val result =
+                prompt.generateMultiple(
+                    llm = llm,
+                    input =
+                        ImageQuestionInput(
+                            question = "What animals are shown?",
+                            imageUrl = "https://example.com/animals.png",
+                            inlineImageDataUri = "data:image/png;base64,AAAA",
+                        ),
+                    n = 2,
+                )
+
+            assertEquals(listOf(ImageQuestionOutput("cat"), ImageQuestionOutput("dog")), result)
+            assertEquals(1, llm.multimodalCalls)
         }
 
     @Test
@@ -170,6 +234,34 @@ class ImageTextTypedPromptTest {
             val response = outputs[textCalls]
             textCalls += 1
             return LlmResult(generations = listOf(LlmGeneration(text = response)))
+        }
+    }
+
+    private class FakeBatchMultiModalLlm(
+        private val outputsByCall: List<List<String>>,
+    ) : BaseRagasLlm,
+        MultiModalRagasLlm {
+        override var runConfig: RunConfig = RunConfig()
+        var multimodalCalls: Int = 0
+
+        override suspend fun generateText(
+            prompt: String,
+            n: Int,
+            temperature: Double?,
+            stop: List<String>?,
+        ): LlmResult = LlmResult(generations = emptyList())
+
+        override suspend fun generateContent(
+            content: List<PromptContentPart>,
+            n: Int,
+            temperature: Double?,
+            stop: List<String>?,
+        ): LlmResult {
+            val batch = outputsByCall[multimodalCalls]
+            multimodalCalls += 1
+            return LlmResult(
+                generations = batch.take(n).map { output -> LlmGeneration(text = output) },
+            )
         }
     }
 }
