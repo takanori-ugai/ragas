@@ -91,7 +91,7 @@ class AnswerAccuracyMetricParityTest {
         }
 
     @Test
-    fun llmPathReturnsNanWhenOnlyOneJudgeSucceeds() =
+    fun llmPathReturnsSingleJudgeScoreWhenOnlyOneJudgeSucceeds() =
         runBlocking {
             val llm =
                 ScriptedAnswerAccuracyLlm(
@@ -111,7 +111,32 @@ class AnswerAccuracyMetricParityTest {
                 )
 
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-            assertTrue(score.isNaN())
+            assertEquals(1.0, score, 1e-9)
+            assertEquals(3, llm.prompts.size)
+        }
+
+    @Test
+    fun llmPathReturnsSecondJudgeScoreWhenFirstJudgeFails() =
+        runBlocking {
+            val llm =
+                ScriptedAnswerAccuracyLlm(
+                    outputs =
+                        listOf(
+                            """{"rating":3}""",
+                            """{"rating":5}""",
+                            """{"rating":2}""",
+                        ),
+                )
+            val metric = AnswerAccuracyMetric(maxRetries = 2).also { it.llm = llm }
+            val sample =
+                SingleTurnSample(
+                    userInput = "When was Einstein born?",
+                    response = "Einstein was born in 1879.",
+                    reference = "Albert Einstein was born on March 14, 1879.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(0.5, score, 1e-9)
             assertEquals(3, llm.prompts.size)
         }
 

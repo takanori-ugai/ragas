@@ -117,6 +117,10 @@ class AnswerAccuracyMetric(
     ): Double =
         if (!score1.isNaN() && !score2.isNaN()) {
             (score1 + score2) / 2.0
+        } else if (!score1.isNaN()) {
+            score1
+        } else if (!score2.isNaN()) {
+            score2
         } else {
             Double.NaN
         }
@@ -311,13 +315,15 @@ class AnswerCorrectnessMetric(
 
         val responseStatements = generateStatements(llmInstance, question, response)
         val referenceStatements = generateStatements(llmInstance, question, reference)
-        if (responseStatements.isEmpty() || referenceStatements.isEmpty()) {
-            return Double.NaN
-        }
-        val classification =
-            classifyStatements(llmInstance, question, responseStatements, referenceStatements)
-                ?: return Double.NaN
-        val factuality = fBetaFromClassification(classification)
+        val factuality =
+            if (responseStatements.isNotEmpty() && referenceStatements.isNotEmpty()) {
+                val classification =
+                    classifyStatements(llmInstance, question, responseStatements, referenceStatements)
+                        ?: return Double.NaN
+                fBetaFromClassification(classification)
+            } else {
+                1.0
+            }
 
         val similarity =
             if (weights[1] == 0.0) {

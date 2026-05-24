@@ -1,5 +1,6 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -39,6 +40,7 @@ class FactualCorrectnessMetric(
     private val beta: Double = 1.0,
     private val atomicity: DecompositionLevel = DecompositionLevel.LOW,
     private val coverage: DecompositionLevel = DecompositionLevel.LOW,
+    private val maxRetries: Int = 3,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),
@@ -147,15 +149,27 @@ class FactualCorrectnessMetric(
         llmInstance: BaseRagasLlm,
         text: String,
     ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = factualClaimDecompositionPrompt(text, atomicity, coverage))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "claims")
+        repeat(maxRetries.coerceAtLeast(1)) {
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = factualClaimDecompositionPrompt(text, atomicity, coverage))
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@repeat
+                val claims = LlmJsonSupport.readStringArray(parsed, "claims")
+                if (claims.isNotEmpty()) {
+                    return claims
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
+        }
+        return emptyList()
     }
 
     private suspend fun verifyClaimsWithLlm(
@@ -163,20 +177,36 @@ class FactualCorrectnessMetric(
         claims: List<String>,
         reference: String,
     ): List<Boolean> {
-        val raw =
-            llmInstance
-                .generateText(prompt = factualNliPrompt(reference, claims))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        val statements = (parsed["statements"] as? JsonArray).orEmpty()
-        return statements.mapNotNull { element ->
-            val obj = element as? JsonObject ?: return@mapNotNull null
-            val verdict = LlmJsonSupport.readIntLike(obj, "verdict") ?: return@mapNotNull null
-            verdict != 0
+        repeat(maxRetries.coerceAtLeast(1)) {
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = factualNliPrompt(reference, claims))
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@repeat
+                val statements = (parsed["statements"] as? JsonArray).orEmpty()
+                if (statements.isEmpty()) {
+                    return@repeat
+                }
+                val verdicts =
+                    statements.mapNotNull { element ->
+                        val obj = element as? JsonObject ?: return@mapNotNull null
+                        val verdict = LlmJsonSupport.readIntLike(obj, "verdict") ?: return@mapNotNull null
+                        verdict != 0
+                    }
+                if (verdicts.size == statements.size) {
+                    return verdicts
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
         }
+        return emptyList()
     }
 
     private fun fallbackFactualCorrectnessScore(sample: SingleTurnSample): Double {

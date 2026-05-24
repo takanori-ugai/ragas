@@ -1,7 +1,7 @@
 package ragas.prompt
 
-import java.nio.file.Files
 import java.net.URI
+import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals

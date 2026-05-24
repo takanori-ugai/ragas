@@ -96,7 +96,7 @@ class AnswerCorrectnessMetricParityTest {
         }
 
     @Test
-    fun llmPathReturnsNanWhenStatementExtractionFails() =
+    fun llmPathUsesPerfectFactualityWhenStatementExtractionIsEmpty() =
         runBlocking {
             val llm =
                 ScriptedAnswerCorrectnessLlm(
@@ -110,7 +110,7 @@ class AnswerCorrectnessMetricParityTest {
             val sample = SingleTurnSample(userInput = "Q", response = "R", reference = "G")
 
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
-            assertTrue(score.isNaN())
+            assertEquals(1.0, score, 1e-9)
         }
 
     @Test

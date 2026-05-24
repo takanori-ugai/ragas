@@ -19,10 +19,12 @@ class ContextRecallMetricTest {
                 ContextRecallMetric().also { recall ->
                     recall.llm =
                         ScriptedRecallLlm(
-                            output =
-                                """{"classifications":[""" +
-                                    """{"statement":"Kotlin runs on JVM.","reason":"Supported","attributed":1},""" +
-                                    """{"statement":"Kotlin was released in 2010.","reason":"Unsupported","attributed":0}]}""",
+                            outputs =
+                                listOf(
+                                    """{"classifications":[""" +
+                                        """{"statement":"Kotlin runs on JVM.","reason":"Supported","attributed":1},""" +
+                                        """{"statement":"Kotlin was released in 2010.","reason":"Unsupported","attributed":0}]}""",
+                                ),
                         )
                 }
             val sample =
@@ -55,10 +57,12 @@ class ContextRecallMetricTest {
                 ContextRecallMetric().also { recall ->
                     recall.llm =
                         ScriptedRecallLlm(
-                            output =
-                                """{"classifications":[""" +
-                                    """{"statement":"S1","reason":"ok","attributed":1},""" +
-                                    """{"statement":"S2","reason":"missing"}]}""",
+                            outputs =
+                                listOf(
+                                    """{"classifications":[""" +
+                                        """{"statement":"S1","reason":"ok","attributed":1},""" +
+                                        """{"statement":"S2","reason":"missing"}]}""",
+                                ),
                         )
                 }
             val sample =
@@ -79,10 +83,12 @@ class ContextRecallMetricTest {
                 ContextRecallMetric().also { recall ->
                     recall.llm =
                         ScriptedRecallLlm(
-                            output =
-                                """{"classifications":[""" +
-                                    """{"statement":"S1","reason":"ok","attributed":1},""" +
-                                    """{"statement":"S2","reason":"bad","attributed":2}]}""",
+                            outputs =
+                                listOf(
+                                    """{"classifications":[""" +
+                                        """{"statement":"S1","reason":"ok","attributed":1},""" +
+                                        """{"statement":"S2","reason":"bad","attributed":2}]}""",
+                                ),
                         )
                 }
             val sample =
@@ -95,17 +101,47 @@ class ContextRecallMetricTest {
             val score = (metric.singleTurnAscore(sample) as Number).toDouble()
             assertTrue(score.isNaN())
         }
+
+    @Test
+    fun llmPathRetriesUntilValidClassificationPayload() =
+        runBlocking {
+            val llm =
+                ScriptedRecallLlm(
+                    outputs =
+                        listOf(
+                            """{"classifications":[{"statement":"S1","reason":"missing"}]}""",
+                            """{"classifications":[{"statement":"S1","reason":"ok","attributed":1},{"statement":"S2","reason":"ok","attributed":0}]}""",
+                        ),
+                )
+            val metric = ContextRecallMetric(maxRetries = 2).also { recall -> recall.llm = llm }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Tell me about Kotlin",
+                    retrievedContexts = listOf("Kotlin runs on JVM."),
+                    reference = "Kotlin runs on JVM. Kotlin was released in 2010.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(0.5, score)
+            assertEquals(2, llm.callCount)
+        }
 }
 
 private class ScriptedRecallLlm(
-    private val output: String,
+    private val outputs: List<String>,
 ) : BaseRagasLlm {
     override var runConfig: RunConfig = RunConfig()
+    var callCount: Int = 0
+        private set
 
     override suspend fun generateText(
         prompt: String,
         n: Int,
         temperature: Double?,
         stop: List<String>?,
-    ): LlmResult = LlmResult(generations = listOf(LlmGeneration(output)))
+    ): LlmResult {
+        val text = outputs.getOrElse(callCount) { outputs.lastOrNull().orEmpty() }
+        callCount += 1
+        return LlmResult(generations = listOf(LlmGeneration(text)))
+    }
 }
