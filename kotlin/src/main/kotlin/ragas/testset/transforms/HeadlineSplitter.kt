@@ -31,16 +31,19 @@ class HeadlineSplitter(
         }
 
         val indices = mutableListOf(0)
+        var searchFrom = 0
         headlines.forEach { headline ->
-            val idx = text.indexOf(headline)
+            val idx = text.indexOf(headline, startIndex = searchFrom)
             if (idx >= 0) {
                 indices += idx
+                searchFrom = idx + headline.length
             }
         }
         indices += text.length
+        val normalizedIndices = indices.distinct().sorted()
 
         val baseChunks =
-            indices
+            normalizedIndices
                 .zipWithNext()
                 .mapNotNull { (start, end) ->
                     if (end <= start) null else text.substring(start, end).trim().takeIf { it.isNotBlank() }
@@ -116,7 +119,7 @@ class HeadlineSplitter(
                 }
             } else {
                 if (carry.isNotBlank()) {
-                    adjusted += carry
+                    chunk = "$carry $chunk".trim()
                     carry = ""
                 }
                 adjusted += chunk
@@ -124,7 +127,11 @@ class HeadlineSplitter(
         }
 
         if (carry.isNotBlank()) {
-            adjusted += carry
+            if (adjusted.isNotEmpty()) {
+                adjusted[adjusted.lastIndex] = "${adjusted.last()} $carry".trim()
+            } else {
+                adjusted += carry
+            }
         }
 
         return adjusted.filter { it.isNotBlank() }

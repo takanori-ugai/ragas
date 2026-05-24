@@ -88,8 +88,24 @@ fun defaultTransformsForDocuments(documents: List<String>): SequenceTransforms {
             }
 
             else -> {
-                error(
-                    "Documents appear too short (<=100 tokens for most docs): shortRatio=$shortRatio longRatio=$longRatio.",
+                listOf(
+                    SingleTransform(SentenceChunkSplitter(maxSentencesPerChunk = 1)),
+                    Parallel(
+                        listOf(
+                            LlmBasedSummaryExtractor(filterNodes = filterChunks),
+                            EmbeddingsTopicExtractor(filterNodes = filterChunks),
+                            RegexEntityExtractor(filterNodes = filterChunks),
+                        ),
+                    ),
+                    Parallel(
+                        listOf(
+                            AdjacentChunkRelationshipBuilder(),
+                            SharedKeywordRelationshipBuilder(
+                                filterNodes = filterChunks,
+                                minSharedKeywords = 1,
+                            ),
+                        ),
+                    ),
                 )
             }
         }

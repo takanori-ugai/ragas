@@ -1,9 +1,11 @@
 package ragas.prompt
 
 import java.nio.file.Files
+import java.net.URI
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MultiModalContentNormalizerTest {
@@ -86,6 +88,28 @@ class MultiModalContentNormalizerTest {
         assertEquals(PromptContentPart.Text("Instruction"), parts[0])
         assertTrue(parts[1] is PromptContentPart.ImageDataUri)
         assertEquals(PromptContentPart.Text("Tail text"), parts[2])
+    }
+
+    @Test
+    fun resolveRedirectTargetRejectsDisallowedScheme() {
+        val resolved =
+            MultiModalContentNormalizer.resolveRedirectTarget(
+                currentUri = URI("https://example.com/a.png"),
+                location = "file:///etc/passwd",
+                policy = MultiModalInputPolicy(),
+            )
+        assertNull(resolved)
+    }
+
+    @Test
+    fun resolveRedirectTargetAcceptsSafeRelativeLocation() {
+        val resolved =
+            MultiModalContentNormalizer.resolveRedirectTarget(
+                currentUri = URI("https://example.com/a/b.png"),
+                location = "/next.png",
+                policy = MultiModalInputPolicy(),
+            )
+        assertEquals("https://example.com/next.png", resolved.toString())
     }
 
     private companion object {

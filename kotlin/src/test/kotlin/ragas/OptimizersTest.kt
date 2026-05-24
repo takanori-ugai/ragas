@@ -150,7 +150,9 @@ class OptimizersTest {
                 config = OptimizerConfig(iterations = 5),
             )
 
-        assertTrue((outcome.metadata["iterations_completed"] ?: "0").toInt() <= 1)
+        val iterationsCompleted = outcome.metadata["iterations_completed"]?.toIntOrNull()
+        assertTrue(iterationsCompleted != null)
+        assertTrue(iterationsCompleted <= 1)
         assertTrue(calls > 0)
     }
 

@@ -43,6 +43,7 @@ Last updated: 2026-05-24
 ## Intentional Deferrals
 
 - Evaluation API: remaining Python-specific ecosystem integrations are not yet mirrored.
+- Multimodal URL ingestion hardening: DNS rebinding TOCTOU remains a known limitation with current `HttpURLConnection`-based best-effort SSRF checks; full mitigation requires connection-time IP pinning via a custom HTTP client/socket stack.
 - Additional WS6 hardening beyond the current shipped baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.
 - Bundled core Google Drive backend implementation (strategy is optional plugin via backend discovery SPI).

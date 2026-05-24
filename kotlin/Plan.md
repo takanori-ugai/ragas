@@ -466,6 +466,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
       `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
       `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
 - Intentional deferrals (tracked; not accidental gaps):
+  - Multimodal URL ingestion DNS rebinding hardening (connection-time IP pinning / custom HTTP client path).
   - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
   - Broader integrations beyond current LangChain/LlamaIndex record adapters and trace observers.
   - Bundled (in-core) Google Drive backend implementation; Kotlin strategy is optional plugin module via backend discovery SPI.
@@ -516,15 +517,15 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 
 ## Execution Order (Critical Path)
 
-1. WS2 Prompt System Parity
-2. WS3 Metrics Catalog Parity
-3. WS7 Optimizer Parity
-4. WS1 Evaluation API/Behavior Parity
-5. WS6 Testset Pipeline Parity
-6. WS4 Integrations Parity
-7. WS5 Backends Parity
-8. WS8 CLI Parity
-9. WS9 Verification + Docs
+1. WS3 Metrics Catalog Parity `[ ]` (primary remaining blocker)
+2. WS4 Integrations Parity `[ ]` (final functional expansion after WS3)
+3. WS9 Parity Verification + Documentation `[x]` (run release-checklist pass after WS3/WS4 increments)
+4. WS2 Prompt System Parity `[x]`
+5. WS7 Optimizer Parity `[x]`
+6. WS1 Evaluation API/Behavior Parity `[x]`
+7. WS6 Testset Pipeline Parity `[x]`
+8. WS5 Backends Parity `[x]`
+9. WS8 CLI Parity `[x]`
 
 ## Milestone Checkpoints
 

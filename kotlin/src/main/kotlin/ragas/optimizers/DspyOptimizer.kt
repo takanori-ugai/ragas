@@ -72,25 +72,24 @@ class DspyOptimizer : Optimizer {
         fun signature(prompt: OptimizerPrompt): String = promptSignatures.getOrPut(prompt) { signatureForPrompt(prompt) }
 
         fun bestWithScore(prompts: List<OptimizerPrompt>): Pair<OptimizerPrompt, Double> {
-            var currentBest = prompts.first()
-            var currentBestScore =
-                scoreWithCache(currentBest, signature(currentBest), datasetSignature, dataset, evaluator) {
-                    cacheHits += 1
+            fun safeScore(prompt: OptimizerPrompt): Double =
+                runCatching {
+                    scoreWithCache(prompt, signature(prompt), datasetSignature, dataset, evaluator) {
+                        cacheHits += 1
+                    }
+                }.getOrElse {
+                    errors += 1
+                    if (errors > maxErrors) {
+                        throw IllegalStateException("DSPy optimizer exceeded maxErrors=$maxErrors", it)
+                    }
+                    Double.NEGATIVE_INFINITY
                 }
+
+            var currentBest = prompts.first()
+            var currentBestScore = safeScore(currentBest)
             candidatesEvaluated += 1
             prompts.drop(1).forEach { prompt ->
-                val score =
-                    runCatching {
-                        scoreWithCache(prompt, signature(prompt), datasetSignature, dataset, evaluator) {
-                            cacheHits += 1
-                        }
-                    }.getOrElse {
-                        errors += 1
-                        if (errors > maxErrors) {
-                            throw IllegalStateException("DSPy optimizer exceeded maxErrors=$maxErrors", it)
-                        }
-                        Double.NEGATIVE_INFINITY
-                    }
+                val score = safeScore(prompt)
                 candidatesEvaluated += 1
                 if (score > currentBestScore) {
                     currentBest = prompt

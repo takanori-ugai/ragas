@@ -97,84 +97,41 @@ class ImageTextTypedPrompt<InputT, OutputT>(
         n: Int,
         config: StructuredOutputParserConfig,
     ): List<OutputT> {
-        require(n > 0) { "n must be > 0" }
-        require(config.maxParseRetries >= 0) { "maxParseRetries must be >= 0" }
-
         val baseContent = toContent(input)
-        var currentContent = baseContent
-        val failures = mutableListOf<StructuredParseAttempt>()
-
-        repeat(config.maxParseRetries + 1) { attempt ->
-            val generations =
+        return generateWithParseRetries(
+            n = n,
+            config = config,
+            basePrompt = baseContent,
+            generateTexts = { content ->
                 if (llm is MultiModalRagasLlm) {
                     llm
                         .generateContent(
-                            content = currentContent,
+                            content = content,
                             n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
+                        .map { it.text }
                 } else {
                     llm
                         .generateText(
-                            prompt = currentContent.joinToString(separator = "\n") { it.toPromptText() },
+                            prompt = content.joinToString(separator = "\n") { it.toPromptText() },
                             n = n,
                             temperature = config.temperature,
                             stop = config.stop,
                         ).generations
+                        .map { it.text }
                 }
-
-            if (generations.isEmpty()) {
-                failures +=
-                    StructuredParseAttempt(
-                        attempt = attempt + 1,
-                        errorMessage = "LLM returned no generations.",
-                        rawOutput = "",
-                    )
-            } else {
-                val parsed = mutableListOf<OutputT>()
-                var parseError: String? = null
-                var rawFailureText: String? = null
-                for (generation in generations) {
-                    val raw = generation.text
-                    val value =
-                        runCatching { parse(raw) }.getOrElse { error ->
-                            parseError = error.message ?: error::class.simpleName.orEmpty()
-                            rawFailureText = raw
-                            null
-                        }
-                    if (value == null) {
-                        break
-                    }
-                    parsed += value
-                }
-                if (parseError == null) {
-                    return parsed
-                }
-                failures +=
-                    StructuredParseAttempt(
-                        attempt = attempt + 1,
-                        errorMessage = parseError,
-                        rawOutput = rawFailureText.orEmpty(),
-                    )
-            }
-
-            if (attempt < config.maxParseRetries) {
-                currentContent = buildRetryContent(baseContent, failures.last().rawOutput, failures.last().errorMessage)
-            }
-        }
-
-        throw StructuredParseException(failures)
+            },
+            buildRetryPrompt = { originalContent, failure ->
+                buildRetryContent(
+                    originalContent = originalContent,
+                    previousRawOutput = failure.rawOutput,
+                    parseError = failure.errorMessage,
+                )
+            },
+        )
     }
-
-    /**
-     * Generates and parses one structured output using configured retry behavior.
-     */
-    override suspend fun generate(
-        llm: BaseRagasLlm,
-        input: InputT?,
-        config: StructuredOutputParserConfig,
-    ): OutputT = generateMultiple(llm = llm, input = input, n = 1, config = config).first()
 
     private fun buildRetryContent(
         originalContent: List<PromptContentPart>,

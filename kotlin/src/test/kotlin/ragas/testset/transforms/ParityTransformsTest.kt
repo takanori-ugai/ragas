@@ -6,7 +6,6 @@ import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ParityTransformsTest {
@@ -36,6 +35,75 @@ class ParityTransformsTest {
             assertTrue(chunks.size >= 2)
             assertEquals(chunks.size, relationships.count { it.type == "child" })
             assertEquals(chunks.size - 1, relationships.count { it.type == "next" })
+        }
+
+    @Test
+    fun headlineSplitterHandlesRepeatedHeadlineTextProgressively() =
+        runBlocking {
+            val splitter = HeadlineSplitter(minTokens = 2, maxTokens = 50)
+            val node =
+                Node(
+                    id = "doc-repeat",
+                    type = NodeType.DOCUMENT,
+                    properties =
+                        mutableMapOf(
+                            "page_content" to
+                                """
+                                Section:
+                                alpha one two.
+                                Section:
+                                beta three four.
+                                Section:
+                                gamma five six.
+                                """.trimIndent(),
+                            "headlines" to "Section:\nSection:\nSection:",
+                        ),
+                )
+
+            val (chunks, relationships) = splitter.split(node)
+
+            assertTrue(chunks.size >= 3)
+            assertEquals(chunks.size, relationships.count { it.type == "child" })
+            assertEquals(chunks.size - 1, relationships.count { it.type == "next" })
+        }
+
+    @Test
+    fun headlineSplitterDoesNotEmitBelowMinTokenCarryChunks() =
+        runBlocking {
+            val splitter = HeadlineSplitter(minTokens = 5, maxTokens = 50)
+            val node =
+                Node(
+                    id = "doc-2",
+                    type = NodeType.DOCUMENT,
+                    properties =
+                        mutableMapOf(
+                            "page_content" to
+                                """
+                                H1:
+                                a b
+                                H2:
+                                one two three four five
+                                H3:
+                                six seven eight nine ten
+                                H4:
+                                short tail
+                                """.trimIndent(),
+                            "headlines" to "H1:\nH2:\nH3:\nH4:",
+                        ),
+                )
+
+            val (chunks, _) = splitter.split(node)
+            val tokenCounts =
+                chunks.map { chunk ->
+                    chunk
+                        .getProperty("page_content")
+                        .orEmpty()
+                        .split(Regex("\\s+"))
+                        .count { token -> token.isNotBlank() }
+                }
+
+            assertTrue(chunks.size >= 2)
+            assertTrue(tokenCounts.all { count -> count >= 5 })
         }
 
     @Test
@@ -78,9 +146,13 @@ class ParityTransformsTest {
         }
 
     @Test
-    fun defaultTransformsForDocumentsRejectsVeryShortInputs() {
-        assertFailsWith<IllegalStateException> {
-            defaultTransformsForDocuments(listOf("short doc", "another short doc"))
-        }
+    fun defaultTransformsForDocumentsFallsBackForVeryShortInputs() {
+        val plan = defaultTransformsForDocuments(listOf("short doc", "another short doc"))
+        val transforms = plan.transformations
+        assertTrue(transforms.isNotEmpty())
+        assertTrue(
+            transforms.firstOrNull() is SingleTransform &&
+                (transforms.first() as SingleTransform).transform is SentenceChunkSplitter,
+        )
     }
 }

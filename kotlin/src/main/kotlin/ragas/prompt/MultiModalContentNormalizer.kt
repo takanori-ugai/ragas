@@ -35,6 +35,14 @@ data class MultiModalInputPolicy(
  * - otherwise -> `Text`
  */
 object MultiModalContentNormalizer {
+    /*
+     * Security note:
+     * URL host safety checks rely on DNS resolution before opening a connection.
+     * With HttpURLConnection this is still vulnerable to DNS rebinding TOCTOU, because
+     * the actual TCP connection may resolve DNS again. Fully mitigating this requires
+     * connection-time IP pinning (custom client/socket stack), which is outside the
+     * current implementation scope.
+     */
     private val dataUriRegex =
         Regex(
             "^data:(image/(?:png|jpeg|jpg|gif|webp|bmp));base64,([a-zA-Z0-9+/=]+)$",
@@ -50,6 +58,7 @@ object MultiModalContentNormalizer {
             "webp",
             "bmp",
         )
+    private const val MAX_HTTP_REDIRECTS = 5
 
     fun normalizeItem(
         item: String,
@@ -89,8 +98,7 @@ object MultiModalContentNormalizer {
         if (scheme !in policy.allowedUrlSchemes) {
             return null
         }
-        val host = parsed.host ?: return null
-        if (!isSafeUrlTarget(host, policy.allowInternalTargets)) {
+        if (parsed.host.isNullOrBlank()) {
             return null
         }
         return downloadValidateAndEncode(item.trim(), policy)
@@ -100,28 +108,99 @@ object MultiModalContentNormalizer {
         url: String,
         policy: MultiModalInputPolicy,
     ): PromptContentPart.ImageDataUri? {
+        var currentUri = runCatching { URI(url.trim()) }.getOrNull() ?: return null
+        var redirects = 0
+
+        while (true) {
+            val connection =
+                openValidatedHttpConnection(
+                    uri = currentUri,
+                    policy = policy,
+                ) ?: return null
+            try {
+                val responseCode = runCatching { connection.responseCode }.getOrNull() ?: return null
+                if (isRedirect(responseCode)) {
+                    if (redirects >= MAX_HTTP_REDIRECTS) {
+                        return null
+                    }
+                    val location = connection.getHeaderField("Location") ?: return null
+                    val redirected =
+                        resolveRedirectTarget(
+                            currentUri = currentUri,
+                            location = location,
+                            policy = policy,
+                        ) ?: return null
+                    currentUri = redirected
+                    redirects += 1
+                    continue
+                }
+
+                if (responseCode !in 200..299) {
+                    return null
+                }
+
+                return connection.inputStream.use { input ->
+                    val contentLength = connection.contentLengthLong
+                    if (contentLength > policy.maxDownloadSizeBytes && contentLength >= 0L) {
+                        return null
+                    }
+                    val bytes = readUpTo(input, policy.maxDownloadSizeBytes) ?: return null
+                    val mimeType = detectMimeType(bytes) ?: return null
+                    val encoded = Base64.getEncoder().encodeToString(bytes)
+                    PromptContentPart.ImageDataUri("data:$mimeType;base64,$encoded")
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    internal fun resolveRedirectTarget(
+        currentUri: URI,
+        location: String,
+        policy: MultiModalInputPolicy,
+    ): URI? {
+        val resolved = runCatching { currentUri.resolve(location).normalize() }.getOrNull() ?: return null
+        val scheme = resolved.scheme?.lowercase() ?: return null
+        if (scheme !in policy.allowedUrlSchemes) {
+            return null
+        }
+        if (resolved.host.isNullOrBlank()) {
+            return null
+        }
+        return resolved
+    }
+
+    private fun openValidatedHttpConnection(
+        uri: URI,
+        policy: MultiModalInputPolicy,
+    ): HttpURLConnection? {
+        val scheme = uri.scheme?.lowercase() ?: return null
+        if (scheme !in policy.allowedUrlSchemes) {
+            return null
+        }
+        val host = uri.host ?: return null
+        if (!isSafeUrlTarget(host, policy.allowInternalTargets)) {
+            return null
+        }
         val connection =
-            runCatching { URI(url).toURL().openConnection() as HttpURLConnection }
+            runCatching { uri.toURL().openConnection() as HttpURLConnection }
                 .getOrNull()
                 ?: return null
         connection.requestMethod = "GET"
         connection.connectTimeout = policy.requestTimeoutMillis
         connection.readTimeout = policy.requestTimeoutMillis
-        connection.instanceFollowRedirects = true
-
-        return runCatching {
-            connection.inputStream.use { input ->
-                val contentLength = connection.contentLengthLong
-                if (contentLength > policy.maxDownloadSizeBytes && contentLength >= 0L) {
-                    return null
-                }
-                val bytes = readUpTo(input, policy.maxDownloadSizeBytes) ?: return null
-                val mimeType = detectMimeType(bytes) ?: return null
-                val encoded = Base64.getEncoder().encodeToString(bytes)
-                PromptContentPart.ImageDataUri("data:$mimeType;base64,$encoded")
-            }
-        }.getOrNull()
+        // Security: validate each redirect target manually before following it.
+        connection.instanceFollowRedirects = false
+        return connection
     }
+
+    private fun isRedirect(responseCode: Int): Boolean =
+        responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
+            responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+            responseCode == HttpURLConnection.HTTP_SEE_OTHER ||
+            responseCode == 307 ||
+            responseCode == 308
 
     private fun tryProcessLocalFile(
         item: String,
@@ -164,6 +243,7 @@ object MultiModalContentNormalizer {
         hostname: String,
         allowInternalTargets: Boolean,
     ): Boolean {
+        // Best-effort SSRF filtering only; see DNS rebinding note above.
         if (allowInternalTargets) {
             return true
         }
@@ -184,20 +264,22 @@ object MultiModalContentNormalizer {
         if (bytes.isEmpty()) {
             return null
         }
-        // First validate the payload is parseable as an image.
-        if (runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull() == null) {
-            return null
-        }
-
-        detectMimeTypeByMagic(bytes)?.let { return it }
         val guessed =
             runCatching { URLConnection.guessContentTypeFromStream(ByteArrayInputStream(bytes)) }
                 .getOrNull()
                 ?.lowercase()
-        if (!guessed.isNullOrBlank() && guessed.startsWith("image/")) {
-            return guessed
+        val candidate =
+            detectMimeTypeByMagic(bytes) ?:
+                guessed?.takeIf { mime -> mime.startsWith("image/") }
+        if (candidate == null) {
+            return null
         }
-        return "image/jpeg"
+
+        // Final validation gate after cheap MIME hint checks.
+        if (runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull() == null) {
+            return null
+        }
+        return candidate
     }
 
     private fun detectMimeTypeByMagic(bytes: ByteArray): String? {
