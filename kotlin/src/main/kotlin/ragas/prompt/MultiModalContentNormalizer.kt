@@ -269,8 +269,8 @@ object MultiModalContentNormalizer {
                 .getOrNull()
                 ?.lowercase()
         val candidate =
-            detectMimeTypeByMagic(bytes) ?:
-                guessed?.takeIf { mime -> mime.startsWith("image/") }
+            detectMimeTypeByMagic(bytes)
+                ?: guessed?.takeIf { mime -> mime.startsWith("image/") }
         if (candidate == null) {
             return null
         }

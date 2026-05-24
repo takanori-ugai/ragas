@@ -23,8 +23,7 @@ import ragas.runtime.RunConfig
 class ContextRecallMetric(
     name: String = "context_recall",
     private val maxRetries: Int = 5,
-) :
-    BaseMetric(
+) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "retrieved_contexts", "reference")),
         outputType = MetricOutputType.CONTINUOUS,
