@@ -229,6 +229,56 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Fixture: `src/test/resources/fixtures/metrics/ws3_tier3_semantic_similarity_fixture.json`
     - Test: `src/test/kotlin/ragas/metrics/collections/SemanticSimilarityFixtureTest.kt`
     - API coverage update: `src/test/kotlin/ragas/PublicApiTest.kt`
+  - Continued WS3 Tier-2 with Python-style LLM judge flow for agent goal-accuracy metrics:
+    - Updated `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt`:
+      - `AgentGoalAccuracyWithReferenceMetric` now supports optional LLM two-step inference+verdict flow
+        aligned to Python `agent_goal_accuracy` prompt semantics, with heuristic fallback.
+      - `AgentGoalAccuracyWithoutReferenceMetric` now supports optional LLM workflow inference
+        (`user_goal`, `end_state`) and LLM comparison verdict path, with heuristic fallback.
+      - Added retry-aware JSON parsing path (`user_goal` / `end_state` / `verdict`) for parity-safe scoring.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/AgentWorkflowLlmParityTest.kt`
+        - validates LLM inference/comparison path for with-reference and without-reference modes
+        - validates fallback behavior when model output is malformed
+  - Continued WS3 Tier-2 with workflow-completion LLM judge path:
+    - Updated `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt`:
+      - `AgentWorkflowCompletionMetric` now supports optional LLM completion scoring via
+        structured JSON output (`completion_score`) with retry and parse guards.
+      - Existing heuristic scoring path is preserved as deterministic fallback for malformed
+        model output or absent LLM.
+    - Extended focused parity coverage in:
+      - `src/test/kotlin/ragas/metrics/collections/AgentWorkflowLlmParityTest.kt`
+        - `workflowCompletionUsesLlmCompletionScoreWhenAvailable`
+        - `workflowCompletionFallsBackWhenLlmOutputMalformed`
+  - Continued WS3 Tier-3/defaults with context-recall LLM retry semantics:
+    - Updated `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt`:
+      - Added retry-aware LLM classification parsing path (`maxRetries`) for malformed/partial
+        model outputs before returning `NaN`.
+      - Preserved existing deterministic fallback path for no-LLM mode.
+    - Extended context-recall conformance coverage in:
+      - `src/test/kotlin/ragas/ContextRecallMetricTest.kt`
+        - `llmPathRetriesUntilValidClassificationPayload`
+  - Continued WS3 Tier-3 answer-quality parity semantics:
+    - Updated `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt`:
+      - `AnswerAccuracyMetric` now mirrors Python dual-judge averaging fallback:
+        if only one judge succeeds, use that valid judge score (instead of forcing `NaN`).
+      - `AnswerCorrectnessMetric` now mirrors Python handling for empty statement extraction in
+        LLM path by using factuality `1.0` when either side yields no statements.
+    - Extended parity coverage:
+      - `src/test/kotlin/ragas/AnswerAccuracyMetricParityTest.kt`
+        - `llmPathReturnsSingleJudgeScoreWhenOnlyOneJudgeSucceeds`
+        - `llmPathReturnsSecondJudgeScoreWhenFirstJudgeFails`
+      - `src/test/kotlin/ragas/AnswerCorrectnessMetricParityTest.kt`
+        - `llmPathUsesPerfectFactualityWhenStatementExtractionIsEmpty`
+  - Continued WS3 Tier-3 factual-correctness LLM robustness:
+    - Updated `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt`:
+      - Added retry-aware LLM parsing path for claim decomposition and NLI verdict extraction in
+        `FactualCorrectnessMetric` (`maxRetries`), including strict malformed-output retry handling.
+      - Added explicit cancellation propagation for LLM path to avoid swallowing coroutine cancellation.
+    - Extended parity coverage:
+      - `src/test/kotlin/ragas/FactualCorrectnessMetricParityTest.kt`
+        - `llmPathRetriesMalformedDecompositionAndNliOutputs`
+        - `llmPathPropagatesCancellationException`
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -458,11 +508,9 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Fixture: `src/test/resources/fixtures/metrics/ws9_cross_language_partial_metrics_fixture.json`
     - Test: `src/test/kotlin/ragas/metrics/collections/WS9CrossLanguagePartialGoldenTest.kt`
   - Cross-language fixture scope includes currently `Partial` metrics listed in WS9 map:
-    - Tier-2 workflow: `agent_goal_accuracy_with_reference`, `agent_goal_accuracy_without_reference`,
-      `agent_workflow_completion`
+    - Tier-2 workflow: `agent_workflow_completion`
     - Tier-3 defaults/collections:
-      `context_recall`,
-      `answer_accuracy`, `answer_correctness`, `factual_correctness`, `topic_adherence`,
+      `topic_adherence`,
       `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
       `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
 - Intentional deferrals (tracked; not accidental gaps):
@@ -488,15 +536,15 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-1 | `../src/ragas/metrics/collections/context_entity_recall/metric.py` | `src/main/kotlin/ragas/metrics/collections/EntityAndIdRetrievalMetrics.kt` (`ContextEntityRecallMetric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/tool_call_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallAccuracyMetric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/tool_call_f1/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallF1Metric`) | Done |
-| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Partial |
-| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Partial |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Done |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Done |
-| Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerCorrectnessMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`FactualCorrectnessMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerCorrectnessMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`FactualCorrectnessMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`NoiseSensitivityMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`TopicAdherenceMetric`) | Partial |
 | Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`QuotedSpansAlignmentMetric`) | Partial |

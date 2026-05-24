@@ -1,5 +1,6 @@
 package ragas.metrics.defaults
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
@@ -19,9 +20,12 @@ import ragas.runtime.RunConfig
  *
  * Uses an LLM attribution classifier when available, with a token-overlap fallback heuristic.
  */
-class ContextRecallMetric :
+class ContextRecallMetric(
+    name: String = "context_recall",
+    private val maxRetries: Int = 5,
+) :
     BaseMetric(
-        name = "context_recall",
+        name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "retrieved_contexts", "reference")),
         outputType = MetricOutputType.CONTINUOUS,
     ),
@@ -77,37 +81,50 @@ class ContextRecallMetric :
                 append("Output:")
             }
 
-        val raw =
-            llmInstance
-                .generateText(prompt = prompt)
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return Double.NaN
-        val classifications = parsed["classifications"]?.jsonArray.orEmpty()
-        if (classifications.isEmpty()) {
-            return Double.NaN
-        }
-
-        val normalizedAttributions =
-            classifications.mapNotNull { element ->
-                val obj = element as? JsonObject ?: return@mapNotNull null
-                val attribution = LlmJsonSupport.readIntLike(obj, "attributed") ?: return@mapNotNull null
-                if (attribution == 0 || attribution == 1) {
-                    attribution
-                } else {
-                    null
+        repeat(maxRetries.coerceAtLeast(1)) { index ->
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = prompt)
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@repeat
+                val classifications = parsed["classifications"]?.jsonArray.orEmpty()
+                if (classifications.isEmpty()) {
+                    return@repeat
                 }
+
+                val normalizedAttributions =
+                    classifications.mapNotNull { element ->
+                        val obj = element as? JsonObject ?: return@mapNotNull null
+                        val attribution = LlmJsonSupport.readIntLike(obj, "attributed") ?: return@mapNotNull null
+                        if (attribution == 0 || attribution == 1) {
+                            attribution
+                        } else {
+                            null
+                        }
+                    }
+                if (normalizedAttributions.size != classifications.size) {
+                    return@repeat
+                }
+
+                val score =
+                    normalizedAttributions.count { value -> value == 1 }.toDouble() /
+                        normalizedAttributions.size.toDouble()
+                return clamp01(score)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
             }
-        if (normalizedAttributions.size != classifications.size) {
-            return Double.NaN
+            if (index == maxRetries.coerceAtLeast(1) - 1) {
+                return Double.NaN
+            }
         }
 
-        val score =
-            normalizedAttributions.count { value -> value == 1 }.toDouble() /
-                normalizedAttributions.size.toDouble()
-        return clamp01(score)
+        return Double.NaN
     }
 
     private fun fallbackContextRecallScore(sample: SingleTurnSample): Double {

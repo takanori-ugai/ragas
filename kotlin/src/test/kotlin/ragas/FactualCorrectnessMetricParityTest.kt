@@ -1,5 +1,6 @@
 package ragas
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -10,6 +11,7 @@ import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class FactualCorrectnessMetricParityTest {
     @Test
@@ -111,6 +113,56 @@ class FactualCorrectnessMetricParityTest {
                     metric.singleTurnAscore(SingleTurnSample(response = "x", reference = ""))
                 }
             assertEquals("reference is missing. Please add reference to the test sample.", referenceError.message)
+        }
+
+    @Test
+    fun llmPathRetriesMalformedDecompositionAndNliOutputs() =
+        runBlocking {
+            val metric =
+                FactualCorrectnessMetric(
+                    mode = FactualCorrectnessMetric.Mode.PRECISION,
+                    maxRetries = 2,
+                ).also { factual ->
+                    factual.llm =
+                        ScriptedFactualCorrectnessLlm(
+                            outputs =
+                                listOf(
+                                    """{"claims":[]}""",
+                                    """{"claims":["c1","c2"]}""",
+                                    """{"statements":[{"statement":"c1","reason":"missing verdict"}]}""",
+                                    """{"statements":[{"statement":"c1","reason":"ok","verdict":1},{"statement":"c2","reason":"bad","verdict":0}]}""",
+                                ),
+                        )
+                }
+            val sample = SingleTurnSample(response = "R", reference = "G")
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(0.5, score, 1e-9)
+        }
+
+    @Test
+    fun llmPathPropagatesCancellationException() =
+        runBlocking {
+            val metric =
+                FactualCorrectnessMetric(maxRetries = 2).also { factual ->
+                    factual.llm =
+                        object : BaseRagasLlm {
+                            override var runConfig: RunConfig = RunConfig()
+
+                            override suspend fun generateText(
+                                prompt: String,
+                                n: Int,
+                                temperature: Double?,
+                                stop: List<String>?,
+                            ): LlmResult = throw CancellationException("cancelled")
+                        }
+                }
+
+            val error =
+                assertFailsWith<CancellationException> {
+                    metric.singleTurnAscore(SingleTurnSample(response = "R", reference = "G"))
+                }
+            assertTrue(error.message?.contains("cancelled") == true)
         }
 }
 
