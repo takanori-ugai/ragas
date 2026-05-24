@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.TextContent
 import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
 import dev.langchain4j.service.AiServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -27,6 +28,14 @@ class LangChain4jLlm(
 ) : BaseRagasLlm,
     StructuredOutputRagasLlm,
     MultiModalRagasLlm {
+    /**
+     * Convenience constructor for Google GenAI chat backend.
+     */
+    constructor(
+        model: GoogleGenAiChatModel,
+        runConfig: RunConfig = RunConfig(),
+    ) : this(model as ChatModel, runConfig)
+
     private val numericService: NumericStructuredService by lazy {
         AiServices.create(NumericStructuredService::class.java, model)
     }

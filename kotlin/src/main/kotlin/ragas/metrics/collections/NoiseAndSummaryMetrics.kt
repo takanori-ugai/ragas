@@ -1,5 +1,6 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -25,6 +26,7 @@ import ragas.runtime.RunConfig
 class NoiseSensitivityMetric(
     name: String = "noise_sensitivity",
     private val mode: Mode = Mode.RELEVANT,
+    private val maxRetries: Int = 3,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference", "retrieved_contexts")),
@@ -117,38 +119,42 @@ class NoiseSensitivityMetric(
         llmInstance: BaseRagasLlm,
         text: String,
         question: String,
-    ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = noiseStatementGeneratorPrompt(question, text))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "statements")
-    }
+    ): List<String> =
+        withRetries {
+            val raw =
+                llmInstance
+                    .generateText(prompt = noiseStatementGeneratorPrompt(question, text))
+                    .generations
+                    .firstOrNull()
+                    ?.text
+                    .orEmpty()
+            val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@withRetries null
+            LlmJsonSupport.readStringArray(parsed, "statements").takeIf { it.isNotEmpty() }
+        } ?: emptyList()
 
     private suspend fun evaluateFaithfulnessWithLlm(
         llmInstance: BaseRagasLlm,
         statements: List<String>,
         context: String,
-    ): List<Boolean> {
-        val raw =
-            llmInstance
-                .generateText(prompt = noiseFaithfulnessPrompt(context, statements))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        val verdicts = (parsed["statements"] as? JsonArray).orEmpty()
-        return verdicts.mapNotNull { element ->
-            val obj = element as? JsonObject ?: return@mapNotNull null
-            val verdict = LlmJsonSupport.readIntLike(obj, "verdict") ?: return@mapNotNull null
-            verdict != 0
-        }
-    }
+    ): List<Boolean> =
+        withRetries {
+            val raw =
+                llmInstance
+                    .generateText(prompt = noiseFaithfulnessPrompt(context, statements))
+                    .generations
+                    .firstOrNull()
+                    ?.text
+                    .orEmpty()
+            val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@withRetries null
+            val verdicts = (parsed["statements"] as? JsonArray).orEmpty()
+            val mapped =
+                verdicts.mapNotNull { element ->
+                    val obj = element as? JsonObject ?: return@mapNotNull null
+                    val verdict = LlmJsonSupport.readIntLike(obj, "verdict") ?: return@mapNotNull null
+                    verdict != 0
+                }
+            mapped.takeIf { it.isNotEmpty() }
+        } ?: emptyList()
 
     private suspend fun matrixFaithfulnessWithLlm(
         llmInstance: BaseRagasLlm,
@@ -167,6 +173,22 @@ class NoiseSensitivityMetric(
                 resultsPerContext.getOrNull(ctxIdx)?.getOrNull(stmtIdx) ?: false
             }
         }
+    }
+
+    private suspend fun <T> withRetries(block: suspend () -> T?): T? {
+        repeat(maxRetries.coerceAtLeast(1)) {
+            try {
+                val result = block()
+                if (result != null) {
+                    return result
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
+        }
+        return null
     }
 
     private fun fallbackNoiseSensitivityScore(sample: SingleTurnSample): Double {
@@ -310,6 +332,7 @@ class SummaryScoreMetric(
     name: String = "summary_score",
     private val lengthPenalty: Boolean = true,
     private val coeff: Double = 0.5,
+    private val maxRetries: Int = 3,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("reference_contexts", "response")),
@@ -383,51 +406,57 @@ class SummaryScoreMetric(
     private suspend fun extractKeyphrasesWithLlm(
         llmInstance: BaseRagasLlm,
         text: String,
-    ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = summaryExtractKeyphrasesPrompt(text))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "keyphrases")
-    }
+    ): List<String> =
+        withRetries {
+            val raw =
+                llmInstance
+                    .generateText(prompt = summaryExtractKeyphrasesPrompt(text))
+                    .generations
+                    .firstOrNull()
+                    ?.text
+                    .orEmpty()
+            val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@withRetries null
+            LlmJsonSupport.readStringArray(parsed, "keyphrases").takeIf { it.isNotEmpty() }
+        } ?: emptyList()
 
     private suspend fun generateQuestionsWithLlm(
         llmInstance: BaseRagasLlm,
         text: String,
         keyphrases: List<String>,
-    ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = summaryGenerateQuestionsPrompt(text, keyphrases))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "questions")
-    }
+    ): List<String> =
+        withRetries {
+            val raw =
+                llmInstance
+                    .generateText(prompt = summaryGenerateQuestionsPrompt(text, keyphrases))
+                    .generations
+                    .firstOrNull()
+                    ?.text
+                    .orEmpty()
+            val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@withRetries null
+            LlmJsonSupport.readStringArray(parsed, "questions").takeIf { it.isNotEmpty() }
+        } ?: emptyList()
 
     private suspend fun generateAnswersWithLlm(
         llmInstance: BaseRagasLlm,
         summary: String,
         questions: List<String>,
-    ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = summaryGenerateAnswersPrompt(summary, questions))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "answers")
-    }
+    ): List<String> =
+        withRetries {
+            val raw =
+                llmInstance
+                    .generateText(prompt = summaryGenerateAnswersPrompt(summary, questions))
+                    .generations
+                    .firstOrNull()
+                    ?.text
+                    .orEmpty()
+            val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@withRetries null
+            LlmJsonSupport.readStringArray(parsed, "answers").takeIf { it.isNotEmpty() }
+        } ?: emptyList()
 
     private fun computeQaScore(answers: List<String>): Double {
+        if (answers.isEmpty()) {
+            throw ArithmeticException("No answers generated, unable to calculate the score.")
+        }
         val correct = answers.count { answer -> answer.lowercase() == "1" }
         return correct.toDouble() / answers.size.toDouble()
     }
@@ -510,6 +539,22 @@ class SummaryScoreMetric(
         text: String,
         summary: String,
     ): Double = 1.0 - (minOf(summary.length, text.length).toDouble() / text.length.toDouble())
+
+    private suspend fun <T> withRetries(block: suspend () -> T?): T? {
+        repeat(maxRetries.coerceAtLeast(1)) {
+            try {
+                val result = block()
+                if (result != null) {
+                    return result
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
+        }
+        return null
+    }
 
     private companion object {
         val KEYPHRASE_REGEX =

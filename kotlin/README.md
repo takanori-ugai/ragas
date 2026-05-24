@@ -21,6 +21,7 @@ This module provides:
     `dspyOptimizer(runtimeConfig, cache?)`
   - DSPy runtime controls via `DspyRuntimeConfig`
 - LangChain4j LLM/embedding adapters
+  - includes direct `GoogleGenAiChatModel` support via `LangChain4jLlm`
 - backend extension/discovery via `ServiceLoader` (`BackendDiscoveryProvider`)
 - backend registry inspection metadata (`listBackendInfo`, `getBackendInfo`, aliases)
 - CLI workflow commands (`status`, `backends`, `eval`, `report`, `compare`)
@@ -53,6 +54,8 @@ The CLI entrypoint is `ragas.cli.MainKt`.
 ./gradlew run --args="status"
 ./gradlew run --args="backends"
 ./gradlew run --args="eval --input dataset.json --metrics default --output run.json"
+./gradlew run --args="eval --input dataset.json --provider openai --model gpt-5.4-mini --output run.json"
+./gradlew run --args="eval --input dataset.json --provider gemini --model gemma-4-31b-it --output run.json"
 ./gradlew run --args="report --input run.json"
 ./gradlew run --args="compare --baseline baseline.json --candidate run.json --gate faithfulness=0.01"
 ```
@@ -102,6 +105,13 @@ Run evaluation from JSON/JSONL input rows and emit a report JSON.
 ```bash
 ./gradlew run --args="eval --input dataset.json --metrics default,tier1 --output run.json"
 ```
+
+LLM defaults and flags:
+- `--provider` defaults to `openai`
+- `--model` defaults to `gpt-5.4-mini`
+- Supported providers: `openai`, `gemini`, `none`
+- For OpenAI provider, set `OPENAI_API_KEY` in your environment.
+- For Gemini provider, set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) in your environment.
 
 Supported input shapes:
 - JSON array of row objects

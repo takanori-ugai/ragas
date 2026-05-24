@@ -1,12 +1,19 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LlmGeneration
+import ragas.llms.LlmResult
 import ragas.model.SingleTurnSample
+import ragas.runtime.RunConfig
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class NoiseAndSummaryFixtureTest {
@@ -126,7 +133,110 @@ class NoiseAndSummaryFixtureTest {
         )
     }
 
+    @Test
+    fun summaryLlmPathRetriesMalformedPayloadsAcrossPipelineStages() =
+        runBlocking {
+            val llm =
+                ScriptedSummaryLlm(
+                    outputs =
+                        listOf(
+                            "not-json",
+                            """{"keyphrases":["Apple Inc.","1976"]}""",
+                            """{"questions":"bad"}""",
+                            """{"questions":["Is Apple Inc. a technology company?","Was Apple founded in 1976?"]}""",
+                            """{"answers":"bad"}""",
+                            """{"answers":["1","1"]}""",
+                        ),
+                )
+            val metric =
+                SummaryScoreMetric(maxRetries = 2, lengthPenalty = false).also { summary ->
+                    summary.llm = llm
+                }
+            val sample =
+                SingleTurnSample(
+                    referenceContexts =
+                        listOf(
+                            "Apple Inc. is a technology company based in Cupertino.",
+                            "It was founded by Steve Jobs in 1976.",
+                        ),
+                    response = "Apple is a technology company founded in 1976.",
+                )
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score, 1e-12)
+            assertEquals(6, llm.prompts.size)
+        }
+
+    @Test
+    fun summaryLlmPathThrowsWhenNoAnswersGenerated() =
+        runBlocking {
+            val metric =
+                SummaryScoreMetric(maxRetries = 1).also { summary ->
+                    summary.llm =
+                        ScriptedSummaryLlm(
+                            outputs =
+                                listOf(
+                                    """{"keyphrases":["Apple Inc."]}""",
+                                    """{"questions":["Is Apple a technology company?"]}""",
+                                    """{"answers":[]}""",
+                                ),
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    referenceContexts = listOf("Apple Inc. is a technology company."),
+                    response = "Apple is a technology company.",
+                )
+
+            val error = assertFailsWith<ArithmeticException> { metric.singleTurnAscore(sample) }
+            assertEquals("No answers generated, unable to calculate the score.", error.message)
+        }
+
+    @Test
+    fun summaryLlmPathPropagatesCancellationException() {
+        runBlocking {
+            val metric =
+                SummaryScoreMetric(maxRetries = 2).also { summary ->
+                    summary.llm =
+                        ScriptedSummaryLlm(
+                            outputs = listOf(CancellationException("cancelled")),
+                        )
+                }
+            val sample =
+                SingleTurnSample(
+                    referenceContexts = listOf("Apple Inc. is a technology company."),
+                    response = "Apple is a technology company.",
+                )
+
+            assertFailsWith<CancellationException> { metric.singleTurnAscore(sample) }
+        }
+    }
+
     private companion object {
         private const val FIXTURE_PATH = "fixtures/metrics/ws3_tier3_noise_summary_fixture.json"
+    }
+}
+
+private class ScriptedSummaryLlm(
+    private val outputs: List<Any>,
+) : BaseRagasLlm {
+    private var cursor: Int = 0
+    override var runConfig: RunConfig = RunConfig()
+    val prompts: MutableList<String> = mutableListOf()
+
+    override suspend fun generateText(
+        prompt: String,
+        n: Int,
+        temperature: Double?,
+        stop: List<String>?,
+    ): LlmResult {
+        prompts += prompt
+        val value = outputs.getOrElse(cursor) { outputs.lastOrNull() ?: "" }
+        cursor += 1
+        return when (value) {
+            is Throwable -> throw value
+            is String -> LlmResult(generations = listOf(LlmGeneration(value)))
+            else -> LlmResult(generations = listOf(LlmGeneration(value.toString())))
+        }
     }
 }

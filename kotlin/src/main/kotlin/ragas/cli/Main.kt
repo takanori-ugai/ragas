@@ -1,5 +1,7 @@
 package ragas.cli
 
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
+import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -9,8 +11,11 @@ import ragas.backends.anyToJsonElement
 import ragas.backends.jsonElementToAny
 import ragas.defaultMetrics
 import ragas.evaluate
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
 import ragas.model.EvaluationDataset
 import ragas.model.SingleTurnSample
+import ragas.runtime.RunConfig
 import ragas.tier1Metrics
 import ragas.tier2Metrics
 import ragas.tier3Metrics
@@ -30,6 +35,9 @@ data class CliOptions(
     val values: Map<String, String>,
     val flags: Set<String>,
 )
+
+private const val DEFAULT_LLM_PROVIDER = "openai"
+private const val DEFAULT_LLM_MODEL = "gpt-5.4-mini"
 
 /**
  * CLI entry point that executes a command and exits with its status code.
@@ -132,7 +140,8 @@ private fun runEval(
     val rows = readRows(inputPath, format)
     val dataset = EvaluationDataset(rows.map(::rowToSingleTurnSample))
     val metrics = resolveMetrics(metricSpec)
-    val result = evaluate(dataset = dataset, metrics = metrics)
+    val llm = resolveLlmForEval(options, out)
+    val result = evaluate(dataset = dataset, metrics = metrics, llm = llm)
 
     val metricNames = result.scores.flatMap { row -> row.keys }.toSortedSet()
     val means = metricNames.associateWith { metric -> result.metricMean(metric) }
@@ -154,6 +163,71 @@ private fun runEval(
         out("wrote evaluation report: $outputPath")
     }
     return 0
+}
+
+private fun resolveLlmForEval(
+    options: CliOptions,
+    out: (String) -> Unit,
+): BaseRagasLlm? {
+    val provider =
+        options.values["provider"]
+            ?.trim()
+            ?.lowercase()
+            ?.ifBlank { DEFAULT_LLM_PROVIDER }
+            ?: DEFAULT_LLM_PROVIDER
+    val model =
+        options.values["model"]
+            ?.trim()
+            ?.ifBlank { DEFAULT_LLM_MODEL }
+            ?: DEFAULT_LLM_MODEL
+
+    return when (provider) {
+        "none" -> {
+            null
+        }
+
+        "openai" -> {
+            val apiKey = System.getenv("OPENAI_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                out("[warn] OPENAI_API_KEY is not set; running eval without LLM.")
+                null
+            } else {
+                val chatModel =
+                    OpenAiChatModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(model)
+                        .temperature(0.0)
+                        .build()
+                LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+            }
+        }
+
+        "gemini", "google" -> {
+            val apiKey =
+                System
+                    .getenv("GEMINI_API_KEY")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: System.getenv("GOOGLE_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                out("[warn] GEMINI_API_KEY (or GOOGLE_API_KEY) is not set; running eval without LLM.")
+                null
+            } else {
+                val chatModel =
+                    GoogleGenAiChatModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(model)
+                        .temperature(0.0)
+                        .build()
+                LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+            }
+        }
+
+        else -> {
+            error("Unsupported --provider '$provider'. Supported values: openai, gemini, none.")
+        }
+    }
 }
 
 private fun runReport(
@@ -485,6 +559,8 @@ private fun printHelp(out: (String) -> Unit) {
     out("  compare   Compare candidate vs baseline reports with optional gate thresholds")
     out("examples:")
     out("  ragas eval --input dataset.json --metrics default,tier1 --output run.json")
+    out("  ragas eval --input dataset.json --provider openai --model gpt-5.4-mini --output run.json")
+    out("  ragas eval --input dataset.json --provider gemini --model gemma-4-31b-it --output run.json")
     out("  ragas report --input run.json")
     out("  ragas compare --baseline run_a.json --candidate run_b.json --gate faithfulness=0.01")
 }

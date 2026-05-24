@@ -479,6 +479,7 @@ private fun topicClassificationPrompt(
 class TopicAdherenceMetric(
     name: String = "topic_adherence",
     private val mode: Mode = Mode.F1,
+    private val maxRetries: Int = 3,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.MULTI_TURN to setOf("user_input", "reference_topics")),
@@ -544,15 +545,24 @@ class TopicAdherenceMetric(
         llmInstance: BaseRagasLlm,
         conversation: String,
     ): List<String> {
-        val raw =
-            llmInstance
-                .generateText(prompt = topicExtractionPrompt(conversation))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return emptyList()
-        return LlmJsonSupport.readStringArray(parsed, "topics")
+        repeat(maxRetries.coerceAtLeast(1)) {
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = topicExtractionPrompt(conversation))
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw) ?: return@repeat
+                return LlmJsonSupport.readStringArray(parsed, "topics")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
+        }
+        return emptyList()
     }
 
     private suspend fun checkTopicsAnsweredWithLlm(
@@ -562,16 +572,29 @@ class TopicAdherenceMetric(
     ): BooleanArray {
         val answered = BooleanArray(topics.size)
         topics.forEachIndexed { index, topic ->
-            val raw =
-                llmInstance
-                    .generateText(prompt = topicRefusedPrompt(conversation, topic))
-                    .generations
-                    .firstOrNull()
-                    ?.text
-                    .orEmpty()
-            val parsed = LlmJsonSupport.parseFirstJsonObject(raw)
-            val refused = parsed?.let { parseRefusedFlag(it) } ?: true
-            answered[index] = !refused
+            var parsedRefused: Boolean? = null
+            var attempt = 0
+            while (attempt < maxRetries.coerceAtLeast(1) && parsedRefused == null) {
+                try {
+                    val raw =
+                        llmInstance
+                            .generateText(prompt = topicRefusedPrompt(conversation, topic))
+                            .generations
+                            .firstOrNull()
+                            ?.text
+                            .orEmpty()
+                    val parsed = LlmJsonSupport.parseFirstJsonObject(raw)
+                    if (parsed != null) {
+                        parsedRefused = parseRefusedFlag(parsed)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Retry parse/generation failures to mirror WS3 metric LLM paths.
+                }
+                attempt += 1
+            }
+            answered[index] = !(parsedRefused ?: true)
         }
         return answered
     }
@@ -581,15 +604,31 @@ class TopicAdherenceMetric(
         referenceTopics: List<String>,
         topics: List<String>,
     ): BooleanArray {
-        val raw =
-            llmInstance
-                .generateText(prompt = topicClassificationPrompt(referenceTopics, topics))
-                .generations
-                .firstOrNull()
-                ?.text
-                .orEmpty()
-        val parsed = LlmJsonSupport.parseFirstJsonObject(raw)
-        val classifications = parseClassifications(parsed).toMutableList()
+        var classifications = mutableListOf<Boolean>()
+        var attempt = 0
+        while (attempt < maxRetries.coerceAtLeast(1) && classifications.isEmpty()) {
+            try {
+                val raw =
+                    llmInstance
+                        .generateText(prompt = topicClassificationPrompt(referenceTopics, topics))
+                        .generations
+                        .firstOrNull()
+                        ?.text
+                        .orEmpty()
+                val parsed = LlmJsonSupport.parseFirstJsonObject(raw)
+                if (parsed != null) {
+                    val parsedClassifications = parseClassifications(parsed)
+                    if (parsedClassifications != null) {
+                        classifications = parsedClassifications.toMutableList()
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Retry parse/generation failures to mirror WS3 metric LLM paths.
+            }
+            attempt += 1
+        }
         val expected = topics.size
         return when {
             classifications.size < expected -> {
@@ -640,8 +679,8 @@ class TopicAdherenceMetric(
         return primitive.content.trim().lowercase() in setOf("true", "1", "yes")
     }
 
-    private fun parseClassifications(root: JsonObject?): List<Boolean> {
-        val raw = (root?.get("classifications") as? JsonArray).orEmpty()
+    private fun parseClassifications(root: JsonObject?): List<Boolean>? {
+        val raw = root?.get("classifications") as? JsonArray ?: return null
         return raw.mapNotNull { element ->
             val primitive = element as? JsonPrimitive ?: return@mapNotNull null
             primitive.booleanOrNull

@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.ChatModel
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
 import kotlinx.coroutines.runBlocking
 import ragas.llms.LangChain4jLlm
 import ragas.prompt.PromptContentPart
@@ -84,6 +85,16 @@ class LangChain4jLlmTest {
             val result = llm.generateRankingItems("rank these")
             assertEquals(listOf("item1", "item2"), result)
         }
+
+    @Test
+    fun supportsGoogleGenAiChatModelConstructorPath() {
+        assertTrue(ChatModel::class.java.isAssignableFrom(GoogleGenAiChatModel::class.java))
+        val hasGoogleCtor =
+            LangChain4jLlm::class.java.constructors.any { ctor ->
+                ctor.parameterTypes.firstOrNull() == GoogleGenAiChatModel::class.java
+            }
+        assertTrue(hasGoogleCtor)
+    }
 }
 
 private class CapturingChatModel : ChatModel {

@@ -1,5 +1,6 @@
 package ragas
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -106,13 +107,71 @@ class TopicAdherenceMetricParityTest {
             val error = assertFailsWith<IllegalArgumentException> { metric.multiTurnAscore(sample) }
             assertEquals("reference_topics must be a non-empty list of topics", error.message)
         }
+
+    @Test
+    fun llmPathRetriesMalformedExtractionAndClassification() =
+        runBlocking {
+            val llm =
+                ScriptedTopicAdherenceLlm(
+                    outputs =
+                        listOf(
+                            "not-json",
+                            """{"topics":["Physics"]}""",
+                            """{"refused_to_answer":false}""",
+                            """{"classifications":"bad"}""",
+                            """{"classifications":[true]}""",
+                        ),
+                )
+            val metric =
+                TopicAdherenceMetric(maxRetries = 2).also { adherence ->
+                    adherence.llm = llm
+                }
+            val sample =
+                MultiTurnSample(
+                    userInput =
+                        listOf(
+                            HumanMessage("Explain physics basics."),
+                            AiMessage("Physics studies matter, motion and energy."),
+                        ),
+                    referenceTopics = listOf("Physics"),
+                )
+
+            val score = (metric.multiTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score, 1e-9)
+            assertEquals(5, llm.prompts.size)
+        }
+
+    @Test
+    fun llmPathPropagatesCancellationException() {
+        runBlocking {
+            val metric =
+                TopicAdherenceMetric(maxRetries = 2).also { adherence ->
+                    adherence.llm =
+                        ScriptedTopicAdherenceLlm(
+                            outputs = listOf(CancellationException("cancelled")),
+                        )
+                }
+            val sample =
+                MultiTurnSample(
+                    userInput =
+                        listOf(
+                            HumanMessage("Explain physics."),
+                            AiMessage("Sure."),
+                        ),
+                    referenceTopics = listOf("Physics"),
+                )
+
+            assertFailsWith<CancellationException> { metric.multiTurnAscore(sample) }
+        }
+    }
 }
 
 private class ScriptedTopicAdherenceLlm(
-    private val outputs: List<String>,
+    private val outputs: List<Any>,
 ) : BaseRagasLlm {
     private var cursor = 0
     override var runConfig: RunConfig = RunConfig()
+    val prompts: MutableList<String> = mutableListOf()
 
     override suspend fun generateText(
         prompt: String,
@@ -120,8 +179,13 @@ private class ScriptedTopicAdherenceLlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull().orEmpty() }
+        prompts += prompt
+        val value = outputs.getOrElse(cursor) { outputs.lastOrNull() ?: "" }
         cursor += 1
-        return LlmResult(generations = listOf(LlmGeneration(value)))
+        return when (value) {
+            is Throwable -> throw value
+            is String -> LlmResult(generations = listOf(LlmGeneration(value)))
+            else -> LlmResult(generations = listOf(LlmGeneration(value.toString())))
+        }
     }
 }
