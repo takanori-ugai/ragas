@@ -144,12 +144,13 @@ class TopicAdherenceMetricParityTest {
     @Test
     fun llmPathPropagatesCancellationException() {
         runBlocking {
+            val llm =
+                ScriptedTopicAdherenceLlm(
+                    outputs = listOf(CancellationException("cancelled")),
+                )
             val metric =
                 TopicAdherenceMetric(maxRetries = 2).also { adherence ->
-                    adherence.llm =
-                        ScriptedTopicAdherenceLlm(
-                            outputs = listOf(CancellationException("cancelled")),
-                        )
+                    adherence.llm = llm
                 }
             val sample =
                 MultiTurnSample(
@@ -162,6 +163,7 @@ class TopicAdherenceMetricParityTest {
                 )
 
             assertFailsWith<CancellationException> { metric.multiTurnAscore(sample) }
+            assertEquals(1, llm.prompts.size)
         }
     }
 }
@@ -180,7 +182,11 @@ private class ScriptedTopicAdherenceLlm(
         stop: List<String>?,
     ): LlmResult {
         prompts += prompt
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull() ?: "" }
+        val value =
+            outputs.getOrNull(cursor)
+                ?: throw IllegalStateException(
+                    "ScriptedTopicAdherenceLlm outputs exhausted at cursor=$cursor (configured=${outputs.size})",
+                )
         cursor += 1
         return when (value) {
             is Throwable -> throw value

@@ -38,7 +38,9 @@ class SemanticSimilarityMetric(
     /**
      * Computes semantic similarity between response and reference text.
      *
-     * Returns a continuous similarity score in [0.0, 1.0] when [threshold] is null.
+     * Returns a continuous similarity score when [threshold] is null.
+     * With embeddings, the score is cosine similarity in [-1.0, 1.0].
+     * With lexical fallback, the score is clamped to [0.0, 1.0].
      * When [threshold] is set, returns binary output: `1.0` if score >= threshold, else `0.0`.
      *
      * @param sample Evaluation sample to score.

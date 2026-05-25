@@ -455,7 +455,7 @@ class SummaryScoreMetric(
 
     private fun computeQaScore(answers: List<String>): Double {
         if (answers.isEmpty()) {
-            throw ArithmeticException("No answers generated, unable to calculate the score.")
+            throw IllegalStateException("No answers generated, unable to calculate the score.")
         }
         val correct = answers.count { answer -> answer.lowercase() == "1" }
         return correct.toDouble() / answers.size.toDouble()

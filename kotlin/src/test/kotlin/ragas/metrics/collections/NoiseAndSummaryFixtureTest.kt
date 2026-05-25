@@ -188,7 +188,7 @@ class NoiseAndSummaryFixtureTest {
                     response = "Apple is a technology company.",
                 )
 
-            val error = assertFailsWith<ArithmeticException> { metric.singleTurnAscore(sample) }
+            val error = assertFailsWith<IllegalStateException> { metric.singleTurnAscore(sample) }
             assertEquals("No answers generated, unable to calculate the score.", error.message)
         }
 
@@ -231,7 +231,9 @@ private class ScriptedSummaryLlm(
         stop: List<String>?,
     ): LlmResult {
         prompts += prompt
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull() ?: "" }
+        val value =
+            outputs.getOrNull(cursor)
+                ?: error("Unexpected generateText call #${cursor + 1}: scripted outputs exhausted")
         cursor += 1
         return when (value) {
             is Throwable -> throw value

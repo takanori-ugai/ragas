@@ -128,9 +128,10 @@ class NoiseSensitivityMetricParityTest {
     @Test
     fun llmPathPropagatesCancellationException() {
         runBlocking {
+            val llm = ScriptedNoiseSensitivityLlm(outputs = listOf(CancellationException("cancelled")))
             val metric =
                 NoiseSensitivityMetric(maxRetries = 2).also {
-                    it.llm = ScriptedNoiseSensitivityLlm(outputs = listOf(CancellationException("cancelled")))
+                    it.llm = llm
                 }
             val sample =
                 SingleTurnSample(
@@ -141,6 +142,7 @@ class NoiseSensitivityMetricParityTest {
                 )
 
             assertFailsWith<CancellationException> { metric.singleTurnAscore(sample) }
+            assertEquals(1, llm.callCount)
         }
     }
 }
@@ -149,6 +151,8 @@ private class ScriptedNoiseSensitivityLlm(
     private val outputs: List<Any>,
 ) : BaseRagasLlm {
     private var cursor = 0
+    val callCount: Int
+        get() = cursor
     override var runConfig: RunConfig = RunConfig()
 
     override suspend fun generateText(
@@ -157,7 +161,11 @@ private class ScriptedNoiseSensitivityLlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull() ?: "" }
+        val value =
+            outputs.getOrNull(cursor)
+                ?: throw IllegalStateException(
+                    "ScriptedNoiseSensitivityLlm outputs exhausted at cursor=$cursor (configured=${outputs.size})",
+                )
         cursor += 1
         return when (value) {
             is Throwable -> throw value

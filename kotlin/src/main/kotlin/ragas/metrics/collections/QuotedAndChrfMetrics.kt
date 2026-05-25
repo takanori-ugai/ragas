@@ -73,7 +73,7 @@ class QuotedSpansAlignmentMetric(
     private companion object {
         val QUOTE_REGEX =
             Regex(
-                "[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](.*?)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]",
+                "(?<!\\w)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](.*?)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](?!\\w)",
             )
         val WHITESPACE_REGEX = Regex("\\s+")
     }
