@@ -50,7 +50,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.15.0")
     implementation("dev.langchain4j:langchain4j-community-neo4j:1.15.0-beta25")
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.3.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.3.21")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("io.mockk:mockk:1.14.9")
 }
