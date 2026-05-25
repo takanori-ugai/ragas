@@ -1,6 +1,7 @@
 package ragas.integrations
 
 import ragas.embeddings.BaseRagasEmbedding
+import ragas.evaluate
 import ragas.integrations.tracing.TraceObserver
 import ragas.llms.BaseRagasLlm
 import ragas.metrics.Metric
@@ -57,6 +58,9 @@ object AgUiIntegration {
     /**
      * Evaluates integration records with the selected metrics and model dependencies.
      *
+     * Event-stream transport/runtime concerns are intentionally out-of-scope here;
+     * this adapter focuses on record-based evaluation parity.
+     *
      * @param records Integration records to process.
      * @param metrics Metrics to run.
      * @param llm LLM dependency used during generation/evaluation.
@@ -68,12 +72,6 @@ object AgUiIntegration {
      * @param metadata Run-level metadata.
      * @param observers Trace observers notified during execution.
      */
-    @Deprecated(
-        message = "AgUiIntegration.evaluateRecords is not implemented yet and always throws UnsupportedOperationException.",
-        replaceWith = ReplaceWith("unsupportedIntegration(\"ag-ui\")"),
-        level = DeprecationLevel.ERROR,
-    )
-    @Suppress("UNUSED_PARAMETER")
     fun evaluateRecords(
         records: List<AgUiRecord>,
         metrics: List<Metric>? = null,
@@ -93,7 +91,14 @@ object AgUiIntegration {
             metadata = metadata,
             observers = observers,
         ) {
-            unsupportedIntegration("ag-ui")
+            evaluate(
+                dataset = toDataset(records),
+                metrics = metrics,
+                llm = llm,
+                embeddings = embeddings,
+                runConfig = runConfig,
+                raiseExceptions = raiseExceptions,
+            )
         }
 
     /**

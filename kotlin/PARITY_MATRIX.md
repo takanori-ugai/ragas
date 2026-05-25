@@ -1,6 +1,6 @@
 # RAGAS Python -> Kotlin Parity Matrix
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## Core Runtime
 
@@ -27,7 +27,7 @@ Last updated: 2026-05-24
 | Backends | Done | `inmemory/csv/jsonl` built-ins plus lazy `ServiceLoader` backend discovery (`BackendDiscoveryProvider`), alias grouping, and backend inspection metadata; Google Drive is an explicit optional plugin strategy (not bundled in core) |
 | Prompt subsystem | Done | `SimplePrompt` + typed prompt stack (`TypedPrompt`, few-shot typed variants, structured parse-retry, `generateMultiple`) + multimodal typed flow (`ImageTextTypedPrompt`, `PromptContentPart`, `MultiModalRagasLlm`) are implemented, including secure multimodal item normalization (data URI, URL SSRF/size checks, optional local-file allow-list policy) |
 | Testset/graph/transforms | Done | Production transform stack is implemented (`HeadlinesExtractor`, `LlmBasedSummaryExtractor`, `RegexEntityExtractor`, `EmbeddingExtractor`, `EmbeddingsTopicExtractor`, `SentenceChunkSplitter`, `HeadlineSplitter`, relationship builders including cosine/jaccard/overlap), plus default transform pipelines and WS6 conformance coverage |
-| Integrations | Partial | LangChain/LlamaIndex record adapters plus trace lifecycle observers (in-memory/Langfuse-style/MLflow-style); broader Python integrations are missing |
+| Integrations | Partial | LangChain/LlamaIndex/LangGraph/Langsmith/AG-UI record adapters are functional for evaluation; LangGraph also includes trace-message conversion helpers (`convertToRagasMessages`, `toMultiTurnSample`); remaining Python integrations are still pending |
 | CLI | Done | Scriptable parity workflow commands implemented: `eval` (run evaluation), `report` (metric aggregation), `compare` (baseline deltas + gate exit codes), plus `status/backends` |
 | Optimizers | Done | Genetic + DSPy-style optimizer flows, prompt-object contracts (`OptimizerPrompt`), primitive metric prompt integration (`OptimizableMetricPrompt`), cache-backed DSPy scoring |
 

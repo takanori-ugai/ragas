@@ -390,6 +390,40 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 - [ ] Expand beyond current LangChain/LlamaIndex record adapters.
 - [ ] Port high-value integration modules (Langsmith, Helicone, Opik, LangGraph, Swarm, AG-UI, R2R, Bedrock as applicable).
 - [ ] Preserve optional-dependency strategy and explicit unsupported errors for missing runtime deps.
+- Progress note (2026-05-25):
+  - Implemented functional Langsmith adapter parity in `src/main/kotlin/ragas/integrations/LangsmithIntegration.kt`:
+    - `evaluateRecords(...)` now executes `evaluate(...)` under the existing trace lifecycle wrapper.
+    - `toDataset(...)` mapping semantics are preserved (including `referenceContexts = emptyList()` -> `null` and optional `reference` pass-through).
+  - Added/updated Langsmith parity tests:
+    - `src/test/kotlin/ragas/integrations/LangsmithIntegrationTest.kt`
+      - `toDatasetMapsLangsmithRecordFields`
+      - `toDatasetMapsEmptyReferenceContextsToNull`
+      - `evaluateRecordsEvaluatesAndEmitsCompletedTrace`
+  - Implemented functional LangGraph adapter parity in `src/main/kotlin/ragas/integrations/LangGraphIntegration.kt`:
+    - `evaluateRecords(...)` now executes `evaluate(...)` under the existing trace lifecycle wrapper.
+    - Added LangGraph-like conversation conversion helpers:
+      - `convertToRagasMessages(messages, includeMetadata = false)`
+      - `toMultiTurnSample(messages, ...)`
+    - Added strict conversion validation and deterministic failures for unsupported role/type, invalid content type, and malformed tool-call JSON args.
+  - Added/updated LangGraph parity tests:
+    - `src/test/kotlin/ragas/integrations/LangGraphIntegrationTest.kt`
+      - `evaluateRecordsEvaluatesAndEmitsCompletedTrace`
+    - `src/test/kotlin/ragas/integrations/LangGraphMessageConversionTest.kt`
+      - conversion success path (human/assistant/tool + system-skip),
+      - metadata opt-in behavior,
+      - invalid tool-call JSON handling,
+      - unsupported role/type,
+      - invalid content type,
+      - `toMultiTurnSample(...)` helper coverage.
+  - Implemented functional AG-UI adapter parity in `src/main/kotlin/ragas/integrations/AgUiIntegration.kt`:
+    - `evaluateRecords(...)` now executes `evaluate(...)` under the existing trace lifecycle wrapper.
+    - Removed deprecated hard-error gate now that record-based evaluation is supported.
+    - `toDataset(...)` mapping semantics are preserved (including `referenceContexts = emptyList()` -> `null` and optional `reference` pass-through).
+  - Added/updated AG-UI parity tests:
+    - `src/test/kotlin/ragas/integrations/AgUiIntegrationTest.kt`
+      - `toDatasetMapsAgUiRecordFields`
+      - `toDatasetMapsEmptyReferenceContextsToNullAndPreservesReference`
+      - `evaluateRecordsEvaluatesAndEmitsCompletedTrace`
 - Exit criteria:
   - Kotlin integration surface matches Python’s practical integration coverage for mainstream workflows.
 

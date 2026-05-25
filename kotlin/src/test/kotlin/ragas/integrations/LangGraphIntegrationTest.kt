@@ -1,11 +1,11 @@
 package ragas.integrations
 
 import ragas.integrations.tracing.InMemoryTraceObserver
-import ragas.integrations.tracing.RunFailed
+import ragas.integrations.tracing.MetricRowLogged
+import ragas.integrations.tracing.RunCompleted
 import ragas.integrations.tracing.RunStarted
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class LangGraphIntegrationTest {
@@ -33,29 +33,36 @@ class LangGraphIntegrationTest {
     }
 
     @Test
-    fun evaluateRecordsEmitsRunStartedWithMetadataThenFailsUnsupported() {
+    fun evaluateRecordsEvaluatesAndEmitsCompletedTrace() {
         val observer = InMemoryTraceObserver()
 
-        val thrown =
-            assertFailsWith<UnsupportedOperationException> {
-                LangGraphIntegration.evaluateRecords(
-                    records = listOf(LangGraphRecord(input = "q", output = "a")),
-                    runName = "langgraph-phase2",
-                    tags = mapOf("env" to "test"),
-                    metadata = mapOf("tenant" to "acme"),
-                    observers = listOf(observer),
-                )
-            }
+        val result =
+            LangGraphIntegration.evaluateRecords(
+                records =
+                    listOf(
+                        LangGraphRecord(
+                            input = "q",
+                            output = "a",
+                            retrievedContexts = listOf("context"),
+                            reference = "a",
+                        ),
+                    ),
+                runName = "langgraph-phase2",
+                tags = mapOf("env" to "test"),
+                metadata = mapOf("tenant" to "acme"),
+                observers = listOf(observer),
+            )
+        val payload = LangGraphIntegration.toMetricPayload(result)
 
-        assertTrue(thrown.message?.contains("Integration 'langgraph' is not yet implemented") == true)
+        assertEquals(1, payload.size)
+        assertTrue(payload.first().containsKey("answer_relevancy"))
         val started = observer.events.first() as RunStarted
         assertEquals("langgraph", started.framework)
         assertEquals("langgraph-phase2", started.runName)
         assertEquals(mapOf("env" to "test"), started.tags)
         assertEquals(mapOf("tenant" to "acme"), started.metadata)
 
-        val failed = observer.events.last() as RunFailed
-        assertEquals("UnsupportedOperationException", failed.errorType)
-        assertTrue(failed.errorMessage.contains("langgraph"))
+        assertTrue(observer.events.any { event -> event is MetricRowLogged })
+        assertTrue(observer.events.last() is RunCompleted)
     }
 }
