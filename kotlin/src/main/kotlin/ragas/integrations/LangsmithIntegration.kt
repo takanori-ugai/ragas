@@ -6,7 +6,7 @@ import com.langchain.smith.core.JsonValue
 import com.langchain.smith.models.datasets.DataType
 import com.langchain.smith.models.datasets.DatasetCreateParams
 import com.langchain.smith.models.datasets.runs.RunCreateParams
-import com.langchain.smith.models.examples.ExampleCreateParams
+import com.langchain.smith.models.examples.bulk.BulkCreateParams
 import com.langchain.smith.models.runs.RunQueryParams
 import com.langchain.smith.models.runs.RunTypeEnum
 import com.langchain.smith.models.sessions.SessionCreateParams
@@ -189,8 +189,8 @@ object LangsmithIntegration {
     /**
      * Uploads a dataset and associated examples to LangSmith via REST APIs.
      *
-     * This function creates a LangSmith dataset, then uploads each [LangsmithRecord]
-     * as an example with:
+     * This function creates a LangSmith dataset, then uploads [LangsmithRecord] entries
+     * as examples in a bulk request with:
      * - inputs: `input`, `retrieved_contexts`, `reference_contexts`
      * - outputs: `output`, `reference`
      * - metadata: record metadata map
@@ -216,45 +216,55 @@ object LangsmithIntegration {
             val createdDataset = client.datasets().create(datasetCreateBuilder.build())
 
             val exampleIds =
-                records.map { record ->
-                    val inputs =
-                        ExampleCreateParams.Inputs
-                            .builder()
-                            .additionalProperties(
-                                toJsonValueMap(
-                                    mapOf(
-                                        "input" to record.input,
-                                        "retrieved_contexts" to record.retrievedContexts.ifEmpty { null },
-                                        "reference_contexts" to record.referenceContexts.ifEmpty { null },
-                                    ),
-                                ),
-                            ).build()
-                    val outputs =
-                        ExampleCreateParams.Outputs
-                            .builder()
-                            .additionalProperties(
-                                toJsonValueMap(
-                                    mapOf(
-                                        "output" to record.output,
-                                        "reference" to record.reference,
-                                    ),
-                                ),
-                            ).build()
-                    val exampleBuilder =
-                        ExampleCreateParams
-                            .builder()
-                            .datasetId(createdDataset.id())
-                            .inputs(inputs)
-                            .outputs(outputs)
-                    if (record.metadata.isNotEmpty()) {
-                        val metadata =
-                            ExampleCreateParams.Metadata
-                                .builder()
-                                .additionalProperties(record.metadata.mapValues { (_, value) -> JsonValue.from(value) })
-                                .build()
-                        exampleBuilder.metadata(metadata)
-                    }
-                    client.examples().create(exampleBuilder.build()).id()
+                if (records.isEmpty()) {
+                    emptyList()
+                } else {
+                    val exampleBodies =
+                        records.map { record ->
+                            val inputs =
+                                BulkCreateParams.Body.Inputs
+                                    .builder()
+                                    .additionalProperties(
+                                        toJsonValueMap(
+                                            mapOf(
+                                                "input" to record.input,
+                                                "retrieved_contexts" to record.retrievedContexts.ifEmpty { null },
+                                                "reference_contexts" to record.referenceContexts.ifEmpty { null },
+                                            ),
+                                        ),
+                                    ).build()
+                            val outputs =
+                                BulkCreateParams.Body.Outputs
+                                    .builder()
+                                    .additionalProperties(
+                                        toJsonValueMap(
+                                            mapOf(
+                                                "output" to record.output,
+                                                "reference" to record.reference,
+                                            ),
+                                        ),
+                                    ).build()
+                            val exampleBuilder =
+                                BulkCreateParams.Body
+                                    .builder()
+                                    .datasetId(createdDataset.id())
+                                    .inputs(inputs)
+                                    .outputs(outputs)
+                            if (record.metadata.isNotEmpty()) {
+                                val metadata =
+                                    BulkCreateParams.Body.Metadata
+                                        .builder()
+                                        .additionalProperties(record.metadata.mapValues { (_, value) -> JsonValue.from(value) })
+                                        .build()
+                                exampleBuilder.metadata(metadata)
+                            }
+                            exampleBuilder.build()
+                        }
+                    client
+                        .examples()
+                        .bulk()
+                        .create(exampleBodies)
+                        .map { example -> example.id() }
                 }
 
             LangsmithDatasetUploadResult(
@@ -303,7 +313,12 @@ object LangsmithIntegration {
             limit?.let(runCreateBuilder::limit)
             format?.let { runCreateBuilder.format(RunCreateParams.Format.of(it)) }
 
-            val examplesWithRuns = client.datasets().runs().create(runCreateBuilder.build()).orElse(emptyList())
+            val examplesWithRuns =
+                client
+                    .datasets()
+                    .runs()
+                    .create(runCreateBuilder.build())
+                    .orElse(emptyList())
             val evaluatedExamples =
                 examplesWithRuns.map { example ->
                     val runs =
@@ -421,14 +436,30 @@ object LangsmithIntegration {
         client: LangsmithClient,
         projectName: String,
         datasetId: String,
-    ) = client.sessions().create(SessionCreateParams.builder().name(projectName).referenceDatasetId(datasetId).upsert(true).build())
+    ) = client.sessions().create(
+        SessionCreateParams
+            .builder()
+            .name(projectName)
+            .referenceDatasetId(datasetId)
+            .upsert(true)
+            .build(),
+    )
 
     private fun resolveProjectIdsByName(
         client: LangsmithClient,
         projectName: String,
     ): List<String> {
-        val params = SessionListParams.builder().name(projectName).limit(25).build()
-        return client.sessions().list(params).items().map { session -> session.id() }
+        val params =
+            SessionListParams
+                .builder()
+                .name(projectName)
+                .limit(25)
+                .build()
+        return client
+            .sessions()
+            .list(params)
+            .items()
+            .map { session -> session.id() }
     }
 
     private fun toJsonValueMap(values: Map<String, Any?>): Map<String, JsonValue> =

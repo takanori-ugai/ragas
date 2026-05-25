@@ -7,7 +7,7 @@ import com.langchain.smith.models.datasets.DatasetCreateParams
 import com.langchain.smith.models.datasets.runs.ExampleWithRunsCh
 import com.langchain.smith.models.datasets.runs.RunCreateParams
 import com.langchain.smith.models.examples.Example
-import com.langchain.smith.models.examples.ExampleCreateParams
+import com.langchain.smith.models.examples.bulk.BulkCreateParams
 import com.langchain.smith.models.runs.RunQueryParams
 import com.langchain.smith.models.runs.RunQueryResponse
 import com.langchain.smith.models.runs.RunSchema
@@ -20,6 +20,7 @@ import com.langchain.smith.services.blocking.DatasetService
 import com.langchain.smith.services.blocking.ExampleService
 import com.langchain.smith.services.blocking.RunService
 import com.langchain.smith.services.blocking.SessionService
+import com.langchain.smith.services.blocking.examples.BulkService
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -49,19 +50,21 @@ class LangsmithRemoteApiIntegrationTest {
         val client = mockk<LangsmithClient>(relaxed = true)
         val datasetService = mockk<DatasetService>()
         val exampleService = mockk<ExampleService>()
+        val bulkService = mockk<BulkService>()
         val dataset = mockk<Dataset>()
         val ex1 = mockk<Example>()
         val ex2 = mockk<Example>()
 
         val datasetParams = slot<DatasetCreateParams>()
-        val exampleParams = mutableListOf<ExampleCreateParams>()
+        val exampleParams = slot<List<BulkCreateParams.Body>>()
 
         every { client.datasets() } returns datasetService
         every { client.examples() } returns exampleService
+        every { exampleService.bulk() } returns bulkService
         every { datasetService.create(capture(datasetParams)) } returns dataset
         every { dataset.id() } returns "ds-1"
         every { dataset.name() } returns "ragas-dataset"
-        every { exampleService.create(capture(exampleParams)) } returnsMany listOf(ex1, ex2)
+        every { bulkService.create(capture(exampleParams)) } returns listOf(ex1, ex2)
         every { ex1.id() } returns "ex-1"
         every { ex2.id() } returns "ex-2"
 
@@ -96,14 +99,52 @@ class LangsmithRemoteApiIntegrationTest {
         assertEquals("smoke dataset", datasetParams.captured.description().orElse(null))
         assertEquals(DataType.KV, datasetParams.captured.dataType().orElse(null))
 
-        assertEquals("ds-1", exampleParams[0].datasetId())
-        assertEquals("q1", exampleParams[0].inputs().orElseThrow()._additionalProperties()["input"]?.convert(String::class.java))
-        assertEquals("a1", exampleParams[0].outputs().orElseThrow()._additionalProperties()["output"]?.convert(String::class.java))
-        assertEquals("acme", exampleParams[0].metadata().orElseThrow()._additionalProperties()["tenant"]?.convert(String::class.java))
+        val createdExamples = exampleParams.captured
+        assertEquals(2, createdExamples.size)
 
-        assertEquals("ds-1", exampleParams[1].datasetId())
-        assertEquals("q2", exampleParams[1].inputs().orElseThrow()._additionalProperties()["input"]?.convert(String::class.java))
-        assertEquals("a2", exampleParams[1].outputs().orElseThrow()._additionalProperties()["output"]?.convert(String::class.java))
+        assertEquals("ds-1", createdExamples[0].datasetId())
+        assertEquals(
+            "q1",
+            createdExamples[0]
+                .inputs()
+                .orElseThrow()
+                ._additionalProperties()["input"]
+                ?.convert(String::class.java),
+        )
+        assertEquals(
+            "a1",
+            createdExamples[0]
+                .outputs()
+                .orElseThrow()
+                ._additionalProperties()["output"]
+                ?.convert(String::class.java),
+        )
+        assertEquals(
+            "acme",
+            createdExamples[0]
+                .metadata()
+                .orElseThrow()
+                ._additionalProperties()["tenant"]
+                ?.convert(String::class.java),
+        )
+
+        assertEquals("ds-1", createdExamples[1].datasetId())
+        assertEquals(
+            "q2",
+            createdExamples[1]
+                .inputs()
+                .orElseThrow()
+                ._additionalProperties()["input"]
+                ?.convert(String::class.java),
+        )
+        assertEquals(
+            "a2",
+            createdExamples[1]
+                .outputs()
+                .orElseThrow()
+                ._additionalProperties()["output"]
+                ?.convert(String::class.java),
+        )
 
         verify(exactly = 1) { client.close() }
     }
@@ -162,7 +203,14 @@ class LangsmithRemoteApiIntegrationTest {
         assertEquals("my-project", result.projectName)
         assertEquals(1, result.evaluatedExamples.size)
         assertEquals(1, result.evaluatedExamples.single().runCount)
-        assertEquals("run-1", result.evaluatedExamples.single().runs.single().runId)
+        assertEquals(
+            "run-1",
+            result.evaluatedExamples
+                .single()
+                .runs
+                .single()
+                .runId,
+        )
 
         assertEquals("my-project", sessionCreateParams.captured.name().orElse(null))
         assertEquals("ds-1", sessionCreateParams.captured.referenceDatasetId().orElse(null))
@@ -234,7 +282,13 @@ class LangsmithRemoteApiIntegrationTest {
         assertEquals(true, runQueryParams.captured.skipPagination().orElse(false))
         assertEquals(listOf("proj-1"), runQueryParams.captured.session().orElse(emptyList()))
         assertEquals(listOf("run-1"), runQueryParams.captured.id().orElse(emptyList()))
-        assertEquals("llm", runQueryParams.captured.runType().orElseThrow().asString())
+        assertEquals(
+            "llm",
+            runQueryParams.captured
+                .runType()
+                .orElseThrow()
+                .asString(),
+        )
 
         verify(exactly = 1) { client.close() }
     }

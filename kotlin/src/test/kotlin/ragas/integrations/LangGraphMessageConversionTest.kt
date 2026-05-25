@@ -1,5 +1,6 @@
 package ragas.integrations
 
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import ragas.model.AiMessage
 import ragas.model.HumanMessage
@@ -113,6 +114,46 @@ class LangGraphMessageConversionTest {
             }
 
         assertTrue(error.message.orEmpty().contains("requires string 'content'"))
+    }
+
+    @Test
+    fun convertToRagasMessagesMetadataExcludesDuplicatedToolCalls() {
+        val converted =
+            LangGraphIntegration.convertToRagasMessages(
+                listOf(
+                    mapOf(
+                        "role" to "assistant",
+                        "content" to "Checking.",
+                        "tool_calls" to
+                            listOf(
+                                mapOf(
+                                    "function" to
+                                        mapOf(
+                                            "name" to "search",
+                                            "arguments" to """{"query":"weather"}""",
+                                        ),
+                                ),
+                            ),
+                        "additional_kwargs" to
+                            mapOf(
+                                "tool_calls" to listOf(mapOf("name" to "duplicated")),
+                                "trace_id" to "t-1",
+                            ),
+                        "id" to "m-2",
+                    ),
+                ),
+                includeMetadata = true,
+            )
+
+        val ai = converted.single() as AiMessage
+        val metadata = ai.metadata
+        assertNotNull(metadata)
+        assertNull(metadata["tool_calls"])
+        assertEquals("m-2", (metadata["id"] as JsonPrimitive).content)
+
+        val additionalKwargs = metadata["additional_kwargs"] as JsonObject
+        assertEquals("t-1", (additionalKwargs["trace_id"] as JsonPrimitive).content)
+        assertNull(additionalKwargs["tool_calls"])
     }
 
     @Test

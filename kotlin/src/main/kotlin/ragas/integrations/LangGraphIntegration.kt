@@ -133,8 +133,14 @@ object LangGraphIntegration {
             val role = resolveMessageRole(message, index)
             val metadata = extractMetadata(message, includeMetadata)
             when (role) {
-                "system" -> null
-                "user", "human" -> HumanMessage(content = requireStringContent(message, index, role), metadata = metadata)
+                "system" -> {
+                    null
+                }
+
+                "user", "human" -> {
+                    HumanMessage(content = requireStringContent(message, index, role), metadata = metadata)
+                }
+
                 "assistant", "ai" -> {
                     AiMessage(
                         content = requireStringContent(message, index, role),
@@ -142,8 +148,14 @@ object LangGraphIntegration {
                         metadata = metadata,
                     )
                 }
-                "tool" -> ToolMessage(content = requireStringContent(message, index, role), metadata = metadata)
-                else -> throw IllegalArgumentException("Unsupported message role/type at messages[$index]: '$role'")
+
+                "tool" -> {
+                    ToolMessage(content = requireStringContent(message, index, role), metadata = metadata)
+                }
+
+                else -> {
+                    throw IllegalArgumentException("Unsupported message role/type at messages[$index]: '$role'")
+                }
             }
         }
 
@@ -189,7 +201,7 @@ object LangGraphIntegration {
         val content = message["content"]
         return content as? String
             ?: throw IllegalArgumentException(
-                "messages[$index] with role/type '$role' requires string 'content', got ${content?.let { it::class.simpleName } ?: "null"}",
+                "messages[$index] with role/type '$role' requires string 'content', got ${content?.javaClass?.simpleName ?: "null"}",
             )
     }
 
@@ -218,7 +230,11 @@ object LangGraphIntegration {
         val function = toolCall["function"] as? Map<*, *>
         val name =
             toolCall["name"]?.toString()?.trim().orEmpty().ifBlank {
-                function?.get("name")?.toString()?.trim().orEmpty()
+                function
+                    ?.get("name")
+                    ?.toString()
+                    ?.trim()
+                    .orEmpty()
             }
         require(name.isNotEmpty()) {
             "messages[$messageIndex].tool_calls[$callIndex] is missing function name"
@@ -244,12 +260,20 @@ object LangGraphIntegration {
         callIndex: Int,
     ): Map<String, JsonElement> =
         when (argsSource) {
-            null -> emptyMap()
-            is JsonObject -> argsSource.toMap()
-            is Map<*, *> ->
+            null -> {
+                emptyMap()
+            }
+
+            is JsonObject -> {
+                argsSource.toMap()
+            }
+
+            is Map<*, *> -> {
                 argsSource.entries.associate { (key, value) ->
                     key.toString() to anyToJsonElement(value)
                 }
+            }
+
             is String -> {
                 val parsed =
                     runCatching { json.parseToJsonElement(argsSource) }.getOrElse { error ->
@@ -265,10 +289,12 @@ object LangGraphIntegration {
                         )
                 jsonObject.toMap()
             }
-            else ->
+
+            else -> {
                 throw IllegalArgumentException(
                     "messages[$messageIndex].tool_calls[$callIndex] arguments must be a map or JSON string",
                 )
+            }
         }
 
     private fun extractMetadata(
@@ -279,9 +305,28 @@ object LangGraphIntegration {
             return null
         }
         val metadata =
-            message.entries
-                .filter { (key, _) -> key != "type" && key != "role" && key != "content" }
-                .associate { (key, value) -> key to anyToJsonElement(value) }
+            buildMap<String, JsonElement> {
+                message.entries.forEach { (key, value) ->
+                    when (key) {
+                        "type", "role", "content", "tool_calls" -> {
+                            Unit
+                        }
+
+                        "additional_kwargs" -> {
+                            val sanitized =
+                                (value as? Map<*, *>)?.filterKeys { it.toString() != "tool_calls" } ?: value
+                            if (sanitized is Map<*, *> && sanitized.isEmpty()) {
+                                return@forEach
+                            }
+                            put(key, anyToJsonElement(sanitized))
+                        }
+
+                        else -> {
+                            put(key, anyToJsonElement(value))
+                        }
+                    }
+                }
+            }
         return metadata.ifEmpty { null }
     }
 }
