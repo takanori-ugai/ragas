@@ -14,7 +14,7 @@ class SemanticSimilarityFixtureTest {
     fun semanticSimilarityMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
-            val metric = SemanticSimilarityMetric()
+            val metric = SemanticSimilarityMetric(allowLexicalFallback = true)
 
             fixture.getValue("cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
@@ -44,7 +44,11 @@ class SemanticSimilarityFixtureTest {
 
             fixture.getValue("threshold_cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
-                val metric = SemanticSimilarityMetric(threshold = obj.getValue("threshold").jsonPrimitive.double)
+                val metric =
+                    SemanticSimilarityMetric(
+                        threshold = obj.getValue("threshold").jsonPrimitive.double,
+                        allowLexicalFallback = true,
+                    )
                 val sample =
                     SingleTurnSample(
                         reference = obj.getValue("reference").jsonPrimitive.content,

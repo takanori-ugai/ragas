@@ -260,6 +260,183 @@ class CliParityTest {
             assertTrue(errors.single().contains("Gate metric name cannot be empty"))
         }
     }
+
+    @Test
+    fun evalCommandRejectsUnsupportedProvider() {
+        withTempDir("ragas-cli-eval-provider") { dir ->
+            val dataset = dir.resolve("dataset.json")
+            dataset.writeText(
+                """
+                [
+                  {
+                    "user_input": "What is Kotlin?",
+                    "response": "Kotlin is a JVM language.",
+                    "retrieved_contexts": ["Kotlin is a statically typed language for JVM and Android."],
+                    "reference_contexts": ["Kotlin targets JVM and Android."],
+                    "reference": "Kotlin is a language for JVM and Android."
+                  }
+                ]
+                """.trimIndent(),
+            )
+
+            val errors = mutableListOf<String>()
+            val code =
+                runCli(
+                    arrayOf("eval", "--input", dataset.absolutePath, "--provider", "anthropic"),
+                    err = { message -> errors += message },
+                )
+
+            assertEquals(1, code)
+            assertTrue(errors.single().contains("Unsupported --provider 'anthropic'"))
+        }
+    }
+
+    @Test
+    fun evalCommandSupportsGeminiProviderWithNoKeyFallback() {
+        withTempDir("ragas-cli-eval-gemini") { dir ->
+            val dataset = dir.resolve("dataset.json")
+            val report = dir.resolve("report.json")
+            dataset.writeText(
+                """
+                [
+                  {
+                    "user_input": "What is Kotlin?",
+                    "response": "Kotlin is a JVM language.",
+                    "retrieved_contexts": ["Kotlin is a statically typed language for JVM and Android."],
+                    "reference_contexts": ["Kotlin targets JVM and Android."],
+                    "reference": "Kotlin is a language for JVM and Android."
+                  }
+                ]
+                """.trimIndent(),
+            )
+
+            val output = mutableListOf<String>()
+            val errors = mutableListOf<String>()
+            val code =
+                runCli(
+                    arrayOf(
+                        "eval",
+                        "--input",
+                        dataset.absolutePath,
+                        "--provider",
+                        "gemini",
+                        "--model",
+                        "gemma-4-31b-it",
+                        "--output",
+                        report.absolutePath,
+                    ),
+                    out = { line -> output += line },
+                    err = { message -> errors += message },
+                    getenv = { _ -> null },
+                )
+
+            assertEquals(0, code)
+            assertTrue(report.exists())
+            val warned = errors.any { line -> line.contains("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set") }
+            assertTrue(warned)
+        }
+    }
+
+    @Test
+    fun evalCommandSkipsAnswerCorrectnessWhenProviderIsSetButEmbeddingsUnavailable() {
+        withTempDir("ragas-cli-eval-answer-correctness-skip") { dir ->
+            val dataset = dir.resolve("dataset.json")
+            val report = dir.resolve("report.json")
+            dataset.writeText(
+                """
+                [
+                  {
+                    "user_input": "What is Kotlin?",
+                    "response": "Kotlin is a JVM language.",
+                    "reference": "Kotlin is a programming language targeting the JVM."
+                  }
+                ]
+                """.trimIndent(),
+            )
+
+            val errors = mutableListOf<String>()
+            val code =
+                runCli(
+                    arrayOf(
+                        "eval",
+                        "--input",
+                        dataset.absolutePath,
+                        "--metrics",
+                        "answer_correctness,sql_semantic_equivalence",
+                        "--provider",
+                        "openai",
+                        "--output",
+                        report.absolutePath,
+                    ),
+                    err = { message -> errors += message },
+                    getenv = { _ -> null },
+                )
+
+            assertEquals(0, code)
+            assertTrue(report.exists())
+            assertTrue(
+                errors.any { line ->
+                    line.contains("Skipping metrics that require embeddings in CLI eval") &&
+                        line.contains("answer_correctness")
+                },
+            )
+
+            val parsed = Json.parseToJsonElement(report.readText()).jsonObject
+            val metricNames = parsed.getValue("metric_names").jsonArray.map { it.jsonPrimitive.content }
+            assertTrue("answer_correctness" !in metricNames)
+            assertTrue("sql_semantic_equivalence" in metricNames)
+        }
+    }
+
+    @Test
+    fun evalCommandSupportsMultiTurnTopicAdherenceMetric() {
+        withTempDir("ragas-cli-eval-multiturn") { dir ->
+            val dataset = dir.resolve("dataset.json")
+            val report = dir.resolve("report.json")
+            dataset.writeText(
+                """
+                [
+                  {
+                    "user_input": [
+                      {"type":"human","content":"Explain relativity briefly."},
+                      {"type":"ai","content":"Relativity covers space-time and gravity."},
+                      {"type":"human","content":"Mention Einstein too."},
+                      {"type":"ai","content":"Einstein developed key relativity theories."}
+                    ],
+                    "reference_topics": ["relativity", "einstein"],
+                    "reference": "Conversation should mention relativity and Einstein."
+                  }
+                ]
+                """.trimIndent(),
+            )
+
+            val errors = mutableListOf<String>()
+            val code =
+                runCli(
+                    arrayOf(
+                        "eval",
+                        "--input",
+                        dataset.absolutePath,
+                        "--metrics",
+                        "topic_adherence",
+                        "--provider",
+                        "none",
+                        "--output",
+                        report.absolutePath,
+                    ),
+                    err = { message -> errors += message },
+                    getenv = { _ -> null },
+                )
+
+            assertEquals(0, code)
+            assertTrue(report.exists())
+            assertTrue(errors.none { line -> line.contains("incompatible with multi-turn") })
+
+            val parsed = Json.parseToJsonElement(report.readText()).jsonObject
+            val metricNames = parsed.getValue("metric_names").jsonArray.map { it.jsonPrimitive.content }
+            assertTrue("topic_adherence" in metricNames)
+        }
+    }
 }
 
 private inline fun withTempDir(

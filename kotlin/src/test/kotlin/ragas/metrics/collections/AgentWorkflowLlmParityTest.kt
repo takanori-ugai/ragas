@@ -1,5 +1,6 @@
 package ragas.metrics.collections
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -12,6 +13,7 @@ import ragas.model.ToolMessage
 import ragas.runtime.RunConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class AgentWorkflowLlmParityTest {
@@ -101,6 +103,35 @@ class AgentWorkflowLlmParityTest {
             assertEquals(1, llm.prompts.size)
         }
 
+    @Test
+    fun workflowCompletionRetriesMalformedPayloadThenUsesValidScore() =
+        runBlocking {
+            val llm =
+                ScriptedAgentWorkflowLlm(
+                    responses =
+                        listOf(
+                            "not json",
+                            """{"completion_score":"0.81","reason":"Workflow is mostly complete."}""",
+                        ),
+                )
+            val metric = AgentWorkflowCompletionMetric(maxRetries = 2).apply { this.llm = llm }
+
+            val score = metric.multiTurnAscore(partialTravelPlanningSample()) as Double
+
+            assertEquals(0.81, score, absoluteTolerance = 1e-9)
+            assertEquals(2, llm.prompts.size)
+        }
+
+    @Test
+    fun workflowCompletionPropagatesCancellationException() {
+        runBlocking {
+            val llm = ScriptedAgentWorkflowLlm(responses = listOf(CancellationException("cancelled")))
+            val metric = AgentWorkflowCompletionMetric(maxRetries = 2).apply { this.llm = llm }
+
+            assertFailsWith<CancellationException> { metric.multiTurnAscore(partialTravelPlanningSample()) }
+        }
+    }
+
     private fun successfulBookingSample(): MultiTurnSample =
         MultiTurnSample(
             userInput =
@@ -136,7 +167,7 @@ class AgentWorkflowLlmParityTest {
 }
 
 private class ScriptedAgentWorkflowLlm(
-    private val responses: List<String>,
+    private val responses: List<Any>,
 ) : BaseRagasLlm {
     override var runConfig: RunConfig = RunConfig()
     val prompts: MutableList<String> = mutableListOf()
@@ -155,6 +186,10 @@ private class ScriptedAgentWorkflowLlm(
                     "ScriptedAgentWorkflowLlm responses exhausted at index=$index (configured=${responses.size})",
                 )
         index += 1
-        return LlmResult(generations = listOf(LlmGeneration(text)))
+        return when (text) {
+            is Throwable -> throw text
+            is String -> LlmResult(generations = listOf(LlmGeneration(text)))
+            else -> LlmResult(generations = listOf(LlmGeneration(text.toString())))
+        }
     }
 }

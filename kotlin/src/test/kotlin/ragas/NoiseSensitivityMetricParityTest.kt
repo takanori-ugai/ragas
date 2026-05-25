@@ -1,5 +1,6 @@
 package ragas
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import ragas.llms.BaseRagasLlm
 import ragas.llms.LlmGeneration
@@ -91,12 +92,67 @@ class NoiseSensitivityMetricParityTest {
                 }
             assertEquals("reference is missing. Please add reference to the test sample.", missingReference.message)
         }
+
+    @Test
+    fun llmPathRetriesMalformedDecompositionAndFaithfulnessPayloads() =
+        runBlocking {
+            val outputs =
+                listOf(
+                    "not-json",
+                    """{"statements":["gt"]}""",
+                    """{"statements":"bad"}""",
+                    """{"statements":["ans"]}""",
+                    """{"statements":"bad"}""",
+                    """{"statements":[{"statement":"gt","reason":"ok","verdict":1}]}""",
+                    """{"statements":"bad"}""",
+                    """{"statements":[{"statement":"ans","reason":"ok","verdict":1}]}""",
+                    """{"statements":"bad"}""",
+                    """{"statements":[{"statement":"ans","reason":"bad","verdict":0}]}""",
+                )
+            val sample =
+                SingleTurnSample(
+                    userInput = "Q",
+                    response = "A",
+                    reference = "R",
+                    retrievedContexts = listOf("ctx1"),
+                )
+            val metric =
+                NoiseSensitivityMetric(mode = NoiseSensitivityMetric.Mode.RELEVANT, maxRetries = 2).also {
+                    it.llm = ScriptedNoiseSensitivityLlm(outputs = outputs)
+                }
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score, 1e-9)
+        }
+
+    @Test
+    fun llmPathPropagatesCancellationException() {
+        runBlocking {
+            val llm = ScriptedNoiseSensitivityLlm(outputs = listOf(CancellationException("cancelled")))
+            val metric =
+                NoiseSensitivityMetric(maxRetries = 2).also {
+                    it.llm = llm
+                }
+            val sample =
+                SingleTurnSample(
+                    userInput = "Q",
+                    response = "A",
+                    reference = "R",
+                    retrievedContexts = listOf("ctx"),
+                )
+
+            assertFailsWith<CancellationException> { metric.singleTurnAscore(sample) }
+            assertEquals(1, llm.callCount)
+        }
+    }
 }
 
 private class ScriptedNoiseSensitivityLlm(
-    private val outputs: List<String>,
+    private val outputs: List<Any>,
 ) : BaseRagasLlm {
     private var cursor = 0
+    val callCount: Int
+        get() = cursor
     override var runConfig: RunConfig = RunConfig()
 
     override suspend fun generateText(
@@ -105,8 +161,16 @@ private class ScriptedNoiseSensitivityLlm(
         temperature: Double?,
         stop: List<String>?,
     ): LlmResult {
-        val value = outputs.getOrElse(cursor) { outputs.lastOrNull().orEmpty() }
+        val value =
+            outputs.getOrNull(cursor)
+                ?: throw IllegalStateException(
+                    "ScriptedNoiseSensitivityLlm outputs exhausted at cursor=$cursor (configured=${outputs.size})",
+                )
         cursor += 1
-        return LlmResult(generations = listOf(LlmGeneration(value)))
+        return when (value) {
+            is Throwable -> throw value
+            is String -> LlmResult(generations = listOf(LlmGeneration(value)))
+            else -> LlmResult(generations = listOf(LlmGeneration(value.toString())))
+        }
     }
 }

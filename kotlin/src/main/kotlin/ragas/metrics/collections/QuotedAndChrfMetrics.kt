@@ -73,9 +73,7 @@ class QuotedSpansAlignmentMetric(
     private companion object {
         val QUOTE_REGEX =
             Regex(
-                "(?<![\\p{L}\\p{N}])[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4]" +
-                    "(.*?)" +
-                    "[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](?![\\p{L}\\p{N}])",
+                "(?<!\\w)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](.*?)[\"\\u201c\\u201d\\u201e\\u201f'\\u2018\\u2019`\\u00b4](?!\\w)",
             )
         val WHITESPACE_REGEX = Regex("\\s+")
     }
@@ -91,6 +89,8 @@ class ChrfScoreMetric(
     name: String = "chrf_score",
     private val charOrder: Int = 6,
     private val beta: Double = 2.0,
+    private val caseSensitive: Boolean = true,
+    private val normalizeWhitespace: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("reference", "response")),
@@ -147,9 +147,19 @@ class ChrfScoreMetric(
 
     private fun normalizeText(text: String): String =
         text
-            .lowercase()
-            .replace(Regex("\\s+"), " ")
-            .trim()
+            .let { raw ->
+                if (normalizeWhitespace) {
+                    raw.replace(Regex("\\s+"), " ").trim()
+                } else {
+                    raw
+                }
+            }.let { normalized ->
+                if (caseSensitive) {
+                    normalized
+                } else {
+                    normalized.lowercase()
+                }
+            }
 
     private fun charNgramCounts(
         text: String,

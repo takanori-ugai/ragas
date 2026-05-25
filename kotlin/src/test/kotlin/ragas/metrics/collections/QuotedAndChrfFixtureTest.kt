@@ -111,6 +111,34 @@ class QuotedAndChrfFixtureTest {
         }
 
     @Test
+    fun chrfDefaultIsCaseSensitiveLikePythonPath() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "Paris is the capital of France.",
+                    response = "paris is the capital of france.",
+                )
+            val metric = ChrfScoreMetric()
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(0.8379214027434272, score, 1e-12)
+        }
+
+    @Test
+    fun chrfCanUseCaseInsensitiveNormalizationWhenRequested() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "Paris is the capital of France.",
+                    response = "paris   is the capital of france.",
+                )
+            val metric = ChrfScoreMetric(caseSensitive = false, normalizeWhitespace = true)
+
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(1.0, score, 1e-12)
+        }
+
+    @Test
     fun tier3MetricListIncludesQuotedAndChrfPorts() {
         AgentFixtureTestSupport.assertTier3MetricRegistryIncludes(
             "quoted_spans_alignment",

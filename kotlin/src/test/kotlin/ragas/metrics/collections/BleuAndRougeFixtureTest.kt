@@ -7,6 +7,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import ragas.model.SingleTurnSample
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class BleuAndRougeFixtureTest {
     @Test
@@ -76,6 +78,58 @@ class BleuAndRougeFixtureTest {
             "semantic_similarity",
         )
     }
+
+    @Test
+    fun bleuSentenceSplitPathChangesScoreForMultiSentencePairs() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "Alpha beta gamma delta. Epsilon zeta eta theta.",
+                    response = "Alpha beta gamma delta. Epsilon zeta eta iota.",
+                )
+            val sentenceSplitMetric = BleuScoreMetric(sentenceSplit = true)
+            val noSplitMetric = BleuScoreMetric(sentenceSplit = false)
+
+            val splitScore = (sentenceSplitMetric.singleTurnAscore(sample) as Number).toDouble()
+            val noSplitScore = (noSplitMetric.singleTurnAscore(sample) as Number).toDouble()
+
+            assertTrue(
+                kotlin.math.abs(splitScore - noSplitScore) > 1e-12,
+                "Expected sentence-split BLEU to differ for multi-sentence corpus scoring.",
+            )
+        }
+
+    @Test
+    fun bleuSentenceSplitFallsBackToWholeTextWhenSentenceCountsMismatch() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "Alpha beta gamma delta. Epsilon zeta eta theta.",
+                    response = "Alpha beta gamma delta epsilon zeta eta iota.",
+                )
+            val sentenceSplitMetric = BleuScoreMetric(sentenceSplit = true)
+            val noSplitMetric = BleuScoreMetric(sentenceSplit = false)
+
+            val splitScore = (sentenceSplitMetric.singleTurnAscore(sample) as Number).toDouble()
+            val noSplitScore = (noSplitMetric.singleTurnAscore(sample) as Number).toDouble()
+            assertEquals(noSplitScore, splitScore, absoluteTolerance = 1e-12)
+        }
+
+    @Test
+    fun rougeDefaultUsesStemmerLikePythonPath() =
+        runBlocking {
+            val sample =
+                SingleTurnSample(
+                    reference = "The athlete is running fast.",
+                    response = "The athlete run fast.",
+                )
+            val stemmed = RougeScoreMetric()
+            val unstemmed = RougeScoreMetric(useStemmer = false)
+
+            val stemmedScore = (stemmed.singleTurnAscore(sample) as Number).toDouble()
+            val unstemmedScore = (unstemmed.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(stemmedScore > unstemmedScore)
+        }
 
     private companion object {
         private const val FIXTURE_PATH = "fixtures/metrics/ws3_tier3_bleu_rouge_fixture.json"

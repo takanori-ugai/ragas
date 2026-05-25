@@ -51,13 +51,6 @@ class WS9CrossLanguagePartialGoldenTest {
             "answer_accuracy" -> AnswerAccuracyMetric()
             "answer_correctness" -> AnswerCorrectnessMetric()
             "factual_correctness" -> FactualCorrectnessMetric()
-            "noise_sensitivity" -> NoiseSensitivityMetric()
-            "summary_score" -> SummaryScoreMetric()
-            "quoted_spans_alignment" -> QuotedSpansAlignmentMetric()
-            "chrf_score" -> ChrfScoreMetric()
-            "bleu_score" -> BleuScoreMetric()
-            "rouge_score" -> RougeScoreMetric()
-            "semantic_similarity" -> SemanticSimilarityMetric()
             else -> error("Unsupported single-turn metric in WS9 cross-language fixture: $name")
         }
 
@@ -65,8 +58,6 @@ class WS9CrossLanguagePartialGoldenTest {
         when (name) {
             "agent_goal_accuracy_with_reference" -> AgentGoalAccuracyWithReferenceMetric()
             "agent_goal_accuracy_without_reference" -> AgentGoalAccuracyWithoutReferenceMetric()
-            "agent_workflow_completion" -> AgentWorkflowCompletionMetric()
-            "topic_adherence" -> TopicAdherenceMetric()
             else -> error("Unsupported multi-turn metric in WS9 cross-language fixture: $name")
         }
 

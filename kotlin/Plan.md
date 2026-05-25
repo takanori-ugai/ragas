@@ -279,6 +279,109 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
       - `src/test/kotlin/ragas/FactualCorrectnessMetricParityTest.kt`
         - `llmPathRetriesMalformedDecompositionAndNliOutputs`
         - `llmPathPropagatesCancellationException`
+  - Continued WS3 Tier-3 semantic-similarity parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt`:
+      - Added embedding-based cosine scoring path aligned to Python `SemanticSimilarity` flow.
+      - Added threshold binarization over embedding cosine score (`score >= threshold`).
+      - Added explicit parity guard when embeddings are missing, with opt-in lexical fallback
+        (`allowLexicalFallback = true`) to preserve fixture-based deterministic coverage.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/SemanticSimilarityMetricParityTest.kt`
+        - `defaultPathRequiresEmbeddingsForParitySemantics`
+        - `embeddingsPathUsesCosineSimilarityWithoutZeroOneClamping`
+        - `embeddingsPathSupportsThresholdBinarization`
+    - Updated fixture-band coverage call sites to use lexical fallback explicitly where needed:
+      - `src/test/kotlin/ragas/metrics/collections/SemanticSimilarityFixtureTest.kt`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/_semantic_similarity.py` ->
+        `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` is now `Done`.
+  - Continued WS3 Tier-3 topic-adherence parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt`:
+      - Added retry-aware LLM extraction/classification/refusal parsing path (`maxRetries`) for malformed outputs.
+      - Added cancellation propagation in LLM topic-adherence flow.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/TopicAdherenceMetricParityTest.kt`
+        - `llmPathRetriesMalformedExtractionAndClassification`
+        - `llmPathPropagatesCancellationException`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/topic_adherence/metric.py` ->
+        `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`TopicAdherenceMetric`) is now `Done`.
+  - Continued WS3 Tier-3 quoted-spans parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt`:
+      - Aligned quoted-span extraction regex to Python `quoted_spans.util.QUOTE_RE`,
+        including apostrophe-in-contraction behavior.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/QuotedAndChrfFixtureTest.kt`
+        - `apostrophesInsideWordsFollowPythonQuotedSpanBehavior`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/quoted_spans/metric.py` ->
+        `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`QuotedSpansAlignmentMetric`) is now `Done`.
+  - Continued WS3 Tier-3 BLEU parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt`:
+      - Added Python-aligned sentence-split corpus BLEU flow (`reference.split(". ")`, `response.split(". ")`)
+        with deterministic whole-text fallback for sentence-count mismatch.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/BleuAndRougeFixtureTest.kt`
+        - `bleuSentenceSplitPathChangesScoreForMultiSentencePairs`
+        - `bleuSentenceSplitFallsBackToWholeTextWhenSentenceCountsMismatch`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/_bleu_score.py` ->
+        `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`BleuScoreMetric`) is now `Done`.
+  - Continued WS3 Tier-3 chrF parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt`:
+      - Aligned default chrF normalization semantics to Python `sacrebleu` path:
+        case-sensitive by default (no forced lowercasing, no forced whitespace collapsing).
+      - Added explicit opt-in knobs for non-default normalization
+        (`caseSensitive`, `normalizeWhitespace`).
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/QuotedAndChrfFixtureTest.kt`
+        - `chrfDefaultIsCaseSensitiveLikePythonPath`
+        - `chrfCanUseCaseInsensitiveNormalizationWhenRequested`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/chrf_score/metric.py` ->
+        `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`ChrfScoreMetric`) is now `Done`.
+  - Continued WS3 Tier-3 ROUGE parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt`:
+      - Added default stemmer-enabled token normalization path (`useStemmer = true`) aligned to
+        Python ROUGE scorer configuration (`use_stemmer=True`).
+      - Added opt-out switch (`useStemmer = false`) for deterministic non-stemmed mode.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/BleuAndRougeFixtureTest.kt`
+        - `rougeDefaultUsesStemmerLikePythonPath`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/_rouge_score.py` ->
+        `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`RougeScoreMetric`) is now `Done`.
+  - Continued WS3 Tier-3 summary-score parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt`:
+      - Added retry-aware LLM parsing path (`maxRetries`) across keyphrase/question/answer stages.
+      - Added Python-compatible empty-answer failure semantics for QA-score computation.
+      - Added cancellation propagation for LLM summary-scoring path.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/metrics/collections/NoiseAndSummaryFixtureTest.kt`
+        - `summaryLlmPathRetriesMalformedPayloadsAcrossPipelineStages`
+        - `summaryLlmPathThrowsWhenNoAnswersGenerated`
+        - `summaryLlmPathPropagatesCancellationException`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/summary_score/metric.py` ->
+        `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`SummaryScoreMetric`) is now `Done`.
+  - Continued WS3 Tier-3 noise-sensitivity parity semantics (2026-05-24):
+    - Updated `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt`:
+      - Added retry-aware LLM parsing path (`maxRetries`) for statement decomposition and faithfulness verdict extraction.
+      - Added explicit cancellation propagation in LLM retry flow.
+    - Added focused parity coverage:
+      - `src/test/kotlin/ragas/NoiseSensitivityMetricParityTest.kt`
+        - `llmPathRetriesMalformedDecompositionAndFaithfulnessPayloads`
+        - `llmPathPropagatesCancellationException`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/noise_sensitivity/metric.py` ->
+        `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`NoiseSensitivityMetric`) is now `Done`.
+  - Continued WS3 Tier-2 workflow-completion parity semantics (2026-05-24):
+    - Extended focused parity coverage in `src/test/kotlin/ragas/metrics/collections/AgentWorkflowLlmParityTest.kt`:
+      - `workflowCompletionRetriesMalformedPayloadThenUsesValidScore`
+      - `workflowCompletionPropagatesCancellationException`
+    - Promoted WS9 parity-map status:
+      - `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) ->
+        `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) is now `Done`.
 - Exit criteria:
   - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
 
@@ -508,11 +611,7 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
     - Fixture: `src/test/resources/fixtures/metrics/ws9_cross_language_partial_metrics_fixture.json`
     - Test: `src/test/kotlin/ragas/metrics/collections/WS9CrossLanguagePartialGoldenTest.kt`
   - Cross-language fixture scope includes currently `Partial` metrics listed in WS9 map:
-    - Tier-2 workflow: `agent_workflow_completion`
-    - Tier-3 defaults/collections:
-      `topic_adherence`,
-      `noise_sensitivity`, `summary_score`, `quoted_spans_alignment`,
-      `chrf_score`, `bleu_score`, `rouge_score`, `semantic_similarity`
+    - No remaining `Partial` WS9 metrics; fixture retained as cross-language smoke coverage.
 - Intentional deferrals (tracked; not accidental gaps):
   - Multimodal URL ingestion DNS rebinding hardening (connection-time IP pinning / custom HTTP client path).
   - Full production-grade testset synthesis parity beyond current WS6 baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
@@ -538,21 +637,21 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
 | Tier-2 | `../src/ragas/metrics/collections/tool_call_f1/metric.py` | `src/main/kotlin/ragas/metrics/collections/AgentToolCallMetrics.kt` (`ToolCallF1Metric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithReferenceMetric`) | Done |
 | Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (`AgentGoalAccuracyWithoutReference`) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentGoalAccuracyWithoutReferenceMetric`) | Done |
-| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Partial |
+| Tier-2 | `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) | `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/answer_relevancy/metric.py` | `src/main/kotlin/ragas/metrics/defaults/AnswerRelevancyMetric.kt` (`AnswerRelevancyMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/faithfulness/metric.py` | `src/main/kotlin/ragas/metrics/defaults/FaithfulnessMetric.kt` (`FaithfulnessMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/context_recall/metric.py` | `src/main/kotlin/ragas/metrics/defaults/ContextRecallMetric.kt` (`ContextRecallMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/answer_accuracy/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerAccuracyMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/answer_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/AnswerQualityMetrics.kt` (`AnswerCorrectnessMetric`) | Done |
 | Tier-3 | `../src/ragas/metrics/collections/factual_correctness/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`FactualCorrectnessMetric`) | Done |
-| Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`NoiseSensitivityMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`TopicAdherenceMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`QuotedSpansAlignmentMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`SummaryScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/chrf_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`ChrfScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`BleuScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`RougeScoreMetric`) | Partial |
-| Tier-3 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` (`SemanticSimilarityMetric`) | Partial |
+| Tier-3 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`NoiseSensitivityMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/topic_adherence/metric.py` | `src/main/kotlin/ragas/metrics/collections/FactualAndTopicMetrics.kt` (`TopicAdherenceMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/quoted_spans/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`QuotedSpansAlignmentMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` (`SummaryScoreMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/chrf_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/QuotedAndChrfMetrics.kt` (`ChrfScoreMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/_bleu_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`BleuScoreMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/_rouge_score.py` | `src/main/kotlin/ragas/metrics/collections/BleuAndRougeMetrics.kt` (`RougeScoreMetric`) | Done |
+| Tier-3 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` (`SemanticSimilarityMetric`) | Done |
 | Tier-4 | `../src/ragas/metrics/collections/domain_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/DomainSpecificRubricsMetrics.kt` (`DomainSpecificRubricsMetric`, `RubricsScoreWithReferenceMetric`, `RubricsScoreWithoutReferenceMetric`) | Done |
 | Tier-4 | `../src/ragas/metrics/collections/instance_specific_rubrics/metric.py` | `src/main/kotlin/ragas/metrics/collections/InstanceSpecificRubricsMetric.kt` (`InstanceSpecificRubricsMetric`) | Done |
 | Tier-4 | `../src/ragas/metrics/collections/sql_semantic_equivalence/metric.py` | `src/main/kotlin/ragas/metrics/collections/SqlSemanticEquivalenceMetric.kt` (`SqlSemanticEquivalenceMetric`) | Done |

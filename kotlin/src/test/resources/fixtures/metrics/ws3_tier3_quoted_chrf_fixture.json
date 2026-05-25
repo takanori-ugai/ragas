@@ -52,7 +52,7 @@
       "id": "chrf_reordered",
       "reference": "The capital of France is Paris.",
       "response": "Paris is the capital of France.",
-      "expected_score": 0.7932729148246388,
+      "expected_score": 0.7580584118774701,
       "expected_band": "high"
     },
     {
@@ -66,7 +66,7 @@
       "id": "chrf_unrelated",
       "reference": "Albert Einstein developed the theory of relativity.",
       "response": "Bananas are yellow fruits sold in markets.",
-      "expected_score": 0.13620714087090233,
+      "expected_score": 0.12943207312022484,
       "expected_band": "low"
     }
   ]

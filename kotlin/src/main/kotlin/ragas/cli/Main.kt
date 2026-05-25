@@ -1,5 +1,9 @@
 package ragas.cli
 
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
+import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel
+import dev.langchain4j.model.openai.OpenAiChatModel
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -8,14 +12,29 @@ import ragas.backends.BACKEND_REGISTRY
 import ragas.backends.anyToJsonElement
 import ragas.backends.jsonElementToAny
 import ragas.defaultMetrics
+import ragas.embeddings.BaseRagasEmbedding
+import ragas.embeddings.LangChain4jEmbedding
 import ragas.evaluate
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.metrics.MultiTurnMetric
+import ragas.metrics.SingleTurnMetric
+import ragas.model.AiMessage
+import ragas.model.ConversationMessage
 import ragas.model.EvaluationDataset
+import ragas.model.HumanMessage
+import ragas.model.MultiTurnSample
+import ragas.model.Sample
 import ragas.model.SingleTurnSample
+import ragas.model.ToolCall
+import ragas.model.ToolMessage
+import ragas.runtime.RunConfig
 import ragas.tier1Metrics
 import ragas.tier2Metrics
 import ragas.tier3Metrics
 import ragas.tier4Metrics
 import java.io.File
+import kotlin.reflect.KClass
 import kotlin.system.exitProcess
 
 private val jsonPretty = Json { prettyPrint = true }
@@ -30,6 +49,12 @@ data class CliOptions(
     val values: Map<String, String>,
     val flags: Set<String>,
 )
+
+private const val DEFAULT_LLM_PROVIDER = "openai"
+private const val DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
+private const val DEFAULT_GEMINI_MODEL = "gemma-4-31b-it"
+private const val DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+private const val DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
 
 /**
  * CLI entry point that executes a command and exits with its status code.
@@ -54,6 +79,7 @@ fun runCli(
     args: Array<String>,
     out: (String) -> Unit = ::println,
     err: (String) -> Unit = { message -> System.err.println(message) },
+    getenv: (String) -> String? = System::getenv,
 ): Int {
     val command = args.firstOrNull() ?: "help"
     return runCatching {
@@ -75,7 +101,7 @@ fun runCli(
 
             "eval" -> {
                 val options = parseOptions(args.drop(1))
-                runEval(options, out)
+                runEval(options, out, err, getenv)
             }
 
             "report" -> {
@@ -123,6 +149,8 @@ private fun parseOptions(tokens: List<String>): CliOptions {
 private fun runEval(
     options: CliOptions,
     out: (String) -> Unit,
+    err: (String) -> Unit,
+    getenv: (String) -> String?,
 ): Int {
     val inputPath = options.values["input"] ?: error("--input is required for eval")
     val outputPath = options.values["output"]
@@ -130,9 +158,46 @@ private fun runEval(
     val metricSpec = options.values["metrics"] ?: "default"
 
     val rows = readRows(inputPath, format)
-    val dataset = EvaluationDataset(rows.map(::rowToSingleTurnSample))
-    val metrics = resolveMetrics(metricSpec)
-    val result = evaluate(dataset = dataset, metrics = metrics)
+    val dataset = EvaluationDataset(rows.map(::rowToSample))
+    val requestedMetrics = resolveMetrics(metricSpec)
+    var metrics = requestedMetrics.filter { metric -> isMetricCompatibleWithDataset(dataset.getSampleType(), metric) }
+    val provider = resolveProvider(options)
+    val llm = resolveLlmForEval(options, err, getenv)
+    val embeddings = resolveEmbeddingForEval(options, getenv)
+    val skippedBySampleType =
+        requestedMetrics
+            .filterNot { metric -> isMetricCompatibleWithDataset(dataset.getSampleType(), metric) }
+            .map { metric -> metric.name }
+            .sorted()
+    if (skippedBySampleType.isNotEmpty()) {
+        val sampleTypeLabel = sampleTypeLabel(dataset.getSampleType())
+        err(
+            "[warn] Skipping metrics incompatible with $sampleTypeLabel dataset: " +
+                skippedBySampleType.joinToString(", "),
+        )
+    }
+    val skippedWithoutEmbeddings =
+        metrics
+            .filter { metric ->
+                (metric.name == "semantic_similarity" && embeddings == null) ||
+                    (
+                        (provider == "openai" || provider == "gemini" || provider == "google") &&
+                            embeddings == null &&
+                            metric.name == "answer_correctness"
+                    )
+            }.map { metric -> metric.name }
+            .sorted()
+    if (skippedWithoutEmbeddings.isNotEmpty()) {
+        err(
+            "[warn] Skipping metrics that require embeddings in CLI eval: " +
+                skippedWithoutEmbeddings.joinToString(", "),
+        )
+        metrics = metrics.filterNot { metric -> metric.name in skippedWithoutEmbeddings.toSet() }
+    }
+    require(metrics.isNotEmpty()) {
+        "No compatible metrics selected for eval. Requested: $metricSpec"
+    }
+    val result = evaluate(dataset = dataset, metrics = metrics, llm = llm, embeddings = embeddings)
 
     val metricNames = result.scores.flatMap { row -> row.keys }.toSortedSet()
     val means = metricNames.associateWith { metric -> result.metricMean(metric) }
@@ -155,6 +220,125 @@ private fun runEval(
     }
     return 0
 }
+
+private fun resolveLlmForEval(
+    options: CliOptions,
+    warn: (String) -> Unit,
+    getenv: (String) -> String?,
+): BaseRagasLlm? {
+    val provider = resolveProvider(options)
+    val model =
+        options.values["model"]
+            ?.trim()
+            ?.ifBlank {
+                when (provider) {
+                    "gemini", "google" -> DEFAULT_GEMINI_MODEL
+                    else -> DEFAULT_OPENAI_MODEL
+                }
+            } ?: when (provider) {
+            "gemini", "google" -> DEFAULT_GEMINI_MODEL
+            else -> DEFAULT_OPENAI_MODEL
+        }
+
+    return when (provider) {
+        "none" -> {
+            null
+        }
+
+        "openai" -> {
+            val apiKey = getenv("OPENAI_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                warn("[warn] OPENAI_API_KEY is not set; running eval without LLM.")
+                null
+            } else {
+                val chatModel =
+                    OpenAiChatModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(model)
+                        .temperature(0.0)
+                        .build()
+                LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+            }
+        }
+
+        "gemini", "google" -> {
+            val apiKey =
+                getenv("GEMINI_API_KEY")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: getenv("GOOGLE_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                warn("[warn] GEMINI_API_KEY (or GOOGLE_API_KEY) is not set; running eval without LLM.")
+                null
+            } else {
+                val chatModel =
+                    GoogleGenAiChatModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(model)
+                        .temperature(0.0)
+                        .build()
+                LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+            }
+        }
+
+        else -> {
+            error("Unsupported --provider '$provider'. Supported values: openai, gemini, none.")
+        }
+    }
+}
+
+private fun resolveEmbeddingForEval(
+    options: CliOptions,
+    getenv: (String) -> String?,
+): BaseRagasEmbedding? {
+    val provider = resolveProvider(options)
+    return when (provider) {
+        "openai" -> {
+            val apiKey = getenv("OPENAI_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                null
+            } else {
+                val model =
+                    OpenAiEmbeddingModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(DEFAULT_OPENAI_EMBEDDING_MODEL)
+                        .build()
+                LangChain4jEmbedding(model = model)
+            }
+        }
+
+        "gemini", "google" -> {
+            val apiKey =
+                getenv("GEMINI_API_KEY")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: getenv("GOOGLE_API_KEY").orEmpty().trim()
+            if (apiKey.isBlank()) {
+                null
+            } else {
+                val model =
+                    GoogleAiEmbeddingModel
+                        .builder()
+                        .apiKey(apiKey)
+                        .modelName(DEFAULT_GEMINI_EMBEDDING_MODEL)
+                        .build()
+                LangChain4jEmbedding(model = model)
+            }
+        }
+
+        else -> {
+            null
+        }
+    }
+}
+
+private fun resolveProvider(options: CliOptions): String =
+    options.values["provider"]
+        ?.trim()
+        ?.lowercase()
+        ?.ifBlank { DEFAULT_LLM_PROVIDER }
+        ?: DEFAULT_LLM_PROVIDER
 
 private fun runReport(
     options: CliOptions,
@@ -329,6 +513,15 @@ private fun jsonElementToMap(element: JsonElement): Map<String, Any?> {
     return element.mapValues { (_, value) -> jsonElementToAny(value) }
 }
 
+private fun rowToSample(row: Map<String, Any?>): Sample {
+    val userInput = row["user_input"]
+    return if (userInput is List<*>) {
+        rowToMultiTurnSample(row)
+    } else {
+        rowToSingleTurnSample(row)
+    }
+}
+
 private fun rowToSingleTurnSample(row: Map<String, Any?>): SingleTurnSample =
     SingleTurnSample(
         userInput = row["user_input"] as? String,
@@ -345,15 +538,122 @@ private fun rowToSingleTurnSample(row: Map<String, Any?>): SingleTurnSample =
         queryLength = row["query_length"] as? String,
     )
 
+private fun rowToMultiTurnSample(row: Map<String, Any?>): MultiTurnSample =
+    MultiTurnSample(
+        userInput = anyToConversationMessages(row["user_input"]),
+        reference = row["reference"] as? String,
+        referenceToolCalls = anyToToolCallList(row["reference_tool_calls"]),
+        rubrics = anyToStringMap(row["rubrics"]),
+        referenceTopics = anyToStringList(row["reference_topics"]),
+    )
+
+private fun anyToConversationMessages(value: Any?): List<ConversationMessage> {
+    val list = value as? List<*> ?: error("multi-turn 'user_input' must be a list of message objects")
+    return list.mapIndexed { index, item -> anyToConversationMessage(item, index) }
+}
+
+private fun anyToConversationMessage(
+    value: Any?,
+    index: Int,
+): ConversationMessage {
+    val map = value as? Map<*, *> ?: error("message at user_input[$index] must be an object")
+    val type = map["type"]?.toString()?.trim()?.lowercase() ?: error("message at user_input[$index] is missing 'type'")
+    val metadata = anyToJsonElementMap(map["metadata"])
+    return when (type) {
+        "human" -> {
+            HumanMessage(
+                content = map["content"]?.toString().orEmpty(),
+                metadata = metadata,
+            )
+        }
+
+        "tool" -> {
+            ToolMessage(
+                content = map["content"]?.toString().orEmpty(),
+                metadata = metadata,
+            )
+        }
+
+        "ai" -> {
+            val content = extractAiContent(map["content"])
+            val toolCalls =
+                anyToToolCallList(
+                    extractAiToolCallsSource(contentValue = map["content"], mapToolCalls = map["tool_calls"]),
+                )
+            AiMessage(
+                content = content,
+                toolCalls = toolCalls,
+                metadata = metadata,
+            )
+        }
+
+        else -> {
+            error("Unsupported message type at user_input[$index]: '$type'. Expected one of: human, ai, tool")
+        }
+    }
+}
+
+private fun extractAiContent(contentValue: Any?): String {
+    val contentMap = contentValue as? Map<*, *> ?: return contentValue?.toString().orEmpty()
+    return contentMap["text"]?.toString() ?: ""
+}
+
+private fun extractAiToolCallsSource(
+    contentValue: Any?,
+    mapToolCalls: Any?,
+): Any? {
+    val contentMap = contentValue as? Map<*, *>
+    return contentMap?.get("tool_calls") ?: mapToolCalls
+}
+
+private fun anyToToolCallList(value: Any?): List<ToolCall>? {
+    val list = value as? List<*> ?: return null
+    return list.mapIndexed { index, item ->
+        val map = item as? Map<*, *> ?: error("tool_call[$index] must be an object")
+        val name = map["name"]?.toString()?.trim().orEmpty()
+        require(name.isNotEmpty()) { "tool_call[$index] is missing 'name'" }
+        ToolCall(
+            name = name,
+            args = anyToJsonElementMap(map["args"]).orEmpty(),
+        )
+    }
+}
+
 private fun anyToStringList(value: Any?): List<String>? {
     val list = value as? List<*> ?: return null
     return list.map { item -> item?.toString().orEmpty() }
+}
+
+private fun anyToJsonElementMap(value: Any?): Map<String, kotlinx.serialization.json.JsonElement>? {
+    val map = value as? Map<*, *> ?: return null
+    return map.entries.associate { entry ->
+        entry.key.toString() to anyToJsonElement(entry.value)
+    }
 }
 
 private fun anyToStringMap(value: Any?): Map<String, String>? {
     val map = value as? Map<*, *> ?: return null
     return map.entries.associate { entry -> entry.key.toString() to (entry.value?.toString() ?: "") }
 }
+
+private fun isMetricCompatibleWithDataset(
+    sampleType: KClass<out Sample>?,
+    metric: ragas.metrics.Metric,
+): Boolean =
+    when (sampleType) {
+        SingleTurnSample::class -> metric is SingleTurnMetric
+        MultiTurnSample::class -> metric is MultiTurnMetric
+        null -> true
+        else -> false
+    }
+
+private fun sampleTypeLabel(sampleType: KClass<out Sample>?): String =
+    when (sampleType) {
+        SingleTurnSample::class -> "single-turn"
+        MultiTurnSample::class -> "multi-turn"
+        null -> "empty"
+        else -> sampleType.simpleName ?: "unknown"
+    }
 
 private fun resolveMetrics(spec: String): List<ragas.metrics.Metric> {
     val allMetrics =
@@ -485,6 +785,8 @@ private fun printHelp(out: (String) -> Unit) {
     out("  compare   Compare candidate vs baseline reports with optional gate thresholds")
     out("examples:")
     out("  ragas eval --input dataset.json --metrics default,tier1 --output run.json")
+    out("  ragas eval --input dataset.json --provider openai --model gpt-5.4-mini --output run.json")
+    out("  ragas eval --input dataset.json --provider gemini --model gemma-4-31b-it --output run.json")
     out("  ragas report --input run.json")
     out("  ragas compare --baseline run_a.json --candidate run_b.json --gate faithfulness=0.01")
 }

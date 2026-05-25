@@ -1,8 +1,10 @@
 package ragas.metrics.collections
 
+import ragas.embeddings.BaseRagasEmbedding
 import ragas.metrics.BaseMetric
 import ragas.metrics.MetricOutputType
 import ragas.metrics.MetricType
+import ragas.metrics.MetricWithEmbeddings
 import ragas.metrics.SingleTurnMetric
 import ragas.metrics.clamp01
 import ragas.metrics.tokenize
@@ -17,12 +19,16 @@ import kotlin.math.sqrt
 class SemanticSimilarityMetric(
     name: String = "semantic_similarity",
     private val threshold: Double? = null,
+    private val allowLexicalFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("reference", "response")),
         outputType = MetricOutputType.CONTINUOUS,
     ),
-    SingleTurnMetric {
+    SingleTurnMetric,
+    MetricWithEmbeddings {
+    override var embeddings: BaseRagasEmbedding? = null
+
     init {
         require(threshold == null || (threshold.isFinite() && threshold in 0.0..1.0)) {
             "threshold must be a finite value in [0.0, 1.0], got $threshold"
@@ -32,7 +38,9 @@ class SemanticSimilarityMetric(
     /**
      * Computes semantic similarity between response and reference text.
      *
-     * Returns a continuous similarity score in [0.0, 1.0] when [threshold] is null.
+     * Returns a continuous similarity score when [threshold] is null.
+     * With embeddings, the score is cosine similarity in [-1.0, 1.0].
+     * With lexical fallback, the score is clamped to [0.0, 1.0].
      * When [threshold] is set, returns binary output: `1.0` if score >= threshold, else `0.0`.
      *
      * @param sample Evaluation sample to score.
@@ -41,7 +49,18 @@ class SemanticSimilarityMetric(
         val reference = sample.reference.orEmpty().ifBlank { " " }
         val response = sample.response.orEmpty().ifBlank { " " }
 
-        val score = cosineSimilarity(reference, response)
+        val score =
+            embeddings?.let { embeddingModel ->
+                val referenceEmbedding = embeddingModel.embedText(reference)
+                val responseEmbedding = embeddingModel.embedText(response)
+                cosineSimilarity(referenceEmbedding, responseEmbedding)
+            } ?: run {
+                check(allowLexicalFallback) {
+                    "SemanticSimilarityMetric requires embeddings for parity semantics. " +
+                        "Set embeddings or use SemanticSimilarityMetric(allowLexicalFallback = true)."
+                }
+                lexicalCosineSimilarity(reference, response)
+            }
         if (threshold != null) {
             return if (score >= threshold) 1.0 else 0.0
         }
@@ -49,6 +68,32 @@ class SemanticSimilarityMetric(
     }
 
     private fun cosineSimilarity(
+        left: List<Float>,
+        right: List<Float>,
+    ): Double {
+        if (left.isEmpty() || right.isEmpty()) {
+            return 0.0
+        }
+        require(left.size == right.size) {
+            "Embedding dimension mismatch: left=${left.size}, right=${right.size}"
+        }
+        var dot = 0.0
+        var leftNorm = 0.0
+        var rightNorm = 0.0
+        repeat(left.size) { index ->
+            val l = left[index].toDouble()
+            val r = right[index].toDouble()
+            dot += l * r
+            leftNorm += l * l
+            rightNorm += r * r
+        }
+        if (leftNorm == 0.0 || rightNorm == 0.0) {
+            return 0.0
+        }
+        return dot / (sqrt(leftNorm) * sqrt(rightNorm))
+    }
+
+    private fun lexicalCosineSimilarity(
         left: String,
         right: String,
     ): Double {
