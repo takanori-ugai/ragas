@@ -168,7 +168,7 @@ class NoiseAndSummaryFixtureTest {
         }
 
     @Test
-    fun summaryLlmPathThrowsWhenNoAnswersGenerated() =
+    fun summaryLlmPathReturnsNanWhenNoAnswersGenerated() =
         runBlocking {
             val metric =
                 SummaryScoreMetric(maxRetries = 1).also { summary ->
@@ -188,8 +188,8 @@ class NoiseAndSummaryFixtureTest {
                     response = "Apple is a technology company.",
                 )
 
-            val error = assertFailsWith<IllegalStateException> { metric.singleTurnAscore(sample) }
-            assertEquals("No answers generated, unable to calculate the score.", error.message)
+            val score = (metric.singleTurnAscore(sample) as Number).toDouble()
+            assertTrue(score.isNaN())
         }
 
     @Test

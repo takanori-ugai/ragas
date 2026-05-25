@@ -80,7 +80,7 @@ class NoiseSensitivityMetric(
 
         val gtStatements = decomposeStatementsWithLlm(llmInstance, reference, userInput)
         val ansStatements = decomposeStatementsWithLlm(llmInstance, response, userInput)
-        if (ansStatements.isEmpty()) {
+        if (gtStatements.isEmpty() || ansStatements.isEmpty()) {
             return Double.NaN
         }
 
@@ -389,10 +389,13 @@ class SummaryScoreMetric(
 
         var questions = generateQuestionsWithLlm(llmInstance, text, keyphrases)
         if (questions.isEmpty()) {
-            questions = emptyList()
+            return Double.NaN
         }
 
         val answers = generateAnswersWithLlm(llmInstance, response, questions)
+        if (answers.isEmpty()) {
+            return Double.NaN
+        }
         val qaScore = computeQaScore(answers)
 
         if (!lengthPenalty) {

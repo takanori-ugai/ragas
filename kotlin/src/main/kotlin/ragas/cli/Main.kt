@@ -179,7 +179,7 @@ private fun runEval(
     val skippedWithoutEmbeddings =
         metrics
             .filter { metric ->
-                metric.name == "semantic_similarity" ||
+                (metric.name == "semantic_similarity" && embeddings == null) ||
                     (
                         (provider == "openai" || provider == "gemini" || provider == "google") &&
                             embeddings == null &&
