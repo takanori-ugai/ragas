@@ -1,6 +1,6 @@
 # Python -> Kotlin Parity Test Matrix
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 This matrix maps Python parity targets to Kotlin implementation modules and concrete Kotlin test evidence.
 
@@ -21,6 +21,14 @@ No remaining `Partial` WS9 entries in `Plan.md` parity map (as of 2026-05-24).
 | `../src/ragas/metrics/collections/summary_score/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` | `src/test/kotlin/ragas/metrics/collections/NoiseAndSummaryFixtureTest.kt` | `src/test/resources/fixtures/metrics/ws3_tier3_noise_summary_fixture.json` |
 | `../src/ragas/metrics/collections/noise_sensitivity/metric.py` | `src/main/kotlin/ragas/metrics/collections/NoiseAndSummaryMetrics.kt` | `src/test/kotlin/ragas/NoiseSensitivityMetricParityTest.kt`, `src/test/kotlin/ragas/metrics/collections/NoiseAndSummaryFixtureTest.kt` | `src/test/resources/fixtures/metrics/ws3_tier3_noise_summary_fixture.json` |
 | `../src/ragas/metrics/collections/_semantic_similarity.py` | `src/main/kotlin/ragas/metrics/collections/SemanticSimilarityMetric.kt` | `src/test/kotlin/ragas/SemanticSimilarityMetricParityTest.kt`, `src/test/kotlin/ragas/metrics/collections/SemanticSimilarityFixtureTest.kt` | `src/test/resources/fixtures/metrics/ws3_tier3_semantic_similarity_fixture.json` |
+
+## WS4 Integration Evidence
+
+| Python module | Kotlin target | Kotlin tests | Fixture evidence |
+| --- | --- | --- | --- |
+| `../src/ragas/integrations/langgraph.py` (`convert_to_ragas_messages`) | `src/main/kotlin/ragas/integrations/LangGraphIntegration.kt` (`evaluateRecords`, `convertToRagasMessages`, `toMultiTurnSample`) | `src/test/kotlin/ragas/integrations/LangGraphIntegrationTest.kt`, `src/test/kotlin/ragas/integrations/LangGraphMessageConversionTest.kt` | N/A (behavioral conversion and integration smoke tests) |
+| `../src/ragas/integrations/langsmith.py` (`evaluate`, record mapping) | `src/main/kotlin/ragas/integrations/LangsmithIntegration.kt` (`toDataset`, `evaluateRecords`, `toMetricPayload`) | `src/test/kotlin/ragas/integrations/LangsmithIntegrationTest.kt` | N/A (integration smoke + mapping/trace contract assertions) |
+| `../src/ragas/integrations/ag_ui.py` (`evaluate`, record mapping) | `src/main/kotlin/ragas/integrations/AgUiIntegration.kt` (`toDataset`, `evaluateRecords`, `toMetricPayload`) | `src/test/kotlin/ragas/integrations/AgUiIntegrationTest.kt` | N/A (integration smoke + mapping/trace contract assertions) |
 
 ## Notes
 

@@ -1,11 +1,14 @@
 package ragas.integrations
 
 import ragas.integrations.tracing.InMemoryTraceObserver
+import ragas.integrations.tracing.MetricRowLogged
+import ragas.integrations.tracing.RunCompleted
 import ragas.integrations.tracing.RunFailed
 import ragas.integrations.tracing.RunStarted
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AgUiIntegrationTest {
@@ -32,31 +35,57 @@ class AgUiIntegrationTest {
         assertEquals("AG-UI provides UI conventions for agent systems.", sample.reference)
     }
 
-    @Suppress("DEPRECATION_ERROR")
     @Test
-    fun evaluateRecordsEmitsRunStartedWithMetadataThenFailsUnsupported() {
+    fun toDatasetMapsEmptyReferenceContextsToNullAndPreservesReference() {
+        val dataset =
+            AgUiIntegration.toDataset(
+                listOf(
+                    AgUiRecord(
+                        input = "q",
+                        output = "a",
+                        referenceContexts = emptyList(),
+                        reference = "gold",
+                    ),
+                ),
+            )
+
+        val sample = dataset.samples.single()
+        assertNull(sample.referenceContexts)
+        assertEquals("gold", sample.reference)
+    }
+
+    @Test
+    fun evaluateRecordsEvaluatesAndEmitsCompletedTrace() {
         val observer = InMemoryTraceObserver()
 
-        val thrown =
-            assertFailsWith<UnsupportedOperationException> {
-                AgUiIntegration.evaluateRecords(
-                    records = listOf(AgUiRecord(input = "q", output = "a")),
-                    runName = "ag-ui-phase3",
-                    tags = mapOf("env" to "test"),
-                    metadata = mapOf("tenant" to "acme"),
-                    observers = listOf(observer),
-                )
-            }
+        val result =
+            AgUiIntegration.evaluateRecords(
+                records =
+                    listOf(
+                        AgUiRecord(
+                            input = "q",
+                            output = "a",
+                            retrievedContexts = listOf("context"),
+                            reference = "a",
+                        ),
+                    ),
+                runName = "ag-ui-phase3",
+                tags = mapOf("env" to "test"),
+                metadata = mapOf("tenant" to "acme"),
+                observers = listOf(observer),
+            )
+        val payload = AgUiIntegration.toMetricPayload(result)
 
-        assertTrue(thrown.message?.contains("Integration 'ag-ui' is not yet implemented") == true)
+        assertEquals(1, payload.size)
+        assertTrue(payload.first().containsKey("answer_relevancy"))
         val started = observer.events.first() as RunStarted
         assertEquals("ag-ui", started.framework)
         assertEquals("ag-ui-phase3", started.runName)
         assertEquals(mapOf("env" to "test"), started.tags)
         assertEquals(mapOf("tenant" to "acme"), started.metadata)
 
-        val failed = observer.events.last() as RunFailed
-        assertEquals("UnsupportedOperationException", failed.errorType)
-        assertTrue(failed.errorMessage.contains("ag-ui"))
+        assertTrue(observer.events.any { event -> event is MetricRowLogged })
+        assertTrue(observer.events.last() is RunCompleted)
+        assertFalse(observer.events.any { event -> event is RunFailed })
     }
 }
