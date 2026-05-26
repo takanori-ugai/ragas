@@ -71,6 +71,10 @@ tasks {
         mainClass.set(application.mainClass)
         classpath = sourceSets.main.get().runtimeClasspath
     }
+
+    shadowJar {
+        isZip64 = true
+    }
 }
 
 ktlint {
