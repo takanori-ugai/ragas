@@ -468,5 +468,8 @@ object LangsmithIntegration {
             .mapValues { (_, value) -> JsonValue.from(value) }
 
     private fun toAnyMap(values: Map<String, JsonValue>): Map<String, Any?> =
-        values.mapValues { (_, value) -> runCatching { value.convert(Any::class.java) }.getOrNull() }
+        values.mapValues { (key, value) ->
+            runCatching { value.convert(Any::class.java) }
+                .getOrElse { error -> throw IllegalStateException("Failed to decode LangSmith field '$key'", error) }
+        }
 }
