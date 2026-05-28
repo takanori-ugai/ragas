@@ -56,6 +56,7 @@ The CLI entrypoint is `ragas.cli.MainKt`.
 ./gradlew run --args="eval --input dataset.json --metrics default --output run.json"
 ./gradlew run --args="eval --input dataset.json --provider openai --model gpt-5.4-mini --output run.json"
 ./gradlew run --args="eval --input dataset.json --provider gemini --model gemma-4-31b-it --output run.json"
+./gradlew run --args="eval --input dataset.json --provider ollama --model llama3.2 --ollama-base-url http://localhost:11434 --output run.json"
 ./gradlew run --args="report --input run.json"
 ./gradlew run --args="compare --baseline baseline.json --candidate run.json --gate faithfulness=0.01"
 ```
@@ -109,9 +110,11 @@ Run evaluation from JSON/JSONL input rows and emit a report JSON.
 LLM defaults and flags:
 - `--provider` defaults to `openai`
 - `--model` defaults to `gpt-5.4-mini`
-- Supported providers: `openai`, `gemini`, `none`
+- Supported providers: `openai`, `gemini`, `ollama`, `none`
 - For OpenAI provider, set `OPENAI_API_KEY` in your environment.
 - For Gemini provider, set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) in your environment.
+- For Ollama provider, use `--ollama-base-url` or set `OLLAMA_BASE_URL` (defaults to `http://localhost:11434`).
+- For Ollama embeddings, optionally set `--embedding-model` (defaults to `nomic-embed-text`).
 
 Supported input shapes:
 - JSON array of row objects
