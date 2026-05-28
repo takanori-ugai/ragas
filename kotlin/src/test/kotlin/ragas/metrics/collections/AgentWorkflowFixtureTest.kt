@@ -14,8 +14,8 @@ class AgentWorkflowFixtureTest {
     fun agentGoalVariantsMatchFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH)
-            val withReference = AgentGoalAccuracyWithReferenceMetric()
-            val withoutReference = AgentGoalAccuracyWithoutReferenceMetric()
+            val withReference = AgentGoalAccuracyWithReferenceMetric(allowHeuristicFallback = true)
+            val withoutReference = AgentGoalAccuracyWithoutReferenceMetric(allowHeuristicFallback = true)
 
             fixture.jsonObject.getValue("cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
@@ -53,7 +53,7 @@ class AgentWorkflowFixtureTest {
     fun workflowCompletionMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH)
-            val metric = AgentWorkflowCompletionMetric()
+            val metric = AgentWorkflowCompletionMetric(allowHeuristicFallback = true)
 
             fixture.jsonObject.getValue("cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject

@@ -48,16 +48,16 @@ class WS9CrossLanguagePartialGoldenTest {
         when (name) {
             "faithfulness" -> FaithfulnessMetric()
             "context_recall" -> ContextRecallMetric()
-            "answer_accuracy" -> AnswerAccuracyMetric()
-            "answer_correctness" -> AnswerCorrectnessMetric()
-            "factual_correctness" -> FactualCorrectnessMetric()
+            "answer_accuracy" -> AnswerAccuracyMetric(allowHeuristicFallback = true)
+            "answer_correctness" -> AnswerCorrectnessMetric(allowHeuristicFallback = true)
+            "factual_correctness" -> FactualCorrectnessMetric(allowHeuristicFallback = true)
             else -> error("Unsupported single-turn metric in WS9 cross-language fixture: $name")
         }
 
     private fun multiTurnMetricByName(name: String): MultiTurnMetric =
         when (name) {
-            "agent_goal_accuracy_with_reference" -> AgentGoalAccuracyWithReferenceMetric()
-            "agent_goal_accuracy_without_reference" -> AgentGoalAccuracyWithoutReferenceMetric()
+            "agent_goal_accuracy_with_reference" -> AgentGoalAccuracyWithReferenceMetric(allowHeuristicFallback = true)
+            "agent_goal_accuracy_without_reference" -> AgentGoalAccuracyWithoutReferenceMetric(allowHeuristicFallback = true)
             else -> error("Unsupported multi-turn metric in WS9 cross-language fixture: $name")
         }
 

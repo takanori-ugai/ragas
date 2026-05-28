@@ -41,6 +41,7 @@ class FactualCorrectnessMetric(
     private val atomicity: DecompositionLevel = DecompositionLevel.LOW,
     private val coverage: DecompositionLevel = DecompositionLevel.LOW,
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),
@@ -90,6 +91,10 @@ class FactualCorrectnessMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmFactualCorrectnessScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "FactualCorrectnessMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use FactualCorrectnessMetric(allowHeuristicFallback = true)."
         }
         return fallbackFactualCorrectnessScore(sample)
     }
@@ -480,6 +485,7 @@ class TopicAdherenceMetric(
     name: String = "topic_adherence",
     private val mode: Mode = Mode.F1,
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.MULTI_TURN to setOf("user_input", "reference_topics")),
@@ -515,6 +521,10 @@ class TopicAdherenceMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmTopicAdherenceScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "TopicAdherenceMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use TopicAdherenceMetric(allowHeuristicFallback = true)."
         }
         return fallbackTopicAdherenceScore(sample)
     }

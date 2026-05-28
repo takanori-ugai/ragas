@@ -27,6 +27,7 @@ class NoiseSensitivityMetric(
     name: String = "noise_sensitivity",
     private val mode: Mode = Mode.RELEVANT,
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference", "retrieved_contexts")),
@@ -61,6 +62,10 @@ class NoiseSensitivityMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmNoiseSensitivityScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "NoiseSensitivityMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use NoiseSensitivityMetric(allowHeuristicFallback = true)."
         }
         return fallbackNoiseSensitivityScore(sample)
     }
@@ -333,6 +338,7 @@ class SummaryScoreMetric(
     private val lengthPenalty: Boolean = true,
     private val coeff: Double = 0.5,
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("reference_contexts", "response")),
@@ -368,6 +374,10 @@ class SummaryScoreMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmSummaryScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "SummaryScoreMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use SummaryScoreMetric(allowHeuristicFallback = true)."
         }
         return fallbackSummaryScore(sample)
     }

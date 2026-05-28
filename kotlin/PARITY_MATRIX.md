@@ -1,6 +1,6 @@
 # RAGAS Python -> Kotlin Parity Matrix
 
-Last updated: 2026-05-25
+Last updated: 2026-05-28
 
 ## Core Runtime
 
@@ -11,6 +11,7 @@ Last updated: 2026-05-25
 | Run config/retry/executor | Done | Timeout/retry/batch/cancel behavior |
 | Default metrics (MVP 4) | Done | answer_relevancy, context_precision, faithfulness, context_recall |
 | Tier-1/2/3/4 metric accessors | Done | Public `tier1Metrics()`, `tier2Metrics()`, `tier3Metrics()`, `tier4Metrics()` are wired in `ragas.PublicApi` |
+| Collections metric surface completeness vs Python | Done | Added Python-style Kotlin collections exports (`DistanceMeasure`, `ExactMatch`, `StringPresence`, `NonLLMStringSimilarity`), plus aliases `AgentGoalAccuracy` and `SQLSemanticEquivalence` |
 
 ## Models and Providers
 
@@ -44,6 +45,7 @@ Last updated: 2026-05-25
 ## Intentional Deferrals
 
 - Evaluation API: remaining Python-specific ecosystem integrations are not yet mirrored.
+- Collections strictness compatibility: Kotlin collections metrics are strict by default for parity; compatibility heuristic mode remains available behind explicit `allowHeuristicFallback = true` flags where provided.
 - Multimodal URL ingestion hardening: DNS rebinding TOCTOU remains a known limitation with current `HttpURLConnection`-based best-effort SSRF checks; full mitigation requires connection-time IP pinning via a custom HTTP client/socket stack.
 - Additional WS6 hardening beyond the current shipped baseline (broader transform/synthesizer coverage and deeper semantic parity against Python internals).
 - Broader integrations beyond current LangChain/LlamaIndex adapters and tracing observers.

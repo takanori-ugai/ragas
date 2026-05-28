@@ -32,6 +32,7 @@ import kotlin.math.pow
 class AnswerAccuracyMetric(
     name: String = "answer_accuracy",
     private val maxRetries: Int = 5,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference")),
@@ -58,6 +59,10 @@ class AnswerAccuracyMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmAnswerAccuracyScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "AnswerAccuracyMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use AnswerAccuracyMetric(allowHeuristicFallback = true)."
         }
         return fallbackAnswerAccuracyScore(sample)
     }
@@ -261,6 +266,7 @@ class AnswerCorrectnessMetric(
     name: String = "answer_correctness",
     private val weights: List<Double> = listOf(0.75, 0.25),
     private val beta: Double = 1.0,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("user_input", "response", "reference")),
@@ -298,6 +304,10 @@ class AnswerCorrectnessMetric(
         val llmInstance = llm
         if (llmInstance != null) {
             return llmAnswerCorrectnessScore(sample, llmInstance)
+        }
+        check(allowHeuristicFallback) {
+            "AnswerCorrectnessMetric requires an LLM for collections-parity semantics. " +
+                "Set llm or use AnswerCorrectnessMetric(allowHeuristicFallback = true)."
         }
         return fallbackAnswerCorrectnessScore(sample)
     }
