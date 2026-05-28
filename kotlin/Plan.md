@@ -1,6 +1,6 @@
 # RAGAS Kotlin Full-Parity Completion Plan
 
-Last updated: 2026-05-24
+Last updated: 2026-05-28
 
 ## Goal
 
@@ -383,7 +383,17 @@ Complete Kotlin parity with Python `../src/ragas` so Kotlin can be used as a fir
       - `../src/ragas/metrics/collections/agent_goal_accuracy/metric.py` (workflow inference/completion intent) ->
         `src/main/kotlin/ragas/metrics/collections/AgentWorkflowMetrics.kt` (`AgentWorkflowCompletionMetric`) is now `Done`.
 - Exit criteria:
-  - Kotlin has parity for Python metrics currently under `../src/ragas/metrics`.
+  - Kotlin has parity for the prioritized Python metric set under `../src/ragas/metrics`,
+    with explicit documentation for known surface and behavioral gaps.
+  - Deep-investigation gaps closed (2026-05-28):
+    - Added Python-style collections exports in Kotlin:
+      `DistanceMeasure`, `ExactMatch`, `StringPresence`, `NonLLMStringSimilarity`,
+      and `AgentGoalAccuracy` alias.
+    - Added naming alias parity:
+      Python `SQLSemanticEquivalence` alias now maps to Kotlin `SqlSemanticEquivalenceMetric`.
+    - Tightened collections behavior parity:
+      key LLM-backed collection metrics are strict by default; heuristic mode is now explicit
+      via `allowHeuristicFallback = true` compatibility knob.
 
 ### WS4: Integrations Parity `[ ]`
 

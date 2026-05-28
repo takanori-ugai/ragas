@@ -25,6 +25,7 @@ import ragas.runtime.RunConfig
 class AgentGoalAccuracyWithReferenceMetric(
     name: String = "agent_goal_accuracy_with_reference",
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.MULTI_TURN to setOf("user_input", "reference")),
@@ -49,20 +50,19 @@ class AgentGoalAccuracyWithReferenceMetric(
             return 0.0
         }
         val llmInstance = llm
-        if (llmInstance != null) {
-            try {
-                val inferred = inferGoalOutcomeWithLlm(llmInstance, sample.userInput, maxRetries)
-                val endState = inferred?.endState.orEmpty()
-                if (endState.isNotBlank()) {
-                    val verdict = compareOutcomesWithLlm(llmInstance, desiredOutcome, endState, maxRetries)
-                    if (verdict != null) {
-                        return verdict.toDouble()
-                    }
+        if (llmInstance == null) {
+            check(allowHeuristicFallback) {
+                "AgentGoalAccuracyWithReferenceMetric requires an LLM for collections-parity semantics. " +
+                    "Set llm or use AgentGoalAccuracyWithReferenceMetric(allowHeuristicFallback = true)."
+            }
+        } else {
+            val inferred = inferGoalOutcomeWithLlm(llmInstance, sample.userInput, maxRetries)
+            val endState = inferred?.endState.orEmpty()
+            if (endState.isNotBlank()) {
+                val verdict = compareOutcomesWithLlm(llmInstance, desiredOutcome, endState, maxRetries)
+                if (verdict != null) {
+                    return verdict.toDouble()
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Fall through to heuristic mode for parity-safe behavior.
             }
         }
         val endState = inferEndState(sample.userInput)
@@ -76,6 +76,7 @@ class AgentGoalAccuracyWithReferenceMetric(
 class AgentGoalAccuracyWithoutReferenceMetric(
     name: String = "agent_goal_accuracy_without_reference",
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.MULTI_TURN to setOf("user_input")),
@@ -96,21 +97,20 @@ class AgentGoalAccuracyWithoutReferenceMetric(
      */
     override suspend fun multiTurnAscore(sample: MultiTurnSample): Any {
         val llmInstance = llm
-        if (llmInstance != null) {
-            try {
-                val inferred = inferGoalOutcomeWithLlm(llmInstance, sample.userInput, maxRetries)
-                val desiredOutcome = inferred?.userGoal.orEmpty()
-                val endState = inferred?.endState.orEmpty()
-                if (desiredOutcome.isNotBlank() && endState.isNotBlank()) {
-                    val verdict = compareOutcomesWithLlm(llmInstance, desiredOutcome, endState, maxRetries)
-                    if (verdict != null) {
-                        return verdict.toDouble()
-                    }
+        if (llmInstance == null) {
+            check(allowHeuristicFallback) {
+                "AgentGoalAccuracyWithoutReferenceMetric requires an LLM for collections-parity semantics. " +
+                    "Set llm or use AgentGoalAccuracyWithoutReferenceMetric(allowHeuristicFallback = true)."
+            }
+        } else {
+            val inferred = inferGoalOutcomeWithLlm(llmInstance, sample.userInput, maxRetries)
+            val desiredOutcome = inferred?.userGoal.orEmpty()
+            val endState = inferred?.endState.orEmpty()
+            if (desiredOutcome.isNotBlank() && endState.isNotBlank()) {
+                val verdict = compareOutcomesWithLlm(llmInstance, desiredOutcome, endState, maxRetries)
+                if (verdict != null) {
+                    return verdict.toDouble()
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Fall through to heuristic mode for parity-safe behavior.
             }
         }
         val desiredOutcome = inferDesiredOutcome(sample.userInput)
@@ -128,6 +128,7 @@ class AgentGoalAccuracyWithoutReferenceMetric(
 class AgentWorkflowCompletionMetric(
     name: String = "agent_workflow_completion",
     private val maxRetries: Int = 3,
+    private val allowHeuristicFallback: Boolean = false,
 ) : BaseMetric(
         name = name,
         requiredColumns = mapOf(MetricType.MULTI_TURN to setOf("user_input")),
@@ -153,16 +154,15 @@ class AgentWorkflowCompletionMetric(
         }
 
         val llmInstance = llm
-        if (llmInstance != null) {
-            try {
-                val llmScore = workflowCompletionWithLlm(llmInstance, messages, maxRetries)
-                if (llmScore != null) {
-                    return llmScore
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // Fall through to heuristic mode for parity-safe behavior.
+        if (llmInstance == null) {
+            check(allowHeuristicFallback) {
+                "AgentWorkflowCompletionMetric requires an LLM for collections-parity semantics. " +
+                    "Set llm or use AgentWorkflowCompletionMetric(allowHeuristicFallback = true)."
+            }
+        } else {
+            val llmScore = workflowCompletionWithLlm(llmInstance, messages, maxRetries)
+            if (llmScore != null) {
+                return llmScore
             }
         }
 

@@ -1,12 +1,22 @@
 # Python -> Kotlin Parity Test Matrix
 
-Last updated: 2026-05-25
+Last updated: 2026-05-28
 
 This matrix maps Python parity targets to Kotlin implementation modules and concrete Kotlin test evidence.
 
 ## Partial-Status Coverage Focus (WS9)
 
 No remaining `Partial` WS9 entries in `Plan.md` parity map (as of 2026-05-24).
+
+## Deep Investigation Notes (2026-05-28)
+
+- Metric fixture and parity suites are green, including:
+  `WS9CrossLanguagePartialGoldenTest`, `GoldenFixturesTest`,
+  `*MetricParityTest`, and metric collection `*FixtureTest` coverage.
+- Source-level audit gaps closed in follow-up implementation:
+  - Added missing Python-style collections exports and aliases in Kotlin.
+  - Added `SQLSemanticEquivalence` naming alias.
+  - Set key LLM-backed collection metrics to strict-by-default behavior, with explicit compatibility fallback flags.
 
 ## Recently Promoted to Done (WS9)
 

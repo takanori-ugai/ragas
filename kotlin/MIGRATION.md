@@ -15,6 +15,9 @@
 
 ## Main Differences (Current)
 
+- Kotlin now includes Python-style collections exports for string metrics
+  (`DistanceMeasure`, `ExactMatch`, `StringPresence`, `NonLLMStringSimilarity`)
+  and alias compatibility for `AgentGoalAccuracy` and `SQLSemanticEquivalence`.
 - Kotlin prompt stack includes `SimplePrompt` and typed prompts (`TypedPrompt`, few-shot typed variants, Pydantic-style wrappers) plus multimodal typed prompts (`ImageTextTypedPrompt`).
 - Multimodal prompt content in Kotlin uses explicit parts (`PromptContentPart.Text`, `ImageDataUri`, `ImageUrl`) and secure normalization helpers (`MultiModalContentNormalizer` / `MultiModalInputPolicy`) for data URI, URL, and optional local-file flows.
 - Kotlin provides LangChain/LlamaIndex record adapters and trace observers (`InMemoryTraceObserver`, Langfuse-style, MLflow-style), but broader Python integration ecosystem is still pending.
@@ -27,6 +30,9 @@
   - `eval --input ... --output ...`
   - `report --input ...`
   - `compare --baseline ... --candidate ... --gate metric=delta`
+- Collection metrics that are LLM-backed are strict by default for parity semantics.
+  For compatibility/offline workflows, selected metrics expose explicit
+  `allowHeuristicFallback = true`.
 
 ## Minimal Kotlin Evaluate Example
 

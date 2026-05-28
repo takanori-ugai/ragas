@@ -14,7 +14,7 @@ class AnswerQualityFixtureTest {
     fun answerAccuracyMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH)
-            val metric = AnswerAccuracyMetric()
+            val metric = AnswerAccuracyMetric(allowHeuristicFallback = true)
 
             fixture.jsonObject.getValue("cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
@@ -45,7 +45,7 @@ class AnswerQualityFixtureTest {
     fun answerCorrectnessMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH)
-            val metric = AnswerCorrectnessMetric()
+            val metric = AnswerCorrectnessMetric(allowHeuristicFallback = true)
 
             fixture.jsonObject.getValue("cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject

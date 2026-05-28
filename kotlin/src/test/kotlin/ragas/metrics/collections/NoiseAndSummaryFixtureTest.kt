@@ -21,8 +21,18 @@ class NoiseAndSummaryFixtureTest {
     fun noiseSensitivityMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
-            val relevant = NoiseSensitivityMetric(mode = NoiseSensitivityMetric.Mode.RELEVANT, name = "noise_sensitivity_relevant")
-            val irrelevant = NoiseSensitivityMetric(mode = NoiseSensitivityMetric.Mode.IRRELEVANT, name = "noise_sensitivity_irrelevant")
+            val relevant =
+                NoiseSensitivityMetric(
+                    mode = NoiseSensitivityMetric.Mode.RELEVANT,
+                    name = "noise_sensitivity_relevant",
+                    allowHeuristicFallback = true,
+                )
+            val irrelevant =
+                NoiseSensitivityMetric(
+                    mode = NoiseSensitivityMetric.Mode.IRRELEVANT,
+                    name = "noise_sensitivity_irrelevant",
+                    allowHeuristicFallback = true,
+                )
 
             fixture.getValue("noise_sensitivity_cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
@@ -66,8 +76,9 @@ class NoiseAndSummaryFixtureTest {
     fun summaryScoreMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
-            val defaultMetric = SummaryScoreMetric(name = "summary_score_default")
-            val noPenaltyMetric = SummaryScoreMetric(name = "summary_score_no_penalty", lengthPenalty = false)
+            val defaultMetric = SummaryScoreMetric(name = "summary_score_default", allowHeuristicFallback = true)
+            val noPenaltyMetric =
+                SummaryScoreMetric(name = "summary_score_no_penalty", lengthPenalty = false, allowHeuristicFallback = true)
 
             fixture.getValue("summary_score_cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject

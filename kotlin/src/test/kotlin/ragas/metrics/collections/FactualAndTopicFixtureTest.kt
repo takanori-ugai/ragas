@@ -15,7 +15,7 @@ class FactualAndTopicFixtureTest {
     fun factualCorrectnessMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
-            val metric = FactualCorrectnessMetric()
+            val metric = FactualCorrectnessMetric(allowHeuristicFallback = true)
 
             fixture.getValue("factual_correctness_cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
@@ -42,7 +42,7 @@ class FactualAndTopicFixtureTest {
     fun topicAdherenceMatchesFixtureScoreBands() =
         runBlocking {
             val fixture = AgentFixtureTestSupport.readFixture(FIXTURE_PATH).jsonObject
-            val metric = TopicAdherenceMetric()
+            val metric = TopicAdherenceMetric(allowHeuristicFallback = true)
 
             fixture.getValue("topic_adherence_cases").jsonArray.forEach { row ->
                 val obj = row.jsonObject
