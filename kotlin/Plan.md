@@ -1,6 +1,6 @@
 # RAGAS Kotlin Full-Parity Completion Plan
 
-Last updated: 2026-05-24
+Last updated: 2026-05-28
 
 ## Goal
 

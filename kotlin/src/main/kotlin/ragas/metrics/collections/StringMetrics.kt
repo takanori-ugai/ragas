@@ -47,6 +47,9 @@ class StringPresence(
     SingleTurnMetric {
     override suspend fun singleTurnAscore(sample: SingleTurnSample): Any {
         val reference = sample.reference.orEmpty()
+        if (reference.isEmpty()) {
+            return 0.0
+        }
         val response = sample.response.orEmpty()
         return if (reference in response) 1.0 else 0.0
     }
@@ -120,15 +123,16 @@ private fun hammingSimilarity(
     left: String,
     right: String,
 ): Double {
-    val maxLen = max(left.length, right.length)
+    val leftLen = left.length
+    val rightLen = right.length
+    val maxLen = max(leftLen, rightLen)
     if (maxLen == 0) {
         return 1.0
     }
-    var mismatches = 0
-    for (i in 0 until maxLen) {
-        val l = left.getOrNull(i)
-        val r = right.getOrNull(i)
-        if (l != r) {
+    val minLen = min(leftLen, rightLen)
+    var mismatches = maxLen - minLen
+    for (i in 0 until minLen) {
+        if (left[i] != right[i]) {
             mismatches += 1
         }
     }

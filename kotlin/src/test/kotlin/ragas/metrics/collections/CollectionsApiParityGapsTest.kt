@@ -70,6 +70,7 @@ class CollectionsApiParityGapsTest {
             assertFailsWith<IllegalStateException> { AgentGoalAccuracyWithReferenceMetric().multiTurnAscore(multiTurn) }
             assertFailsWith<IllegalStateException> { AgentGoalAccuracyWithoutReferenceMetric().multiTurnAscore(multiTurn) }
             assertFailsWith<IllegalStateException> { AgentWorkflowCompletionMetric().multiTurnAscore(multiTurn) }
+            assertFailsWith<IllegalStateException> { TopicAdherenceMetric().multiTurnAscore(multiTurn) }
         }
     }
 }
