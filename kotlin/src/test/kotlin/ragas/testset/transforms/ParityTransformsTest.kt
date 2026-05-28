@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import ragas.testset.graph.KnowledgeGraph
 import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
+import ragas.tokenizers.DEFAULT_TOKENIZER
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -95,11 +96,7 @@ class ParityTransformsTest {
             val (chunks, _) = splitter.split(node)
             val tokenCounts =
                 chunks.map { chunk ->
-                    chunk
-                        .getProperty("page_content")
-                        .orEmpty()
-                        .split(Regex("\\s+"))
-                        .count { token -> token.isNotBlank() }
+                    DEFAULT_TOKENIZER.countTokens(chunk.getProperty("page_content").orEmpty())
                 }
 
             assertTrue(chunks.size >= 2)

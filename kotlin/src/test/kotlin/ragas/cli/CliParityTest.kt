@@ -338,6 +338,48 @@ class CliParityTest {
     }
 
     @Test
+    fun evalCommandSupportsOllamaProviderForNonLlmMetric() {
+        withTempDir("ragas-cli-eval-ollama") { dir ->
+            val dataset = dir.resolve("dataset.json")
+            val report = dir.resolve("report.json")
+            dataset.writeText(
+                """
+                [
+                  {
+                    "user_input": "What is Kotlin?",
+                    "response": "Kotlin is a JVM language.",
+                    "reference": "Kotlin is a JVM language."
+                  }
+                ]
+                """.trimIndent(),
+            )
+
+            val code =
+                runCli(
+                    arrayOf(
+                        "eval",
+                        "--input",
+                        dataset.absolutePath,
+                        "--metrics",
+                        "sql_semantic_equivalence",
+                        "--provider",
+                        "ollama",
+                        "--model",
+                        "llama3.2",
+                        "--ollama-base-url",
+                        "http://localhost:11434",
+                        "--output",
+                        report.absolutePath,
+                    ),
+                    getenv = { _ -> null },
+                )
+
+            assertEquals(0, code)
+            assertTrue(report.exists())
+        }
+    }
+
+    @Test
     fun evalCommandSkipsAnswerCorrectnessWhenProviderIsSetButEmbeddingsUnavailable() {
         withTempDir("ragas-cli-eval-answer-correctness-skip") { dir ->
             val dataset = dir.resolve("dataset.json")

@@ -15,7 +15,7 @@ The new metrics collections and experiments support caching through a simple int
 
 ### Quick Start
 
-```python
+```kotlin
 from ragas.cache import DiskCacheBackend
 from ragas.llms import llm_factory
 from openai import OpenAI
@@ -38,7 +38,7 @@ response = llm.generate("Evaluate this...", Response)
 
 ### Caching with llm_factory
 
-```python
+```kotlin
 from ragas.cache import DiskCacheBackend
 from ragas.llms import llm_factory
 from openai import OpenAI
@@ -61,7 +61,7 @@ response2 = llm.generate("Evaluate this text", Response)
 
 ### Caching with embedding_factory
 
-```python
+```kotlin
 from ragas.cache import DiskCacheBackend
 from ragas.embeddings import embedding_factory
 from openai import OpenAI
@@ -84,7 +84,7 @@ assert vector1 == vector2  # Identical results
 
 Caching is especially powerful in experiments where you run the same evaluation multiple times:
 
-```python
+```kotlin
 from ragas import experiment, Dataset
 from ragas.cache import DiskCacheBackend
 from ragas.llms import llm_factory
@@ -132,7 +132,7 @@ results2 = await evaluate_model.arun(dataset)
 
 #### Clearing the Cache
 
-```python
+```kotlin
 # Clear all cached data
 cache = DiskCacheBackend()
 cache.cache.clear()
@@ -140,7 +140,7 @@ cache.cache.clear()
 
 #### Setting Size Limits
 
-```python
+```kotlin
 # Limit cache to 1GB
 cache = DiskCacheBackend()
 cache.cache.reset('size_limit', 1e9)  # 1GB
@@ -151,7 +151,7 @@ cache.cache.reset('cull_limit', 10)   # Remove 10% when full
 
 By default, cache is stored in `.cache/` directory. You can change this:
 
-```python
+```kotlin
 cache = DiskCacheBackend(cache_dir="my_custom_cache")
 ```
 
@@ -189,7 +189,7 @@ Cache misses occur when:
 
 **Serverless Functions**: Use `/tmp` directory:
 
-```python
+```kotlin
 cache = DiskCacheBackend(cache_dir="/tmp/.cache")
 ```
 
@@ -214,7 +214,7 @@ cache = DiskCacheBackend(cache_dir="/tmp/.cache")
 
 Let's see how you can use the [DiskCacheBackend][ragas.cache.DiskCacheBackend] with legacy LLM and Embedding models.
 
-```python
+```kotlin
 from ragas.cache import DiskCacheBackend
 
 cacher = DiskCacheBackend()
@@ -227,14 +227,14 @@ print(len(cacher.cache))
 
 Create an LLM and Embedding model with the cacher, here I'm using the `ChatOpenAI` from [langchain-openai](https://github.com/langchain-ai/langchain-openai) as an example.
 
-```python
+```kotlin
 from langchain_openai import ChatOpenAI
 from ragas.llms import LangchainLLMWrapper
 
 cached_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o"), cache=cacher)
 ```
 
-```python
+```kotlin
 # if you want to see the cache in action, set the logging level to debug
 import logging
 from ragas.utils import set_logging_level
@@ -244,7 +244,7 @@ set_logging_level("ragas.cache", logging.DEBUG)
 
 Now let's run a simple evaluation.
 
-```python
+```kotlin
 from ragas import evaluate
 from ragas import EvaluationDataset
 
@@ -277,7 +277,7 @@ results
 
 This took almost 2mins to run in our local machine. Now let's run it again to see the cache in action.
 
-```python
+```kotlin
 results = evaluate(
     dataset=eval_dataset,
     metrics=metrics,

@@ -1,136 +1,60 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
-> [!NOTE]
-> This page was adapted from `../docs/howtos/cli/prompt_evals.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
-
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 # Prompt Evaluation Quickstart
 
-The `prompt_evals` template evaluates and compares different prompt variations with sentiment analysis.
+Evaluate prompt quality on a labeled sentiment dataset.
 
-## Create the Project
-
-```sh
-ragas quickstart prompt_evals
-cd prompt_evals
-```
-
-## Install Dependencies
+## Run
 
 ```sh
-uv sync
+./gradlew build
+./gradlew execute -PmainClass=ragas.examples.prompteval.EvalsKt
 ```
 
-## Set Your API Key
+## Prompt Function
 
-```sh
-export OPENAI_API_KEY="your-openai-key"
+```kotlin
+// @compile
+suspend fun runPrompt(text: String): String {
+    // Must return "positive" or "negative".
+    TODO()
+}
 ```
 
-## Run the Evaluation
+## Dataset
 
-```sh
-uv run python evals.py
-```
+```kotlin
+// @compile
+data class PromptRow(val text: String, val label: String)
 
-## Project Structure
-
-```
-prompt_evals/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── prompt.py              # Prompt implementation
-├── evals.py               # Evaluation workflow
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/          # Test datasets
-    ├── experiments/       # Evaluation results
-    └── logs/              # Execution logs
-```
-
-## What It Evaluates
-
-The template evaluates prompt effectiveness for sentiment classification:
-
-- **Task**: Sentiment analysis (positive/negative)
-- **Test Cases**: Movie reviews with expected sentiment labels
-- **Metric**: Binary accuracy (pass/fail)
-
-## Understanding the Code
-
-### The Prompt (`prompt.py`)
-
-Implements the sentiment analysis prompt:
-
-```python
-from prompt import run_prompt
-
-sentiment = run_prompt("I loved the movie! It was fantastic.")
-# Returns: "positive" or "negative"
-```
-
-### The Evaluation (`evals.py`)
-
-Tests prompt accuracy:
-
-```python
-@discrete_metric(name="accuracy", allowed_values=["pass", "fail"])
-def my_metric(prediction: str, actual: str):
-    return (
-        MetricResult(value="pass", reason="")
-        if prediction == actual
-        else MetricResult(value="fail", reason="")
+val dataset =
+    listOf(
+        PromptRow("I loved the movie! It was fantastic.", "positive"),
+        PromptRow("The movie was terrible and boring.", "negative"),
     )
 ```
 
-## Test Data
+## Pass/Fail Metric
 
-The dataset includes movie reviews:
-
-```python
-dataset_dict = [
-    {"text": "I loved the movie! It was fantastic.", "label": "positive"},
-    {"text": "The movie was terrible and boring.", "label": "negative"},
-    # More examples...
-]
+```kotlin
+// @compile
+fun passFail(prediction: String, expected: String): String = if (prediction == expected) "pass" else "fail"
 ```
 
-## Customization
+## Optional Numeric Metric
 
-### Test Different Prompts
+```kotlin
+// @compile
+import ragas.metrics.MetricType
+import ragas.metrics.primitives.NumericMetric
+import ragas.llms.BaseRagasLlm
 
-Modify `prompt.py` to test variations:
-
-```python
-# Version 1: Simple
-prompt = f"Is this positive or negative: {text}"
-
-# Version 2: With examples
-prompt = f"""Classify sentiment:
-Examples:
-- "Great movie" -> positive
-- "Boring film" -> negative
-
-Text: {text}
-Sentiment:"""
-
-# Compare results across versions
+val llm: BaseRagasLlm = TODO("Configure LLM")
+val confidenceMetric =
+    NumericMetric(
+        name = "confidence",
+        prompt = "Rate confidence from 1 to 5 for this classification: {response}",
+        llm = llm,
+        allowedRange = 1.0..5.0,
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response")),
+    )
 ```
-
-### Add More Metrics
-
-Evaluate additional aspects:
-
-```python
-from ragas.metrics import NumericalMetric
-
-confidence = NumericalMetric(
-    name="confidence",
-    prompt="Rate confidence 1-5 in this classification: {prediction}",
-    allowed_values=(1, 5),
-)
-```
-
-## Next Steps
-
-- [Judge Alignment](judge_alignment.md) - Measure LLM-as-judge alignment
-- [LLM Benchmarking](benchmark_llm.md) - Compare different models

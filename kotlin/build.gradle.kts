@@ -35,6 +35,7 @@ repositories {
 
 dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.32")
+    implementation("com.knuddels:jtokkit:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("io.github.oshai:kotlin-logging-jvm:8.0.01")
@@ -56,6 +57,124 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.9")
 }
 
+val docsSnippetSourceDir = layout.buildDirectory.dir("generated/docs-snippets/src/main/kotlin")
+val docsSnippetRoots =
+    listOf(
+        "docs/howtos/cli",
+        "docs/howtos/applications",
+        "docs/howtos/integrations",
+    )
+
+val extractDocsKotlinSnippets by tasks.registering {
+    group = "verification"
+    description = "Extracts Kotlin fenced code blocks from docs into generated sources."
+    inputs.files(
+        docsSnippetRoots.map { root ->
+            fileTree(root) {
+                include("**/*.md")
+            }
+        },
+    )
+    outputs.dir(docsSnippetSourceDir)
+    doLast {
+        val outDir = docsSnippetSourceDir.get().asFile
+        if (outDir.exists()) {
+            outDir.deleteRecursively()
+        }
+        outDir.mkdirs()
+
+        val fenceRegex = Regex("(?s)```kotlin\\s*\\n(.*?)\\n```")
+        var snippetIndex = 0
+        docsSnippetRoots.forEach { root ->
+            val rootDir = file(root)
+            if (!rootDir.exists()) {
+                return@forEach
+            }
+            rootDir
+                .walkTopDown()
+                .filter { entry -> entry.isFile && entry.extension == "md" }
+                .forEach { markdown ->
+                    val text = markdown.readText()
+                    fenceRegex.findAll(text).forEach { match ->
+                        val snippet = match.groupValues[1].trim()
+                        if (snippet.isBlank()) {
+                            return@forEach
+                        }
+                        if (!snippet
+                                .lineSequence()
+                                .first()
+                                .trim()
+                                .startsWith("// @compile")
+                        ) {
+                            return@forEach
+                        }
+                        val snippetWithoutMarker =
+                            snippet
+                                .lineSequence()
+                                .drop(1)
+                                .joinToString("\n")
+                                .trim()
+                        if (snippetWithoutMarker.isBlank()) {
+                            return@forEach
+                        }
+                        val lines = snippetWithoutMarker.lines()
+                        val imports = lines.filter { line -> line.trimStart().startsWith("import ") }
+                        val bodyLines = lines.filterNot { line -> line.trimStart().startsWith("import ") }
+                        snippetIndex += 1
+                        val fileName = "DocSnippet${snippetIndex.toString().padStart(4, '0')}.kt"
+                        val packageSuffix = snippetIndex.toString().padStart(4, '0')
+                        val generated =
+                            buildString {
+                                appendLine("@file:Suppress(")
+                                appendLine("    \"ktlint\",")
+                                appendLine("    \"UNUSED_IMPORT\",")
+                                appendLine("    \"UNUSED_VARIABLE\",")
+                                appendLine("    \"UNUSED_PARAMETER\",")
+                                appendLine("    \"UNUSED_EXPRESSION\",")
+                                appendLine("    \"RedundantVisibilityModifier\",")
+                                appendLine(")")
+                                appendLine()
+                                appendLine("package docs.snippets.generated.s$packageSuffix")
+                                appendLine()
+                                appendLine("// Source: ${markdown.path.replace('\\', '/')}")
+                                appendLine()
+                                if (imports.isNotEmpty()) {
+                                    imports.forEach { importLine -> appendLine(importLine) }
+                                    appendLine()
+                                }
+                                appendLine("private suspend fun snippetCompileCheck$packageSuffix() {")
+                                bodyLines.forEach { bodyLine -> appendLine("    $bodyLine") }
+                                appendLine("}")
+                            }
+                        outDir.resolve(fileName).writeText(generated)
+                    }
+                }
+        }
+        logger.lifecycle("Extracted $snippetIndex Kotlin doc snippets to ${outDir.path}")
+    }
+}
+
+val docsSnippets by sourceSets.creating {
+    java.srcDir(docsSnippetSourceDir)
+    compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
+    runtimeClasspath += output + compileClasspath
+}
+
+configurations[docsSnippets.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+configurations[docsSnippets.compileOnlyConfigurationName].extendsFrom(configurations.compileOnly.get())
+
+tasks.named("compileDocsSnippetsKotlin") {
+    dependsOn(extractDocsKotlinSnippets)
+}
+
+tasks.named("runKtlintCheckOverDocsSnippetsSourceSet") {
+    dependsOn(extractDocsKotlinSnippets)
+}
+
+tasks.named("runKtlintFormatOverDocsSnippetsSourceSet") {
+    dependsOn(extractDocsKotlinSnippets)
+}
+
 tasks {
     withType<Test> {
         jvmArgs("-XX:+EnableDynamicAgentLoading")
@@ -74,6 +193,10 @@ tasks {
 
     shadowJar {
         isZip64 = true
+    }
+
+    named("check") {
+        dependsOn("compileDocsSnippetsKotlin")
     }
 }
 

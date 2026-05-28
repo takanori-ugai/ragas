@@ -12,13 +12,13 @@ The Ragas Command Line Interface (CLI) provides tools for quickly setting up eva
 The CLI is included with the ragas package:
 
 ```sh
-pip install ragas
+./gradlew build
 ```
 
-Or use `uvx` to run without installation:
+Or run task help directly:
 
 ```sh
-uvx ragas --help
+./gradlew tasks
 ```
 
 ## Available Commands
@@ -57,7 +57,7 @@ ragas quickstart rag_eval --output-dir ./my-project
 Run evaluations on a dataset using an evaluation file.
 
 ```sh
-ragas evals EVAL_FILE [OPTIONS]
+./gradlew execute -PmainClass=<your.main.ClassKt>
 ```
 
 **Arguments:**
@@ -74,7 +74,7 @@ ragas evals EVAL_FILE [OPTIONS]
 **Example:**
 
 ```sh
-ragas evals evals.py --dataset test_data --metrics accuracy,relevance
+./gradlew execute -PmainClass=ragas.examples.prompteval.EvalsKt
 ```
 
 ### `ragas hello_world`
@@ -113,18 +113,9 @@ ragas hello_world [DIRECTORY]
 Get running in 60 seconds:
 
 ```sh
-# Create project
-uvx ragas quickstart rag_eval
-cd rag_eval
-
-# Install dependencies
-uv sync
-
-# Set API key
-export OPENAI_API_KEY="your-key"
-
-# Run evaluation
-uv run python evals.py
+./gradlew build
+export OPENAI_API_KEY=\"your-key\"
+./gradlew execute -PmainClass=ragas.examples.rageval.EvalsKt
 ```
 
 ## Next Steps

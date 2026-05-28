@@ -1,6 +1,7 @@
 package ragas.examples.rageval
 
 import ragas.backends.rowToJsonLine
+import ragas.llms.BaseRagasLlm
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -11,11 +12,11 @@ import kotlin.math.absoluteValue
  */
 val DOCUMENTS: List<String> =
     listOf(
-        "Ragas are melodic frameworks in Indian classical music.",
-        "There are many types of ragas, each with its own mood and time of day.",
-        "Ragas are used to evoke specific emotions in the listener.",
-        "The performance of a raga involves improvisation within a set structure.",
-        "Ragas can be performed on various instruments or sung vocally.",
+        "Ragas 0.3 is a library for evaluating LLM applications.",
+        "Ragas is organized around experimentation, datasets, and metrics.",
+        "Experiment results can be stored using backend abstractions, including local and cloud-style backends.",
+        "Experiment outputs are typically saved under an experiments/ directory in the selected backend.",
+        "Ragas supports discrete, numeric, and ranking metric abstractions.",
     )
 
 /**
@@ -87,6 +88,33 @@ class EchoChatClient : ChatClient {
     ): String {
         val normalized = userPrompt.replace('\n', ' ')
         return "Based on the retrieved documents: ${normalized.take(220)}"
+    }
+}
+
+/**
+ * Chat client adapter backed by a Ragas LLM.
+ */
+class RagasLlmChatClient(
+    private val llm: BaseRagasLlm,
+) : ChatClient {
+    override suspend fun complete(
+        systemPrompt: String,
+        userPrompt: String,
+    ): String {
+        val mergedPrompt =
+            buildString {
+                append("System:\n")
+                append(systemPrompt.trim())
+                append("\n\nUser:\n")
+                append(userPrompt.trim())
+            }
+        return llm
+            .generateText(prompt = mergedPrompt)
+            .generations
+            .firstOrNull()
+            ?.text
+            .orEmpty()
+            .trim()
     }
 }
 

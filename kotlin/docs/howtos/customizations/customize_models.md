@@ -18,7 +18,7 @@ The factory functions use the [Instructor](https://python.useinstructor.com/) li
 
 You can provide system prompts to customize LLM behavior across all evaluations:
 
-```python
+```kotlin
 from ragas.llms import llm_factory
 from openai import OpenAI
 
@@ -51,7 +51,7 @@ System prompts are particularly useful for:
 pip install litellm
 ```
 
-```python
+```kotlin
 import litellm
 from ragas.llms import llm_factory
 from ragas.embeddings.base import embedding_factory
@@ -98,7 +98,7 @@ Yay! Now you are ready to use ragas with Azure OpenAI endpoints
 pip install litellm google-cloud-aiplatform
 ```
 
-```python
+```kotlin
 import litellm
 import os
 from ragas.llms import llm_factory
@@ -140,7 +140,7 @@ Yay! Now you are ready to use ragas with Google VertexAI endpoints
 pip install litellm
 ```
 
-```python
+```kotlin
 import litellm
 import os
 from ragas.llms import llm_factory

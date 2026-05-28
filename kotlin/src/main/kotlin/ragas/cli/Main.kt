@@ -2,6 +2,8 @@ package ragas.cli
 
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel
+import dev.langchain4j.model.ollama.OllamaChatModel
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel
 import dev.langchain4j.model.openai.OpenAiChatModel
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel
 import kotlinx.serialization.json.Json
@@ -53,8 +55,11 @@ data class CliOptions(
 private const val DEFAULT_LLM_PROVIDER = "openai"
 private const val DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
 private const val DEFAULT_GEMINI_MODEL = "gemma-4-31b-it"
+private const val DEFAULT_OLLAMA_MODEL = "llama3.2"
 private const val DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 private const val DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
+private const val DEFAULT_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text"
+private const val DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 
 /**
  * CLI entry point that executes a command and exits with its status code.
@@ -233,10 +238,12 @@ private fun resolveLlmForEval(
             ?.ifBlank {
                 when (provider) {
                     "gemini", "google" -> DEFAULT_GEMINI_MODEL
+                    "ollama" -> DEFAULT_OLLAMA_MODEL
                     else -> DEFAULT_OPENAI_MODEL
                 }
             } ?: when (provider) {
             "gemini", "google" -> DEFAULT_GEMINI_MODEL
+            "ollama" -> DEFAULT_OLLAMA_MODEL
             else -> DEFAULT_OPENAI_MODEL
         }
 
@@ -282,8 +289,20 @@ private fun resolveLlmForEval(
             }
         }
 
+        "ollama" -> {
+            val baseUrl = resolveOllamaBaseUrl(options, getenv)
+            val chatModel =
+                OllamaChatModel
+                    .builder()
+                    .baseUrl(baseUrl)
+                    .modelName(model)
+                    .temperature(0.0)
+                    .build()
+            LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+        }
+
         else -> {
-            error("Unsupported --provider '$provider'. Supported values: openai, gemini, none.")
+            error("Unsupported --provider '$provider'. Supported values: openai, gemini, ollama, none.")
         }
     }
 }
@@ -327,6 +346,21 @@ private fun resolveEmbeddingForEval(
             }
         }
 
+        "ollama" -> {
+            val modelName =
+                options.values["embedding-model"]
+                    ?.trim()
+                    ?.ifBlank { DEFAULT_OLLAMA_EMBEDDING_MODEL }
+                    ?: DEFAULT_OLLAMA_EMBEDDING_MODEL
+            val model =
+                OllamaEmbeddingModel
+                    .builder()
+                    .baseUrl(resolveOllamaBaseUrl(options, getenv))
+                    .modelName(modelName)
+                    .build()
+            LangChain4jEmbedding(model = model)
+        }
+
         else -> {
             null
         }
@@ -339,6 +373,18 @@ private fun resolveProvider(options: CliOptions): String =
         ?.lowercase()
         ?.ifBlank { DEFAULT_LLM_PROVIDER }
         ?: DEFAULT_LLM_PROVIDER
+
+private fun resolveOllamaBaseUrl(
+    options: CliOptions,
+    getenv: (String) -> String?,
+): String =
+    options.values["ollama-base-url"]
+        ?.trim()
+        ?.ifBlank { null }
+        ?: getenv("OLLAMA_BASE_URL")
+            ?.trim()
+            ?.ifBlank { null }
+        ?: DEFAULT_OLLAMA_BASE_URL
 
 private fun runReport(
     options: CliOptions,
@@ -787,6 +833,7 @@ private fun printHelp(out: (String) -> Unit) {
     out("  ragas eval --input dataset.json --metrics default,tier1 --output run.json")
     out("  ragas eval --input dataset.json --provider openai --model gpt-5.4-mini --output run.json")
     out("  ragas eval --input dataset.json --provider gemini --model gemma-4-31b-it --output run.json")
+    out("  ragas eval --input dataset.json --provider ollama --model llama3.2 --ollama-base-url http://localhost:11434 --output run.json")
     out("  ragas report --input run.json")
     out("  ragas compare --baseline run_a.json --candidate run_b.json --gate faithfulness=0.01")
 }

@@ -9,7 +9,7 @@ Configure timeouts and retries directly on your LLM client when using the collec
 
 ## OpenAI Client Configuration
 
-```python
+```kotlin
 from openai import AsyncOpenAI
 from ragas.llms import llm_factory
 from ragas.metrics.collections import Faithfulness
@@ -44,7 +44,7 @@ result = scorer.score(
 
 For more control over different timeout types:
 
-```python
+```kotlin
 import httpx
 from openai import AsyncOpenAI
 
@@ -75,7 +75,7 @@ The following examples use the legacy metrics API pattern with `RunConfig`. For 
 
 ### RunConfig Parameters
 
-```python
+```kotlin
 from ragas.run_config import RunConfig
 
 run_config = RunConfig(
@@ -90,7 +90,7 @@ run_config = RunConfig(
 
 ### Usage with Evaluate
 
-```python
+```kotlin
 from langchain_openai import ChatOpenAI
 from ragas.llms import LangchainLLMWrapper
 from ragas import EvaluationDataset, SingleTurnSample, evaluate

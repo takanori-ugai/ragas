@@ -29,6 +29,11 @@ import ragas.runtime.Executor
 import ragas.runtime.RunConfig
 import ragas.evaluation.aevaluate as aevaluateInternal
 import ragas.evaluation.evaluate as evaluateInternal
+import ragas.tokenizers.BaseTokenizer as BaseTokenizerContract
+import ragas.tokenizers.HuggingFaceTokenizer as HuggingFaceTokenizerImpl
+import ragas.tokenizers.TiktokenWrapper as TiktokenWrapperImpl
+import ragas.tokenizers.getDefaultTokenizer as getDefaultTokenizerInternal
+import ragas.tokenizers.getTokenizer as getTokenizerInternal
 
 /**
  * Library version for the `ragas-kotlin` artifact.
@@ -168,3 +173,38 @@ fun dspyOptimizer(
     } else {
         DspyOptimizer(runtimeConfig = runtimeConfig, cache = cache)
     }
+
+/**
+ * Public tokenizer contract alias for parity with Python's `ragas.BaseTokenizer`.
+ */
+typealias BaseTokenizer = BaseTokenizerContract
+
+/**
+ * Public tokenizer implementation alias for parity with Python's `ragas.TiktokenWrapper`.
+ */
+typealias TiktokenWrapper = TiktokenWrapperImpl
+
+/**
+ * Public tokenizer implementation alias for parity with Python's `ragas.HuggingFaceTokenizer`.
+ */
+typealias HuggingFaceTokenizer = HuggingFaceTokenizerImpl
+
+/**
+ * Returns the process-wide default tokenizer (`o200k_base`).
+ */
+fun getDefaultTokenizer(): TiktokenWrapper = getDefaultTokenizerInternal()
+
+/**
+ * Tokenizer factory.
+ */
+fun getTokenizer(
+    tokenizerType: String = "tiktoken",
+    modelName: String? = null,
+    encodingName: String? = null,
+): BaseTokenizer = getTokenizerInternal(tokenizerType = tokenizerType, modelName = modelName, encodingName = encodingName)
+
+/**
+ * Lazy default tokenizer handle (backwards-compatible with Python's `DEFAULT_TOKENIZER` pattern).
+ */
+val DEFAULT_TOKENIZER: BaseTokenizer
+    get() = ragas.tokenizers.DEFAULT_TOKENIZER
