@@ -1,110 +1,46 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
-> [!NOTE]
-> This page was adapted from `../docs/howtos/cli/text2sql.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
-
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 # Text-to-SQL Evaluation Quickstart
 
-The `text2sql` template evaluates text-to-SQL systems by comparing SQL execution results.
+Evaluate generated SQL by execution equivalence against expected SQL.
 
-## Create the Project
-
-```sh
-ragas quickstart text2sql
-cd text2sql
-```
-
-## Install Dependencies
+## Run
 
 ```sh
-uv sync
+./gradlew build
+./gradlew execute -PmainClass=ragas.examples.text2sql.EvalsKt
 ```
 
-## Set Your API Key
+## Agent Contract
 
-```sh
-export OPENAI_API_KEY="your-openai-key"
+```kotlin
+interface Text2SqlAgent {
+    suspend fun generateSql(question: String): String
+}
 ```
 
-## Run the Evaluation
+## Execution Accuracy
 
-```sh
-uv run python evals.py
+```kotlin
+// @compile
+fun executionAccuracy(expectedRows: List<List<Any?>>, predictedRows: List<List<Any?>>): String {
+    val normalizedExpected =
+        expectedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    val normalizedPredicted =
+        predictedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    return if (normalizedExpected == normalizedPredicted) "correct" else "incorrect"
+}
 ```
 
-## Project Structure
+## DB Connection
 
+```kotlin
+// @compile
+import java.sql.Connection
+import java.sql.DriverManager
+
+fun getDbConnection(): Connection = DriverManager.getConnection("jdbc:sqlite:booksql.db")
 ```
-text2sql/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── text2sql_agent.py      # Text-to-SQL agent
-├── db_utils.py            # Database utilities
-├── evals.py               # Evaluation workflow
-├── prompt.txt             # Base prompt template
-├── prompt_v2.txt          # Improved prompt v2
-├── prompt_v3.txt          # Improved prompt v3
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/
-    │   └── booksql_sample.csv  # Sample book database queries
-    ├── experiments/       # Evaluation results
-    └── logs/              # Execution logs
-```
-
-## What It Evaluates
-
-The template evaluates text-to-SQL generation:
-
-- **Agent**: Converts natural language to SQL queries
-- **Database**: Sample book database with authors, titles, genres
-- **Test Cases**: Natural language questions → expected SQL queries
-- **Metric**: Execution accuracy by comparing query results using datacompy
-
-## Understanding the Code
-
-### The Agent (`text2sql_agent.py`)
-
-Converts natural language to SQL:
-
-```python
-from text2sql_agent import Text2SQLAgent
-
-agent = Text2SQLAgent(client=openai_client)
-sql = await agent.generate_sql("Find all books by Jane Austen")
-```
-
-### The Evaluation (`evals.py`)
-
-Compares execution results:
-
-```python
-@discrete_metric(name="execution_accuracy", allowed_values=["correct", "incorrect"])
-def execution_accuracy(expected_sql: str, predicted_success: bool, predicted_result):
-    # Executes both SQLs and compares results using datacompy
-    # Returns "correct" if results match, "incorrect" otherwise
-```
-
-## Test Data
-
-The template includes `evals/datasets/booksql_sample.csv` with sample questions and expected SQL queries for a book database.
-
-## Customization
-
-### Use Your Own Database
-
-Update `db_utils.py` to connect to your database:
-
-```python
-def get_db_connection():
-    return sqlite3.connect("your_database.db")
-```
-
-### Try Different Prompts
-
-The template includes three prompt versions in `prompt.txt`, `prompt_v2.txt`, and `prompt_v3.txt`. Test each to see which works best.
-
-## Next Steps
-
-- [Agent Evaluation](agent_evals.md) - Evaluate AI agents
-- [Workflow Evaluation](workflow_eval.md) - Evaluate complex workflows

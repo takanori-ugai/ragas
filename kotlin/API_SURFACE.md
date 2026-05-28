@@ -18,6 +18,12 @@ This file defines the intended stable entrypoints under package `ragas`.
 - `ragas.withCache(llm, cache)`
 - `ragas.withCache(embedding, cache)`
 - `ragas.backendRegistry()`
+- `ragas.getDefaultTokenizer()`
+- `ragas.getTokenizer(...)`
+- `ragas.DEFAULT_TOKENIZER`
+- `ragas.BaseTokenizer`
+- `ragas.TiktokenWrapper`
+- `ragas.HuggingFaceTokenizer`
 
 ## Stable Supporting Contracts
 

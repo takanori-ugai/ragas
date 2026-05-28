@@ -8,12 +8,13 @@ import ragas.llms.StructuredOutputRagasLlm
 import ragas.model.EvaluationResult
 import ragas.prompt.PromptContentPart
 import ragas.runtime.Executor
+import ragas.tokenizers.DEFAULT_TOKENIZER
 
 /**
  * Best-effort prompt/completion token accounting for one or more LLM calls.
  *
  * Values are exact only when [TokenUsageParser] extracts provider-reported usage.
- * If parsing fails, tracking falls back to a whitespace-based heuristic.
+ * If parsing fails, tracking falls back to JTokkit-based token counting.
  *
  * @property promptTokens Best-effort count of tokens attributed to prompts.
  * @property completionTokens Best-effort count of tokens attributed to completions.
@@ -239,14 +240,8 @@ internal open class TrackingRagasLlm private constructor(
         prompt: String,
         result: LlmResult,
     ): TokenUsage {
-        fun countTokens(text: String): Int =
-            text
-                .trim()
-                .split(Regex("\\s+"))
-                .count { token -> token.isNotBlank() }
-
-        val promptTokens = countTokens(prompt)
-        val completionTokens = result.generations.sumOf { generation -> countTokens(generation.text) }
+        val promptTokens = DEFAULT_TOKENIZER.countTokens(prompt)
+        val completionTokens = result.generations.sumOf { generation -> DEFAULT_TOKENIZER.countTokens(generation.text) }
         return TokenUsage(promptTokens = promptTokens, completionTokens = completionTokens)
     }
 

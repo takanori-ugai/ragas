@@ -3,6 +3,7 @@ package ragas.testset.transforms
 import ragas.testset.graph.Node
 import ragas.testset.graph.NodeType
 import ragas.testset.graph.Relationship
+import ragas.tokenizers.DEFAULT_TOKENIZER
 import kotlin.math.max
 
 /**
@@ -137,5 +138,5 @@ class HeadlineSplitter(
         return adjusted.filter { it.isNotBlank() }
     }
 
-    private fun countTokens(text: String): Int = text.split(Regex("\\s+")).count { token -> token.isNotBlank() }
+    private fun countTokens(text: String): Int = DEFAULT_TOKENIZER.countTokens(text)
 }

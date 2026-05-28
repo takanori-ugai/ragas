@@ -1,121 +1,58 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
-> [!NOTE]
-> This page was adapted from `../docs/howtos/cli/workflow_eval.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
-
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 # Workflow Evaluation Quickstart
 
-The `workflow_eval` template evaluates complex LLM workflows with email classification and routing.
+Evaluate a multi-step support workflow (classify, extract, respond).
 
-## Create the Project
-
-```sh
-ragas quickstart workflow_eval
-cd workflow_eval
-```
-
-## Install Dependencies
+## Run
 
 ```sh
-uv sync
+./gradlew build
+./gradlew execute -PmainClass=ragas.examples.workflow.EvalsKt
 ```
 
-## Set Your API Key
+## Workflow Usage
 
-```sh
-export OPENAI_API_KEY="your-openai-key"
+```kotlin
+interface WorkflowClientLike {
+    suspend fun processEmail(email: String): WorkflowResult
+}
+
+data class WorkflowResult(val category: String, val responseTemplate: String)
+
+val workflow: WorkflowClientLike = TODO("Provide workflow implementation")
+val result = workflow.processEmail("I found a bug in version 2.1.4 with error XYZ-123")
+println(result.category)
+println(result.responseTemplate)
 ```
 
-## Run the Evaluation
+## Dataset
 
-```sh
-uv run python evals.py
+```kotlin
+data class WorkflowRow(val email: String, val passCriteria: String)
+
+val dataset =
+    listOf(
+        WorkflowRow(
+            email = "I need to dispute invoice INV-2024-001 for 299.99",
+            passCriteria = "category Billing; invoice_number INV-2024-001; amount 299.99",
+        ),
+    )
 ```
 
-## Project Structure
+## Metric
 
+```kotlin
+import ragas.metrics.MetricType
+import ragas.metrics.primitives.DiscreteMetric
+import ragas.llms.BaseRagasLlm
+
+val llm: BaseRagasLlm = TODO("Configure LLM")
+val responseQuality =
+    DiscreteMetric(
+        name = "response_quality",
+        prompt = "Evaluate response against pass criteria and return pass/fail.",
+        llm = llm,
+        allowedValues = listOf("pass", "fail"),
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),
+    )
 ```
-workflow_eval/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── workflow.py            # Workflow implementation
-├── evals.py               # Evaluation workflow
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/          # Test datasets
-    ├── experiments/       # Evaluation results
-    └── logs/              # Execution logs
-```
-
-## What It Evaluates
-
-The template evaluates a customer support email classification workflow:
-
-- **Workflow**: Multi-step email processing (classification → extraction → response)
-- **Categories**: Bug Report, Feature Request, Billing
-- **Test Cases**: Customer emails with expected categories and extracted fields
-- **Metric**: Custom discrete metric checking classification accuracy
-
-## Understanding the Code
-
-### The Workflow (`workflow.py`)
-
-Implements a customer support email workflow:
-
-```python
-from workflow import default_workflow_client
-
-workflow = default_workflow_client()
-result = workflow.process_email("I found a bug in version 2.1.4...")
-# Returns: category, extracted fields, response
-```
-
-### The Evaluation (`evals.py`)
-
-Tests workflow accuracy against pass criteria:
-
-```python
-def load_dataset():
-    dataset_dict = [
-        {
-            "email": "Hi, I'm getting error code XYZ-123 when using version 2.1.4...",
-            "pass_criteria": "category Bug Report; product_version 2.1.4; error_code XYZ-123",
-        },
-        # More test cases...
-    ]
-```
-
-The metric evaluates if the workflow correctly:
-- Classifies the email category
-- Extracts relevant fields (version, error code, invoice number, etc.)
-- Generates appropriate responses
-
-## Test Cases
-
-The template includes diverse scenarios:
-
-- **Bug Reports**: With version numbers and error codes
-- **Feature Requests**: With urgency levels and product areas
-- **Billing Issues**: With invoice numbers and amounts
-
-## Customization
-
-### Add Your Own Workflow
-
-Replace the example workflow with your own:
-
-```python
-from your_workflow import YourWorkflow
-
-workflow = YourWorkflow()
-
-@experiment()
-async def run_experiment(row):
-    result = await workflow.process(row["input"])
-    # Evaluate result...
-```
-
-## Next Steps
-
-- [Agent Evaluation](agent_evals.md) - Evaluate AI agents
-- [LlamaIndex Agent Evaluation](llamaIndex_agent_evals.md) - Evaluate LlamaIndex workflows

@@ -1,288 +1,163 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 > [!NOTE]
-> This page was adapted from `../docs/howtos/cli/rag_eval.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
+> Kotlin quickstart programs should use Gradle entrypoints (`./gradlew execute -PmainClass=...`) and Kotlin APIs from package `ragas`.
 
 # RAG Evaluation Quickstart
 
-The `rag_eval` template provides a complete RAG evaluation setup with custom metrics, dataset management, and experiment tracking.
+The `rag_eval` template evaluates a RAG pipeline against grading notes and stores experiment CSVs.
 
 ## Create the Project
 
 ```sh
-# Using uvx (no installation required)
-uvx ragas quickstart rag_eval
-cd rag_eval
-
-# Or with ragas installed
 ragas quickstart rag_eval
 cd rag_eval
 ```
 
-## Install Dependencies
+## Build
 
 ```sh
-uv sync
+./gradlew build
 ```
 
-Or with pip:
+## Set API Key
 
 ```sh
-pip install -e .
+export OPENAI_API_KEY="your-openai-key"
 ```
-
-## Set Your API Key
-
-=== "OpenAI (Default)"
-    ```sh
-    export OPENAI_API_KEY="your-openai-key"
-    ```
-
-=== "Anthropic Claude"
-    ```sh
-    export ANTHROPIC_API_KEY="your-anthropic-key"
-    ```
-
-    Update `evals.py`:
-    ```python
-    from anthropic import Anthropic
-    from ragas.llms import llm_factory
-
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    llm = llm_factory("claude-3-5-sonnet-20241022", provider="anthropic", client=client)
-    ```
-
-=== "Google Gemini"
-    ```sh
-    export GOOGLE_API_KEY="your-google-api-key"
-    ```
-
-    Update `evals.py`:
-    ```python
-    import google.generativeai as genai
-    from ragas.llms import llm_factory
-
-    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-    client = genai.GenerativeModel("gemini-2.0-flash")
-    llm = llm_factory("gemini-2.0-flash", provider="google", client=client)
-    ```
-
-=== "Local Models (Ollama)"
-    ```python
-    from openai import OpenAI
-    from ragas.llms import llm_factory
-
-    client = OpenAI(
-        api_key="ollama",
-        base_url="http://localhost:11434/v1"
-    )
-    llm = llm_factory("mistral", provider="openai", client=client)
-    ```
 
 ## Run the Evaluation
 
 ```sh
-uv run python evals.py
+./gradlew execute -PmainClass=ragas.examples.rageval.EvalsKt
 ```
 
-The evaluation will:
+## Provider Examples
 
-1. Load test data from the `load_dataset()` function
-2. Query your RAG application with test questions
-3. Evaluate responses using custom metrics
-4. Display results in the console
-5. Save results to CSV in `evals/experiments/`
+### OpenAI (default)
 
-## Project Structure
+```kotlin
+import dev.langchain4j.model.openai.OpenAiChatModel
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-```
-rag_eval/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── rag.py                 # RAG application implementation
-├── evals.py               # Evaluation workflow
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/          # Test data files
-    ├── experiments/       # Evaluation results (CSV)
-    └── logs/              # Execution logs and traces
-```
-
-## Understanding the Code
-
-### The RAG Application (`rag.py`)
-
-A simple RAG implementation with:
-
-- **Document storage**: In-memory document collection
-- **Keyword retrieval**: Simple keyword matching for document retrieval
-- **Response generation**: OpenAI API for generating answers
-- **Tracing**: Logs each query for debugging
-
-```python
-from rag import default_rag_client
-
-# Initialize with OpenAI client
-rag_client = default_rag_client(llm_client=openai_client, logdir="evals/logs")
-
-# Query the RAG system
-response = rag_client.query("What is Ragas?")
-print(response["answer"])
+val llm =
+    LangChain4jLlm(
+        model =
+            OpenAiChatModel
+                .builder()
+                .apiKey(System.getenv("OPENAI_API_KEY") ?: error("OPENAI_API_KEY is required"))
+                .modelName("gpt-5.4-mini")
+                .temperature(0.0)
+                .build(),
+        runConfig = RunConfig(timeoutSeconds = 90),
+    )
 ```
 
-### The Evaluation Script (`evals.py`)
+### Gemini
 
-The evaluation workflow:
+```kotlin
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-1. **Dataset loading**: Creates test cases with questions and grading notes
-2. **Metric definition**: Custom `DiscreteMetric` for pass/fail evaluation
-3. **Experiment execution**: Runs queries and evaluates responses
-4. **Result storage**: Saves to CSV for analysis
-
-```python
-from ragas import Dataset, experiment
-from ragas.metrics import DiscreteMetric
-
-# Define your metric
-my_metric = DiscreteMetric(
-    name="correctness",
-    prompt="Check if the response contains points from grading notes...",
-    allowed_values=["pass", "fail"],
-)
-
-# Run experiment
-@experiment()
-async def run_experiment(row):
-    response = rag_client.query(row["question"])
-    score = my_metric.score(llm=llm, response=response["answer"], ...)
-    return {**row, "response": response["answer"], "score": score.value}
+val llm =
+    LangChain4jLlm(
+        model =
+            GoogleGenAiChatModel
+                .builder()
+                .apiKey(System.getenv("GOOGLE_API_KEY") ?: error("GOOGLE_API_KEY is required"))
+                .modelName("gemma-4-31b-it")
+                .temperature(0.0)
+                .build(),
+        runConfig = RunConfig(timeoutSeconds = 90),
+    )
 ```
 
-## Customization
+### Ollama
 
-### Add Test Cases
+```kotlin
+import dev.langchain4j.model.ollama.OllamaChatModel
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-Edit the `load_dataset()` function in `evals.py`:
+val llm =
+    LangChain4jLlm(
+        model =
+            OllamaChatModel
+                .builder()
+                .baseUrl("http://localhost:11434")
+                .modelName("llama3.2")
+                .temperature(0.0)
+                .build(),
+        runConfig = RunConfig(timeoutSeconds = 90),
+    )
+```
 
-```python
-def load_dataset():
-    dataset = Dataset(
-        name="test_dataset",
-        backend="local/csv",
-        root_dir="evals",
+## Core Evaluation Loop
+
+```kotlin
+import ragas.backends.LocalCsvBackend
+import ragas.experiment
+import ragas.llms.BaseRagasLlm
+import ragas.metrics.MetricType
+import ragas.metrics.primitives.DiscreteMetric
+import ragas.model.SingleTurnSample
+
+data class RagRow(val question: String, val gradingNotes: String)
+interface RagPipeline {
+    suspend fun answer(question: String): String
+}
+
+val llm: BaseRagasLlm = TODO("Configure LLM")
+val ragPipeline: RagPipeline = TODO("Provide RAG pipeline implementation")
+
+val metric =
+    DiscreteMetric(
+        name = "correctness",
+        prompt = "Check if response covers grading notes. Response: {response} Notes: {reference}",
+        llm = llm,
+        allowedValues = listOf("pass", "fail"),
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),
     )
 
-    data_samples = [
-        {
-            "question": "What is Ragas?",
-            "grading_notes": "- evaluation framework - LLM applications",
-        },
-        {
-            "question": "How do experiments work?",
-            "grading_notes": "- track results - compare runs - store metrics",
-        },
-        # Add more test cases...
-    ]
-
-    for sample in data_samples:
-        dataset.append(sample)
-    dataset.save()
-    return dataset
-```
-
-### Modify the Metric
-
-Change evaluation criteria by updating the metric prompt:
-
-```python
-my_metric = DiscreteMetric(
-    name="quality",
-    prompt="""Evaluate the response quality:
-
-Response: {response}
-Expected Points: {grading_notes}
-
-Rate as:
-- 'excellent': All points covered with clear explanation
-- 'good': Most points covered
-- 'poor': Missing key points
-
-Rating:""",
-    allowed_values=["excellent", "good", "poor"],
-)
-```
-
-### Add Multiple Metrics
-
-Create additional metrics for different evaluation aspects:
-
-```python
-from ragas.metrics import DiscreteMetric, NumericalMetric
-
-correctness = DiscreteMetric(
-    name="correctness",
-    prompt="Is the response factually correct? {response}",
-    allowed_values=["correct", "incorrect"],
-)
-
-relevance = NumericalMetric(
-    name="relevance",
-    prompt="Rate relevance 1-5: {response} for question: {question}",
-    allowed_values=(1, 5),
-)
-```
-
-### Use Your Own RAG System
-
-Replace the example RAG with your production system:
-
-```python
-# In evals.py
-from your_rag_module import YourRAGClient
-
-rag_client = YourRAGClient(...)
-
-@experiment()
-async def run_experiment(row):
-    # Call your RAG system
-    response = await rag_client.query(row["question"])
-
-    score = my_metric.score(
-        llm=llm,
-        response=response,
-        grading_notes=row["grading_notes"],
-    )
-
-    return {
-        **row,
-        "response": response,
-        "score": score.value,
+val runner =
+    experiment<RagRow>(backend = LocalCsvBackend("experiments"), namePrefix = "rag-eval") { row ->
+        val answer = ragPipeline.answer(row.question)
+        val score =
+            metric.singleTurnAscore(
+                SingleTurnSample(
+                    userInput = row.question,
+                    response = answer,
+                    reference = row.gradingNotes,
+                ),
+            )
+        mapOf("question" to row.question, "grading_notes" to row.gradingNotes, "response" to answer, "score" to score)
     }
 ```
 
-## Viewing Results
+## Dataset Snippet
 
-Results are saved to `evals/experiments/` as CSV files. Each experiment run creates a new file with:
+```kotlin
+import ragas.backends.LocalCsvBackend
 
-- Input data (questions, grading notes)
-- Model responses
-- Evaluation scores
-- Timestamps
+val dataset =
+    listOf(
+        RagRow("What is Ragas?", "evaluation framework; LLM applications"),
+        RagRow("How do experiments work?", "track runs; compare runs; store metrics"),
+    )
 
-```python
-import pandas as pd
-
-# Load results
-results = pd.read_csv("evals/experiments/your_experiment.csv")
-
-# Calculate pass rate
-pass_rate = (results["score"] == "pass").mean()
-print(f"Pass rate: {pass_rate:.1%}")
+LocalCsvBackend("datasets").saveDataset(
+    name = "test_dataset",
+    data = dataset.map { mapOf("question" to it.question, "grading_notes" to it.gradingNotes) },
+)
 ```
 
-## Next Steps
+## Analyze Results
 
-- [Improve RAG Guide](improve_rag.md) - Compare naive vs agentic RAG
-- [Custom Metrics](../customizations/metrics/_write_your_own_metric.md) - Write your own metrics
-- [Datasets](../../concepts/datasets.md) - Learn about dataset management
-- [Experimentation](../../concepts/experimentation.md) - Advanced experiment tracking
+```kotlin
+import ragas.backends.LocalCsvBackend
+
+val rows = LocalCsvBackend(".").loadExperiment("rag-eval-baseline")
+val passCount = rows.count { (it["score"] as? String)?.equals("pass", ignoreCase = true) == true }
+println("pass=$passCount total=${rows.size}")
+```

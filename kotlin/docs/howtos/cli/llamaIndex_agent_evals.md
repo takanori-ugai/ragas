@@ -1,98 +1,37 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
-> [!NOTE]
-> This page was adapted from `../docs/howtos/cli/llamaIndex_agent_evals.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
-
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 # LlamaIndex Agent Evaluation Quickstart
 
-The `llamaIndex_agent_evals` template evaluates LlamaIndex workflow agents with tool call accuracy metrics.
+Evaluate tool-call correctness for agent workflows.
 
-## Create the Project
-
-```sh
-ragas quickstart llamaIndex_agent_evals
-cd llamaIndex_agent_evals
-```
-
-## Install Dependencies
+## Run
 
 ```sh
-uv sync
+./gradlew build
+./gradlew execute -PmainClass=ragas.examples.agent.EvalsKt
 ```
 
-## Set Your API Keys
+## Tool Call Schema
 
-```sh
-export OPENAI_API_KEY="your-openai-key"
-export GOOGLE_API_KEY="your-google-key"  # For evaluator LLM
-```
-
-## Run the Evaluation
-
-```sh
-uv run python evals.py
-```
-
-## Project Structure
-
-```
-llamaIndex_agent_evals/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── llamaindex_agent.py    # LlamaIndex agent with tools
-├── evals.py               # Evaluation workflow
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/
-    │   └── contexts/      # Test context files (JSON)
-    ├── experiments/       # Evaluation results
-    └── logs/              # Execution logs
-```
-
-## What It Evaluates
-
-The template evaluates a LlamaIndex agent's tool calling accuracy:
-
-- **Agent**: LlamaIndex `FunctionAgent` with list management tools (add, remove, list items)
-- **Test Cases**: Complex scenarios like duplicate additions, ambiguous removal requests
-- **Metrics**: Tool call accuracy, response correctness
-
-## Understanding the Code
-
-### The Agent (`llamaindex_agent.py`)
-
-LlamaIndex agent with simple tools:
-
-```python
-from llama_index.core.agent.workflow import FunctionAgent
-
-agent = FunctionAgent(
-    name="list_manager",
-    tools=[add_item, remove_item, list_items],
-    llm=llm
+```kotlin
+data class ToolCall(
+    val name: String,
+    val arguments: Map<String, String>,
 )
 ```
 
-### The Evaluation (`evals.py`)
+## F1 Tool-Call Metric
 
-Tests tool call accuracy using F1 score:
-
-```python
-@numeric_metric(name="tool_call_accuracy")
-def tool_call_accuracy_metric(predicted_calls: List[Dict], ground_truth_calls: List[Dict]):
-    # Compares predicted vs ground truth tool calls
-    # Returns F1 score between 0.0 and 1.0
+```kotlin
+fun toolCallF1(predicted: List<ToolCall>, expected: List<ToolCall>): Double {
+    if (predicted.isEmpty() && expected.isEmpty()) return 1.0
+    val predictedCounts = predicted.groupingBy { it }.eachCount()
+    val expectedCounts = expected.groupingBy { it }.eachCount()
+    val truePositives =
+        expectedCounts.entries.sumOf { (toolCall, expectedCount) ->
+            minOf(predictedCounts[toolCall] ?: 0, expectedCount)
+        }.toDouble()
+    val precision = if (predicted.isEmpty()) 0.0 else truePositives / predicted.size.toDouble()
+    val recall = if (expected.isEmpty()) 0.0 else truePositives / expected.size.toDouble()
+    return if (precision + recall == 0.0) 0.0 else (2.0 * precision * recall) / (precision + recall)
+}
 ```
-
-## Test Data
-
-The template includes JSON test contexts in `evals/datasets/contexts/`:
-
-- `ambiguous_removal_request.json` - Tests handling of ambiguous requests
-- `duplicate_addition.json` - Tests handling of duplicate operations
-- `repeated_removal.json` - Tests repeated operations
-
-## Next Steps
-
-- [Agent Evaluation](agent_evals.md) - Evaluate general AI agents
-- [Workflow Evaluation](workflow_eval.md) - Evaluate complex workflows

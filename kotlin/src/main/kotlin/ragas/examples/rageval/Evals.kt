@@ -1,12 +1,11 @@
 package ragas.examples.rageval
 
+import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.runBlocking
 import ragas.backends.LocalCsvBackend
 import ragas.backends.rowToJsonLine
 import ragas.experiment
-import ragas.llms.BaseRagasLlm
-import ragas.llms.LlmGeneration
-import ragas.llms.LlmResult
+import ragas.llms.LangChain4jLlm
 import ragas.metrics.MetricType
 import ragas.metrics.primitives.DiscreteMetric
 import ragas.model.SingleTurnSample
@@ -17,33 +16,6 @@ private data class EvalRow(
     val question: String,
     val gradingNotes: String,
 )
-
-private class RuleBasedEvalLlm : BaseRagasLlm {
-    override var runConfig: RunConfig = RunConfig()
-
-    /**
-     * Executes generateText.
-     */
-    override suspend fun generateText(
-        prompt: String,
-        n: Int,
-        temperature: Double?,
-        stop: List<String>?,
-    ): LlmResult {
-        val lower = prompt.lowercase()
-        val value =
-            if (
-                "experimentation" in lower ||
-                "metrics" in lower ||
-                "experiments/" in lower
-            ) {
-                "pass"
-            } else {
-                "fail"
-            }
-        return LlmResult(generations = listOf(LlmGeneration(value)))
-    }
-}
 
 private fun loadDataset(rootDir: String = "evals"): List<EvalRow> {
     val datasetRows =
@@ -85,8 +57,22 @@ private fun loadDataset(rootDir: String = "evals"): List<EvalRow> {
  */
 fun main() =
     runBlocking {
-        val llm = RuleBasedEvalLlm()
-        val ragClient = defaultRagClient(chatClient = EchoChatClient(), logDir = "evals/logs")
+        val apiKey =
+            System.getenv("OPENAI_API_KEY")
+                ?: error("OPENAI_API_KEY is required to run ragas.examples.rageval.EvalsKt")
+        val chatModel =
+            OpenAiChatModel
+                .builder()
+                .apiKey(apiKey)
+                .modelName("gpt-5.4-mini")
+                .temperature(0.0)
+                .build()
+        val llm =
+            LangChain4jLlm(
+                model = chatModel,
+                runConfig = RunConfig(timeoutSeconds = 90),
+            )
+        val ragClient = defaultRagClient(chatClient = RagasLlmChatClient(llm), logDir = "evals/logs")
 
         val myMetric =
             DiscreteMetric(

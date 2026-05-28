@@ -1,85 +1,58 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
-> [!NOTE]
-> This page was adapted from `../docs/howtos/cli/agent_evals.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
-
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 # Agent Evaluation Quickstart
 
-The `agent_evals` template provides a setup for evaluating AI agents that solve mathematical problems with correctness metrics.
+The `agent_evals` template evaluates an agent's final answer and tool behavior.
 
-## Create the Project
-
-```sh
-ragas quickstart agent_evals
-cd agent_evals
-```
-
-## Install Dependencies
+## Run
 
 ```sh
-uv sync
+./gradlew build
+./gradlew execute -PmainClass=ragas.examples.agent.EvalsKt
 ```
 
-## Set Your API Key
+## Agent Call
 
-```sh
-export OPENAI_API_KEY="your-openai-key"
+```kotlin
+import kotlinx.coroutines.runBlocking
+
+interface MathAgent {
+    suspend fun solve(expression: String): Double
+}
+
+fun main() = runBlocking {
+    val mathAgent: MathAgent = TODO("Provide MathAgent implementation")
+    val output = mathAgent.solve("(2 + 3) * (6 - 2)")
+    println(output)
+}
 ```
 
-## Run the Evaluation
+## Correctness Metric
 
-```sh
-uv run python evals.py
+```kotlin
+// @compile
+import kotlin.math.abs
+
+fun exactNumericScore(prediction: Double, expected: Double): Double =
+    if (abs(prediction - expected) < 1e-5) 1.0 else 0.0
 ```
 
-## Project Structure
+## Experiment Pattern
 
+```kotlin
+import ragas.backends.LocalCsvBackend
+import ragas.experiment
+
+data class AgentRow(val expression: String, val expected: Double)
+val mathAgent: MathAgent = TODO("Provide MathAgent implementation")
+
+val runner =
+    experiment<AgentRow>(backend = LocalCsvBackend("experiments"), namePrefix = "agent-eval") { row ->
+        val predicted = mathAgent.solve(row.expression)
+        mapOf(
+            "expression" to row.expression,
+            "expected" to row.expected,
+            "predicted" to predicted,
+            "score" to exactNumericScore(predicted, row.expected),
+        )
+    }
 ```
-agent_evals/
-├── README.md              # Project documentation
-├── pyproject.toml         # Project configuration
-├── agent.py               # Math solving agent implementation
-├── evals.py               # Evaluation workflow
-├── __init__.py            # Python package marker
-└── evals/
-    ├── datasets/          # Test datasets
-    ├── experiments/       # Evaluation results
-    └── logs/              # Execution logs
-```
-
-## What It Evaluates
-
-The template evaluates an AI agent's ability to solve mathematical expressions:
-
-- **Agent**: Uses tools to solve mathematical problems step-by-step
-- **Test Cases**: Math expressions like `(2 + 3) * (6 - 2)`, `100 / 5 + 3 * 2`
-- **Metric**: Binary correctness (1.0 if correct, 0.0 if incorrect)
-
-## Understanding the Code
-
-### The Agent (`agent.py`)
-
-Implements a math-solving agent with calculator tools:
-
-```python
-from agent import get_default_agent
-
-math_agent = get_default_agent()
-result = math_agent.solve("15 - 3 / 4")
-```
-
-### The Evaluation (`evals.py`)
-
-Tests the agent on various math problems:
-
-```python
-@numeric_metric(name="correctness", allowed_values=(0.0, 1.0))
-def correctness_metric(prediction: float, actual: float):
-    result = 1.0 if abs(prediction - actual) < 1e-5 else 0.0
-    return MetricResult(value=result, reason=f"Prediction: {prediction}, Actual: {actual}")
-```
-
-## Next Steps
-
-- [LlamaIndex Agent Evaluation](llamaIndex_agent_evals.md) - Evaluate LlamaIndex agents
-- [Custom Metrics](../customizations/metrics/_write_your_own_metric.md) - Write your own metrics

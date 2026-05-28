@@ -5,6 +5,12 @@
 
 # Prompt Evaluation
 
+> [!NOTE]
+> Kotlin tokenizer behavior: `ragas.DEFAULT_TOKENIZER` (JTokkit-backed `TiktokenWrapper`,
+> default `o200k_base`) is used for token counting in evaluation/testset flows. Token-based
+> metric helpers (`ragas.metrics.tokenize` / `tokenSet`) use `DEFAULT_TOKENIZER` and then
+> normalize tokens.
+
 In this tutorial, we will write a simple evaluation pipeline to evaluate a prompt that is part of an AI system, here a movie review sentiment classifier. At the end of this tutorial you’ll learn how to evaluate and iterate on a single prompt using evaluation driven development. 
 
 ```mermaid
@@ -19,14 +25,14 @@ We will start by testing a simple prompt that classifies movie reviews as positi
 First, make sure you have installed ragas examples and setup your OpenAI API key:
 
 ```bash
-pip install ragas[examples]
-export OPENAI_API_KEY = "your_openai_api_key"
+./gradlew build
+export OPENAI_API_KEY="your_openai_api_key"
 ```
 
 Now test the prompt:
 
 ```bash
-python -m ragas_examples.prompt_evals.prompt
+./gradlew execute -PmainClass=ragas.examples.prompteval.PromptAppKt
 ```
 
 This will test the input `"The movie was fantastic and I loved every moment of it!"` and should output `"positive"`.
@@ -35,48 +41,75 @@ This will test the input `"The movie was fantastic and I loved every moment of i
 
 Next, we will write down few sample inputs and expected outputs for our prompt. Then convert them to a CSV file. 
 
-```python
-import pandas as pd
+```kotlin
+import ragas.backends.LocalCsvBackend
 
-samples = [{"text": "I loved the movie! It was fantastic.", "label": "positive"},
-    {"text": "The movie was terrible and boring.", "label": "negative"},
-    {"text": "It was an average film, nothing special.", "label": "positive"},
-    {"text": "Absolutely amazing! Best movie of the year.", "label": "positive"}]
-pd.DataFrame(samples).to_csv("datasets/test_dataset.csv", index=False)
+data class PromptRow(
+    val text: String,
+    val label: String,
+)
+
+val dataset =
+    listOf(
+        PromptRow("I loved the movie! It was fantastic.", "positive"),
+        PromptRow("The movie was terrible and boring.", "negative"),
+        PromptRow("It was an average film, nothing special.", "positive"),
+        PromptRow("Absolutely amazing! Best movie of the year.", "positive"),
+    )
+
+LocalCsvBackend("datasets").saveDataset(
+    name = "test_dataset",
+    data = dataset.map { row -> mapOf("text" to row.text, "label" to row.label) },
+)
 ```
 
 Now we need to have a way to measure the performance of our prompt in this task. We will define a metric that will compare the output of our prompt with the expected output and outputs pass/fail based on it. 
 
-```python
-from ragas.metrics import discrete_metric
-from ragas.metrics.result import MetricResult
+```kotlin
+import ragas.metrics.MetricType
+import ragas.metrics.primitives.DiscreteMetric
 
-@discrete_metric(name="accuracy", allowed_values=["pass", "fail"])
-def my_metric(prediction: str, actual: str):
-    """Calculate accuracy of the prediction."""
-    return MetricResult(value="pass", reason="") if prediction == actual else MetricResult(value="fail", reason="")
+val accuracyMetric =
+    DiscreteMetric(
+        name = "accuracy",
+        prompt =
+            """
+            Check if the predicted sentiment matches the expected sentiment.
+            Prediction: {response}
+            Expected: {reference}
+            Return "pass" or "fail".
+            """.trimIndent(),
+        llm = llm,
+        allowedValues = listOf("pass", "fail"),
+        requiredColumns = mapOf(MetricType.SINGLE_TURN to setOf("response", "reference")),
+    )
 ```
 
 Next, we will write the experiment loop that will run our prompt on the test dataset and evaluate it using the metric, and store the results in a csv file. 
 
-```python
-from ragas import experiment
+```kotlin
+import ragas.backends.LocalCsvBackend
+import ragas.experiment
+import ragas.model.SingleTurnSample
 
-@experiment()
-async def run_experiment(row):
-    
-    response = run_prompt(row["text"])
-    score = my_metric.score(
-        prediction=response,
-        actual=row["label"]
-    )
-
-    experiment_view = {
-        **row,
-        "response":response,
-        "score":score.value,
+val runner =
+    experiment<PromptRow>(backend = LocalCsvBackend("experiments"), namePrefix = "prompt-eval") { row ->
+        val response = runPrompt(row.text) // your application prompt function
+        val score =
+            accuracyMetric.singleTurnAscore(
+                SingleTurnSample(
+                    userInput = row.text,
+                    response = response,
+                    reference = row.label,
+                ),
+            )
+        mapOf(
+            "text" to row.text,
+            "label" to row.label,
+            "response" to response,
+            "score" to score,
+        )
     }
-    return experiment_view
 ```
 
 Now whenever you make a change to your prompt, you can run the experiment and see how it affects the performance of your prompt.
@@ -85,39 +118,39 @@ Now whenever you make a change to your prompt, you can run the experiment and se
 
 You can pass additional parameters like models or configurations to your experiment function:
 
-```python
-@experiment()
-async def run_experiment(row, model):
-    response = run_prompt(row["text"], model=model)
-    score = my_metric.score(
-        prediction=response,
-        actual=row["label"]
-    )
+```kotlin
+suspend fun runWithModel(
+    dataset: List<PromptRow>,
+    modelName: String,
+) {
+    val runner =
+        experiment<PromptRow>(backend = LocalCsvBackend("experiments"), namePrefix = "prompt-eval-$modelName") { row ->
+            val response = runPrompt(row.text, modelName = modelName)
+            val score =
+                accuracyMetric.singleTurnAscore(
+                    SingleTurnSample(
+                        userInput = row.text,
+                        response = response,
+                        reference = row.label,
+                    ),
+                )
+            mapOf("text" to row.text, "label" to row.label, "response" to response, "score" to score)
+        }
 
-    experiment_view = {
-        **row,
-        "response": response,
-        "score": score.value,
-    }
-    return experiment_view
-
-# Run with specific parameters
-run_experiment.arun(dataset, "gpt-4")
-
-# Or use keyword arguments
-run_experiment.arun(dataset, model="gpt-4o")
-``` 
+    runner.arun(dataset = dataset, name = "baseline")
+}
+```
 
 
 ## Running the example end to end
 
 1. Setup your OpenAI API key
 ```bash
-export OPENAI_API_KEY = "your_openai_api_key"
+export OPENAI_API_KEY="your_openai_api_key"
 ```
 2. Run the evaluation
 ```bash
-python -m ragas_examples.prompt_evals.evals
+./gradlew execute -PmainClass=ragas.examples.prompteval.EvalsKt
 ```
 
 This will:

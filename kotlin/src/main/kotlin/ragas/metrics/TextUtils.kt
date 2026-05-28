@@ -1,5 +1,7 @@
 package ragas.metrics
 
+import ragas.tokenizers.DEFAULT_TOKENIZER
+
 private val tokenPattern = Regex("[\\p{L}\\p{M}\\p{N}]+")
 
 /**
@@ -36,7 +38,11 @@ val COMMON_STOP_WORDS =
  *
  * @param text Input text string.
  */
-fun tokenize(text: String): List<String> = tokenPattern.findAll(text.lowercase()).map { match -> match.value }.toList()
+fun tokenize(text: String): List<String> =
+    tokenPattern
+        .findAll(DEFAULT_TOKENIZER.decode(DEFAULT_TOKENIZER.encode(text)).lowercase())
+        .map { match -> match.value }
+        .toList()
 
 /**
  * Returns the unique normalized token set for a text.

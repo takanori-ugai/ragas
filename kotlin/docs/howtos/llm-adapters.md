@@ -1,463 +1,283 @@
-<!-- Adapted for ragas-kotlin on 2026-04-01 -->
+<!-- Adapted for ragas-kotlin on 2026-05-27 -->
 > [!NOTE]
 > This page was adapted from `../docs/howtos/llm-adapters.md` for the Kotlin port (`ragas-kotlin`).
-> Python APIs/examples may not map 1:1. Use Kotlin entrypoints in package `ragas` and check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
+> Kotlin does not expose Python's `llm_factory(..., adapter=...)` API. Use provider chat models via `LangChain4jLlm`.
 
 # LLM Adapters: Using Multiple Structured Output Backends
 
-Ragas supports multiple structured output backends through an adapter pattern. This guide explains how to use different adapters for different LLM providers.
+Ragas Kotlin uses provider-specific LangChain4j chat models wrapped by `LangChain4jLlm`.
 
 ## Overview
 
-Ragas uses adapters to handle structured output from different LLM providers:
+In Kotlin, the practical "adapter" is:
 
-- **Instructor Adapter**: Works with OpenAI, Anthropic, Azure, Groq, Mistral, Cohere, and many others
-- **LiteLLM Adapter**: Works with all 100+ LiteLLM-supported providers (Gemini, Ollama, vLLM, Bedrock, etc.)
+- Provider chat model (`OpenAiChatModel`, `GoogleGenAiChatModel`, `OllamaChatModel`, etc.)
+- Wrapped as `LangChain4jLlm`
+- Passed into metrics/evaluation APIs as `BaseRagasLlm`
 
-The framework automatically selects the best adapter for your provider, but you can also choose explicitly.
+```kotlin
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
+
+fun wrap(model: dev.langchain4j.model.chat.ChatModel): BaseRagasLlm =
+    LangChain4jLlm(model = model, runConfig = RunConfig(timeoutSeconds = 90))
+```
 
 ## Quick Start
 
-### Automatic Adapter Selection (Recommended)
+### OpenAI
 
-Let Ragas auto-detect the best adapter:
+```kotlin
+import dev.langchain4j.model.openai.OpenAiChatModel
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-```python
-from ragas.llms import llm_factory
-from openai import OpenAI
+fun createOpenAiLlm(modelName: String = "gpt-5.4-mini"): BaseRagasLlm {
+    val apiKey = System.getenv("OPENAI_API_KEY")
+        ?: error("OPENAI_API_KEY is required")
 
-# For OpenAI - automatically uses Instructor adapter
-client = OpenAI(api_key="...")
-llm = llm_factory("gpt-4o-mini", client=client)
+    val chatModel =
+        OpenAiChatModel
+            .builder()
+            .apiKey(apiKey)
+            .modelName(modelName)
+            .temperature(0.0)
+            .build()
+
+    return LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+}
 ```
 
-```python
-from ragas.llms import llm_factory
-import google.generativeai as genai
+### Gemini
 
-# For Gemini - automatically uses LiteLLM adapter
-genai.configure(api_key="...")
-client = genai.GenerativeModel("gemini-2.0-flash")
-llm = llm_factory("gemini-2.0-flash", provider="google", client=client)
+```kotlin
+import dev.langchain4j.model.google.genai.GoogleGenAiChatModel
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
+
+fun createGeminiLlm(modelName: String = "gemma-4-31b-it"): BaseRagasLlm {
+    val apiKey = System.getenv("GEMINI_API_KEY")
+        ?: System.getenv("GOOGLE_API_KEY")
+        ?: error("GEMINI_API_KEY or GOOGLE_API_KEY is required")
+
+    val chatModel =
+        GoogleGenAiChatModel
+            .builder()
+            .apiKey(apiKey)
+            .modelName(modelName)
+            .temperature(0.0)
+            .build()
+
+    return LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+}
 ```
 
-### Explicit Adapter Selection
+### Ollama
 
-Choose a specific adapter if you need more control:
+```kotlin
+import dev.langchain4j.model.ollama.OllamaChatModel
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-```python
-from ragas.llms import llm_factory
+fun createOllamaLlm(
+    modelName: String = "llama3.2",
+    baseUrl: String = "http://localhost:11434",
+): BaseRagasLlm {
+    val chatModel =
+        OllamaChatModel
+            .builder()
+            .baseUrl(baseUrl)
+            .modelName(modelName)
+            .temperature(0.0)
+            .build()
 
-# Force using Instructor adapter
-llm = llm_factory("gpt-4o", client=client, adapter="instructor")
-
-# Force using LiteLLM adapter
-llm = llm_factory("gemini-2.0-flash", client=client, adapter="litellm")
+    return LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+}
 ```
 
-## Auto-Detection Logic
+## Simple Provider Selector
 
-When `adapter="auto"` (default), Ragas uses this logic:
+Kotlin does not have Python's `auto_detect_adapter(...)` API. Use an explicit provider selector:
+The snippet below assumes `createOpenAiLlm`, `createGeminiLlm`, and `createOllamaLlm` are defined as shown in the sections above.
 
-1. **Check client type**: If client is from `litellm` module → use LiteLLM adapter
-2. **Check provider**: If provider is `google` or `gemini` → use LiteLLM adapter
-3. **Default**: Use Instructor adapter for all other cases
+```kotlin
+import ragas.llms.BaseRagasLlm
 
-```python
-from ragas.llms.adapters import auto_detect_adapter
-
-# See which adapter will be used
-adapter_name = auto_detect_adapter(client, "google")
-print(adapter_name)  # Output: "litellm"
-
-adapter_name = auto_detect_adapter(client, "openai")
-print(adapter_name)  # Output: "instructor"
+fun createLlm(provider: String, modelName: String? = null): BaseRagasLlm =
+    when (provider.lowercase()) {
+        "openai" -> createOpenAiLlm(modelName ?: "gpt-5.4-mini")
+        "gemini", "google" -> createGeminiLlm(modelName ?: "gemma-4-31b-it")
+        "ollama" -> createOllamaLlm(modelName ?: "llama3.2")
+        else -> error("Unsupported provider: $provider")
+    }
 ```
 
 ## Provider-Specific Examples
 
-### OpenAI
+### OpenAI-Compatible Endpoints (LiteLLM proxy, local gateway, etc.)
 
-```python
-from openai import OpenAI
-from ragas.llms import llm_factory
+```kotlin
+import dev.langchain4j.model.openai.OpenAiChatModel
+import ragas.llms.BaseRagasLlm
+import ragas.llms.LangChain4jLlm
+import ragas.runtime.RunConfig
 
-client = OpenAI(api_key="your-key")
-llm = llm_factory("gpt-4o", client=client)
-# Uses Instructor adapter automatically
+fun createOpenAiCompatibleLlm(
+    baseUrl: String,
+    apiKey: String,
+    modelName: String,
+): BaseRagasLlm {
+    val chatModel =
+        OpenAiChatModel
+            .builder()
+            .baseUrl(baseUrl)
+            .apiKey(apiKey)
+            .modelName(modelName)
+            .temperature(0.0)
+            .build()
+
+    return LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+}
+
+// Example usage:
+// val llm = createOpenAiCompatibleLlm(
+//     baseUrl = "http://0.0.0.0:4000",
+//     apiKey = "anything",
+//     modelName = "gemini-2.0-flash",
+// )
 ```
 
-### Anthropic Claude
+## Working with Structured Output
 
-```python
-from anthropic import Anthropic
-from ragas.llms import llm_factory
+`LangChain4jLlm` implements `StructuredOutputRagasLlm`, which metrics use when available.
+If you want broader provider coverage, point an OpenAI-compatible client to a LiteLLM proxy.
 
-client = Anthropic(api_key="your-key")
-llm = llm_factory("claude-3-sonnet", provider="anthropic", client=client)
-# Uses Instructor adapter automatically
-```
+```kotlin
+import dev.langchain4j.model.openai.OpenAiChatModel
+import kotlinx.coroutines.runBlocking
+import ragas.llms.LangChain4jLlm
+import ragas.llms.StructuredOutputRagasLlm
+import ragas.runtime.RunConfig
 
-### Google Gemini (with google-generativeai - Recommended)
+// Example proxy startup:
+// litellm --model grok-1
+// litellm --model deepseek-chat
 
-```python
-import google.generativeai as genai
-from ragas.llms import llm_factory
+fun main() = runBlocking {
+    val proxyKey = System.getenv("LITELLM_API_KEY") ?: "anything"
+    val chatModel =
+        OpenAiChatModel
+            .builder()
+            .baseUrl("http://0.0.0.0:4000")
+            .apiKey(proxyKey)
+            .modelName("grok-1")
+            .temperature(0.0)
+            .build()
 
-genai.configure(api_key="your-key")
-client = genai.GenerativeModel("gemini-2.0-flash")
-llm = llm_factory("gemini-2.0-flash", provider="google", client=client)
-# Uses LiteLLM adapter automatically for google provider
-```
+    val llm = LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
+    val structured = llm as? StructuredOutputRagasLlm
+        ?: error("Selected LLM does not support structured output")
 
-### Google Gemini (with LiteLLM Proxy - Advanced)
-
-```python
-from openai import OpenAI
-from ragas.llms import llm_factory
-
-# Requires running: litellm --model gemini-2.0-flash
-client = OpenAI(
-    api_key="anything",
-    base_url="http://0.0.0.0:4000"  # LiteLLM proxy endpoint
-)
-llm = llm_factory("gemini-2.0-flash", client=client, adapter="litellm")
-# Uses LiteLLM adapter explicitly
-```
-
-### Local Models (Ollama)
-
-```python
-from openai import OpenAI
-from ragas.llms import llm_factory
-
-# Ollama exposes OpenAI-compatible API
-client = OpenAI(
-    api_key="ollama",
-    base_url="http://localhost:11434/v1"
-)
-llm = llm_factory("mistral", provider="openai", client=client)
-# Uses Instructor adapter
-```
-
-### AWS Bedrock
-
-```python
-from openai import OpenAI
-from ragas.llms import llm_factory
-
-# Use LiteLLM proxy for Bedrock
-# Note: Set up LiteLLM with Bedrock credentials first
-client = OpenAI(
-    api_key="",  # Bedrock uses IAM auth
-    base_url="http://0.0.0.0:4000"  # LiteLLM proxy endpoint
-)
-llm = llm_factory("claude-3-sonnet", client=client, adapter="litellm")
-```
-
-### Groq
-
-```python
-from groq import Groq
-from ragas.llms import llm_factory
-
-client = Groq(api_key="your-key")
-llm = llm_factory("mixtral-8x7b", provider="groq", client=client)
-# Uses Instructor adapter automatically
-```
-
-### Mistral
-
-```python
-from mistralai import Mistral
-from ragas.llms import llm_factory
-
-client = Mistral(api_key="your-key")
-llm = llm_factory("mistral-large", provider="mistral", client=client)
-# Uses Instructor adapter automatically
-```
-
-### Cohere
-
-```python
-from cohere import Cohere
-from ragas.llms import llm_factory
-
-client = Cohere(api_key="your-key")
-llm = llm_factory("command-r-plus", provider="cohere", client=client)
-# Uses Instructor adapter automatically
-```
-
-## Adapter Selection Guide
-
-Choose your adapter based on your needs:
-
-### Use Instructor Adapter if:
-- Using OpenAI, Anthropic, Azure, Groq, Mistral, or Cohere
-- Provider is natively supported by Instructor
-- You want the most stable, well-tested option
-- Provider doesn't require special handling
-
-### Use LiteLLM Adapter if:
-- Using Google Gemini
-- Using local models (Ollama, vLLM, etc.)
-- Using providers with 100+ options (Bedrock, etc.)
-- You need maximum provider compatibility
-- Auto-detection selects it for your provider
-
-## Working with Adapters Directly
-
-### Get Available Adapters
-
-```python
-from ragas.llms.adapters import ADAPTERS
-
-print(ADAPTERS)
-# Output: {
-#     "instructor": InstructorAdapter(),
-#     "litellm": LiteLLMAdapter()
-# }
-```
-
-### Get Specific Adapter
-
-```python
-from ragas.llms.adapters import get_adapter
-
-instructor = get_adapter("instructor")
-litellm = get_adapter("litellm")
-
-# Create LLM using adapter directly
-llm = instructor.create_llm(client, "gpt-4o", "openai")
-```
-
-## Advanced Usage
-
-### Model Arguments
-
-All adapters support the same model arguments:
-
-```python
-llm = llm_factory(
-    "gpt-4o",
-    client=client,
-    temperature=0.7,
-    max_tokens=2048,
-    top_p=0.9,
-)
-```
-
-### System Prompts
-
-Both adapters support system prompts for models that require specific instructions:
-
-```python
-llm = llm_factory(
-    "gpt-4o",
-    client=client,
-    system_prompt="You are a helpful assistant that evaluates RAG systems."
-)
-```
-
-System prompts are useful when:
-- Your LLM requires specific behavior instructions
-- You're using fine-tuned models with custom system prompts
-- You want to guide the evaluation style across all metrics
-
-The system prompt is prepended to all LLM calls as a system message.
-
-### Custom Instructor Modes
-
-The instructor adapter supports multiple modes for structured output generation. By default, `Mode.JSON` is used, but you can specify a different mode for backends that don't support certain features:
-
-```python
-import instructor
-from ragas.llms import llm_factory
-from openai import OpenAI
-
-# Use MD_JSON mode for backends without response_format support
-client = OpenAI(api_key="...", base_url="https://custom-backend")
-llm = llm_factory(
-    "custom-model",
-    provider="openai",
-    client=client,
-    mode=instructor.Mode.MD_JSON
-)
-```
-
-Available instructor modes:
-- `Mode.JSON` (default) - Uses OpenAI's response_format parameter
-- `Mode.MD_JSON` - Uses markdown JSON in the prompt (fallback for unsupported backends)
-- `Mode.TOOLS` - Uses function calling
-- `Mode.JSON_SCHEMA` - Uses JSON schema validation
-
-Use `Mode.MD_JSON` when you encounter errors like:
-```
-Error code: 400 - {'message': 'only pytorch backend can use response_format now'}
-```
-
-### Async Support
-
-Both adapters support async operations:
-
-```python
-from openai import AsyncOpenAI
-from ragas.llms import llm_factory
-
-async_client = AsyncOpenAI(api_key="...")
-llm = llm_factory("gpt-4o", client=async_client)
-
-# Async generation
-response = await llm.agenerate(prompt, ResponseModel)
-```
-
-### Custom Providers with LiteLLM
-
-LiteLLM supports many providers beyond what Instructor covers. Use the LiteLLM proxy approach:
-
-```python
-from openai import OpenAI
-from ragas.llms import llm_factory
-
-# Set up LiteLLM proxy first:
-# litellm --model grok-1  (for xAI)
-# litellm --model deepseek-chat  (for DeepSeek)
-# etc.
-
-client = OpenAI(
-    api_key="your-provider-api-key",
-    base_url="http://0.0.0.0:4000"  # LiteLLM proxy endpoint
-)
-
-# xAI Grok
-llm = llm_factory("grok-1", client=client, adapter="litellm")
-
-# DeepSeek
-llm = llm_factory("deepseek-chat", client=client, adapter="litellm")
-
-# Together AI
-llm = llm_factory("mistral-7b", client=client, adapter="litellm")
+    val verdict = structured.generateDiscreteValue(
+        "Return only one token: pass or fail."
+    )
+    println("verdict=$verdict")
+}
 ```
 
 ## Complete Evaluation Example
 
-```python
-from datasets import Dataset
-from ragas import evaluate
-from ragas.llms import llm_factory
-from ragas.metrics import (
-    ContextPrecision,
-    ContextRecall,
-    Faithfulness,
-    AnswerCorrectness,
-)
+```kotlin
+import ragas.evaluate
+import ragas.llms.BaseRagasLlm
+import ragas.metrics.collections.AnswerCorrectnessMetric
+import ragas.metrics.defaults.ContextPrecisionMetric
+import ragas.metrics.defaults.ContextRecallMetric
+import ragas.metrics.defaults.FaithfulnessMetric
+import ragas.model.EvaluationDataset
+import ragas.model.SingleTurnSample
 
-# Initialize LLM with your provider
-import google.generativeai as genai
-genai.configure(api_key="...")
-client = genai.GenerativeModel("gemini-2.0-flash")
-llm = llm_factory("gemini-2.0-flash", provider="google", client=client)
+fun runEvaluation(llm: BaseRagasLlm) {
+    val dataset =
+        EvaluationDataset(
+            samples =
+                listOf(
+                    SingleTurnSample(
+                        userInput = "What is the capital of France?",
+                        response = "Paris",
+                        reference = "Paris",
+                        retrievedContexts = listOf("France is in Europe. Paris is its capital."),
+                    ),
+                ),
+        )
 
-# Create evaluation dataset
-data = {
-    "question": ["What is the capital of France?"],
-    "answer": ["Paris"],
-    "contexts": [["France is in Europe. Paris is its capital."]],
-    "ground_truth": ["Paris"]
+    val metrics =
+        listOf(
+            ContextPrecisionMetric(),
+            ContextRecallMetric().apply { this.llm = llm },
+            FaithfulnessMetric().apply { this.llm = llm },
+            AnswerCorrectnessMetric().apply { this.llm = llm },
+        )
+
+    val results = evaluate(dataset = dataset, metrics = metrics)
+    println(results.scores)
 }
-dataset = Dataset.from_dict(data)
-
-# Define metrics
-metrics = [
-    ContextPrecision(llm=llm),
-    ContextRecall(llm=llm),
-    Faithfulness(llm=llm),
-    AnswerCorrectness(llm=llm),
-]
-
-# Evaluate
-results = evaluate(dataset, metrics=metrics)
-print(results)
 ```
 
 ## Troubleshooting
 
-### "Unknown adapter: xyz"
+### Missing API key
 
-Make sure you're using a valid adapter name:
-
-```python
-# Valid: "instructor" or "litellm"
-llm = llm_factory("model", client=client, adapter="instructor")
-
-# Invalid: "dspy" (not yet implemented)
-# llm = llm_factory("model", client=client, adapter="dspy")  # Error!
+```kotlin
+val apiKey = System.getenv("OPENAI_API_KEY")
+require(!apiKey.isNullOrBlank()) { "OPENAI_API_KEY must be set" }
 ```
 
-### "Failed to initialize provider client"
+### Unsupported provider value
 
-Ensure:
-1. Your client is properly initialized
-2. Your API key is valid
-3. The provider is supported by the adapter
-
-```python
-# Check if adapter can handle your provider
-from ragas.llms.adapters import auto_detect_adapter
-adapter = auto_detect_adapter(client, "my-provider")
-print(f"Will use: {adapter}")
+```kotlin
+val llm = createLlm(provider = "openai") // openai | gemini | ollama
 ```
 
-### Adapter Mismatch
+### Structured output not available
 
-Auto-detection handles most cases, but explicit selection can help:
+```kotlin
+import ragas.llms.BaseRagasLlm
+import ragas.llms.StructuredOutputRagasLlm
 
-```python
-# If auto-detection picks the wrong adapter:
-llm = llm_factory(
-    "model",
-    provider="provider-name",
-    client=client,
-    adapter="litellm"  # Explicit override
-)
+val llm: BaseRagasLlm = TODO("Configure LLM")
+val structured = llm as? StructuredOutputRagasLlm
+if (structured == null) {
+    error("Use a structured-output capable model wrapper (for example LangChain4jLlm)")
+}
 ```
 
 ## Migration Guide
 
-### From Text-Only to Structured Output
+### Python factory style -> Kotlin provider constructors
 
-If you're upgrading from text-only LLM usage:
+```kotlin
+// Python-style (reference)
+// llm = llm_factory("gpt-4o-mini", client=client)
 
-```python
-# Before (deprecated)
-# from ragas.llms import LangchainLLMWrapper
-# llm = LangchainLLMWrapper(langchain_llm)
-
-# After (new way)
-from ragas.llms import llm_factory
-llm = llm_factory("gpt-4o", client=client)
+// Kotlin-style
+val llm = createOpenAiLlm(modelName = "gpt-5.4-mini")
 ```
 
-### Switching Providers
+### Switch provider with minimal changes
 
-To switch from OpenAI to Gemini:
-
-```python
-# Before: OpenAI
-from openai import OpenAI
-client = OpenAI(api_key="...")
-llm = llm_factory("gpt-4o", client=client)
-
-# After: Gemini (similar code pattern!)
-import google.generativeai as genai
-genai.configure(api_key="...")
-client = genai.GenerativeModel("gemini-2.0-flash")
-llm = llm_factory("gemini-2.0-flash", provider="google", client=client)
-# Adapter automatically switches to LiteLLM for google provider
+```kotlin
+val openAi = createOpenAiLlm("gpt-5.4-mini")
+val gemini = createGeminiLlm("gemma-4-31b-it")
+val ollama = createOllamaLlm("llama3.2")
 ```
 
 ## See Also
 
-- [Gemini Integration Guide](./integrations/gemini.md) - Detailed Gemini setup
-- [LLM Factory Reference](./llm-factory.md) - Complete API reference
-- [Metrics Documentation](../concepts/metrics/index.md) - Using metrics with LLMs
+- [LLMs Reference](../references/llms.md)
+- [evaluate()](../references/evaluate.md)
+- [Gemini Integration Guide](./integrations/gemini.md)

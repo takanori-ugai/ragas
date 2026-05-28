@@ -1,6 +1,7 @@
 package ragas.testset.transforms
 
 import ragas.testset.graph.NodeType
+import ragas.tokenizers.DEFAULT_TOKENIZER
 
 /**
  * Heuristic default transform plan for document inputs.
@@ -149,4 +150,4 @@ fun defaultTransformsForPrechunked(): SequenceTransforms {
     )
 }
 
-private fun tokenCount(text: String): Int = text.split(Regex("\\s+")).count { token -> token.isNotBlank() }
+private fun tokenCount(text: String): Int = DEFAULT_TOKENIZER.countTokens(text)
