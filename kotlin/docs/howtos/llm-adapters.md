@@ -102,6 +102,7 @@ fun createOllamaLlm(
 ## Simple Provider Selector
 
 Kotlin does not have Python's `auto_detect_adapter(...)` API. Use an explicit provider selector:
+The snippet below assumes `createOpenAiLlm`, `createGeminiLlm`, and `createOllamaLlm` are defined as shown in the sections above.
 
 ```kotlin
 import ragas.llms.BaseRagasLlm
@@ -153,13 +154,31 @@ fun createOpenAiCompatibleLlm(
 ## Working with Structured Output
 
 `LangChain4jLlm` implements `StructuredOutputRagasLlm`, which metrics use when available.
+If you want broader provider coverage, point an OpenAI-compatible client to a LiteLLM proxy.
 
 ```kotlin
+import dev.langchain4j.model.openai.OpenAiChatModel
 import kotlinx.coroutines.runBlocking
+import ragas.llms.LangChain4jLlm
 import ragas.llms.StructuredOutputRagasLlm
+import ragas.runtime.RunConfig
+
+// Example proxy startup:
+// litellm --model grok-1
+// litellm --model deepseek-chat
 
 fun main() = runBlocking {
-    val llm = createOpenAiLlm()
+    val proxyKey = System.getenv("LITELLM_API_KEY") ?: "anything"
+    val chatModel =
+        OpenAiChatModel
+            .builder()
+            .baseUrl("http://0.0.0.0:4000")
+            .apiKey(proxyKey)
+            .modelName("grok-1")
+            .temperature(0.0)
+            .build()
+
+    val llm = LangChain4jLlm(model = chatModel, runConfig = RunConfig(timeoutSeconds = 90))
     val structured = llm as? StructuredOutputRagasLlm
         ?: error("Selected LLM does not support structured output")
 
@@ -227,8 +246,10 @@ val llm = createLlm(provider = "openai") // openai | gemini | ollama
 ### Structured output not available
 
 ```kotlin
+import ragas.llms.BaseRagasLlm
 import ragas.llms.StructuredOutputRagasLlm
 
+val llm: BaseRagasLlm = TODO("Configure LLM")
 val structured = llm as? StructuredOutputRagasLlm
 if (structured == null) {
     error("Use a structured-output capable model wrapper (for example LangChain4jLlm)")

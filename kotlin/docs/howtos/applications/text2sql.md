@@ -13,7 +13,12 @@ interface Text2SqlAgent {
 import java.sql.Connection
 
 fun executeSql(connection: Connection, sql: String): List<List<Any?>> {
+    val normalized = sql.trim().lowercase()
+    require(normalized.startsWith("select") || normalized.startsWith("with")) {
+        "Only read-only SELECT/CTE queries are allowed"
+    }
     val rows = mutableListOf<List<Any?>>()
+    connection.isReadOnly = true
     connection.createStatement().use { stmt ->
         stmt.executeQuery(sql).use { rs ->
             val meta = rs.metaData
@@ -25,6 +30,15 @@ fun executeSql(connection: Connection, sql: String): List<List<Any?>> {
     return rows
 }
 
-fun executionAccuracy(expectedRows: List<List<Any?>>, predictedRows: List<List<Any?>>): String =
-    if (expectedRows == predictedRows) "correct" else "incorrect"
+fun executionAccuracy(expectedRows: List<List<Any?>>, predictedRows: List<List<Any?>>): String {
+    val normalizedExpected =
+        expectedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    val normalizedPredicted =
+        predictedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    return if (normalizedExpected == normalizedPredicted) "correct" else "incorrect"
+}
 ```

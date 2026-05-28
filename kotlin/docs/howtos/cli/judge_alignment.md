@@ -21,7 +21,7 @@ import ragas.llms.BaseRagasLlm
 val llm: BaseRagasLlm = TODO("Configure LLM")
 val baselineJudge =
     DiscreteMetric(
-        name = "accuracy",
+        name = "accuracy_baseline",
         prompt = "Check if response covers grading notes. Return pass/fail.",
         llm = llm,
         allowedValues = listOf("pass", "fail"),
@@ -30,7 +30,7 @@ val baselineJudge =
 
 val improvedJudge =
     DiscreteMetric(
-        name = "accuracy",
+        name = "accuracy_improved",
         prompt = "Check coverage including abbreviations and business shorthand. Return pass/fail.",
         llm = llm,
         allowedValues = listOf("pass", "fail"),

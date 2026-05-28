@@ -7,6 +7,7 @@ Align a custom judge metric using human-labeled examples.
 // @compile
 fun alignmentScore(human: List<Int>, llmScores: List<Int>): Double {
     require(human.size == llmScores.size)
+    require(human.isNotEmpty()) { "Inputs must be non-empty" }
     val correct = human.zip(llmScores).count { (h, l) -> h == l }
     return correct.toDouble() / human.size.toDouble()
 }

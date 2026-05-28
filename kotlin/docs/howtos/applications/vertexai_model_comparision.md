@@ -11,12 +11,11 @@ import ragas.llms.BaseRagasLlm
 import ragas.model.EvaluationDataset
 import ragas.model.Sample
 
-val datasetA: EvaluationDataset<out Sample> = TODO("Provide dataset A")
-val datasetB: EvaluationDataset<out Sample> = TODO("Provide dataset B")
+val dataset: EvaluationDataset<out Sample> = TODO("Provide shared evaluation dataset")
 val llmA: BaseRagasLlm = TODO("Configure model A")
 val llmB: BaseRagasLlm = TODO("Configure model B")
-val resultA = evaluate(dataset = datasetA, metrics = defaultMetrics(), llm = llmA)
-val resultB = evaluate(dataset = datasetB, metrics = defaultMetrics(), llm = llmB)
+val resultA = evaluate(dataset = dataset, metrics = defaultMetrics(), llm = llmA)
+val resultB = evaluate(dataset = dataset, metrics = defaultMetrics(), llm = llmB)
 
 println(resultA.scores)
 println(resultB.scores)

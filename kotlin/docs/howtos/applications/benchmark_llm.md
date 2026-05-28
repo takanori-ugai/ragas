@@ -17,7 +17,9 @@ import ragas.experiment
 val runner =
     experiment<BenchmarkRow>(backend = LocalCsvBackend("experiments"), namePrefix = "llm-benchmark") { row ->
         val response = runPrompt(row.input, modelName = "gpt-5.4-mini")
-        val score = if (response == row.expected) "correct" else "incorrect"
+        val normalizedResponse = response.trim().lowercase()
+        val normalizedExpected = row.expected.trim().lowercase()
+        val score = if (normalizedResponse == normalizedExpected) "correct" else "incorrect"
         mapOf("input" to row.input, "expected" to row.expected, "response" to response, "score" to score)
     }
 ```

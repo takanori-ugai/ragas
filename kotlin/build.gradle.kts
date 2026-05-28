@@ -93,6 +93,7 @@ val extractDocsKotlinSnippets by tasks.registering {
             rootDir
                 .walkTopDown()
                 .filter { entry -> entry.isFile && entry.extension == "md" }
+                .sortedBy { entry -> entry.relativeTo(rootDir).invariantSeparatorsPath }
                 .forEach { markdown ->
                     val text = markdown.readText()
                     fenceRegex.findAll(text).forEach { match ->
@@ -136,7 +137,7 @@ val extractDocsKotlinSnippets by tasks.registering {
                                 appendLine()
                                 appendLine("package docs.snippets.generated.s$packageSuffix")
                                 appendLine()
-                                appendLine("// Source: ${markdown.path.replace('\\', '/')}")
+                                appendLine("// Source: ${markdown.relativeTo(projectDir).path.replace('\\', '/')}")
                                 appendLine()
                                 if (imports.isNotEmpty()) {
                                     imports.forEach { importLine -> appendLine(importLine) }

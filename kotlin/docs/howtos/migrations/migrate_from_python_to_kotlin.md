@@ -1,7 +1,7 @@
 <!-- Adapted for ragas-kotlin on 2026-05-28 -->
 > [!NOTE]
 > This guide is for teams moving Ragas usage from Python to Kotlin (`ragas-kotlin`).
-> For current Kotlin parity status, check [`/home/ugai/ragas/kotlin/PARITY_MATRIX.md`](/home/ugai/ragas/kotlin/PARITY_MATRIX.md) and [`/home/ugai/ragas/kotlin/MIGRATION.md`](/home/ugai/ragas/kotlin/MIGRATION.md).
+> For current Kotlin parity status, check [PARITY_MATRIX.md](../../../PARITY_MATRIX.md) and [MIGRATION.md](../../../MIGRATION.md).
 
 # Migration from Python to Kotlin
 

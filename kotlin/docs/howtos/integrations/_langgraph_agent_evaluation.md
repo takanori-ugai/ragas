@@ -162,8 +162,18 @@ As in the Python tutorial, two key metrics are:
 ```kotlin
 import kotlinx.serialization.json.JsonPrimitive
 import ragas.metrics.collections.ToolCallAccuracyMetric
+import ragas.model.AiMessage
+import ragas.model.ConversationMessage
+import ragas.model.HumanMessage
 import ragas.model.MultiTurnSample
 import ragas.model.ToolCall
+
+val ragasMessages: List<ConversationMessage> =
+    listOf(
+        HumanMessage(content = "What is the price of copper?"),
+        AiMessage(content = "", toolCalls = listOf(ToolCall(name = "get_metal_price", args = mapOf("metal_name" to JsonPrimitive("copper"))))),
+        AiMessage(content = "The price of copper is $0.0098 per gram."),
+    )
 
 val sample =
     MultiTurnSample(
@@ -178,8 +188,12 @@ val toolCallMetric = ToolCallAccuracyMetric()
 ### Agent Goal Accuracy
 
 ```kotlin
+import ragas.model.ConversationMessage
+import ragas.model.HumanMessage
 import ragas.metrics.collections.AgentGoalAccuracyWithReferenceMetric
 import ragas.model.MultiTurnSample
+
+val ragasMessages: List<ConversationMessage> = listOf(HumanMessage(content = "What is the price of copper?"))
 
 val goalSample =
     MultiTurnSample(

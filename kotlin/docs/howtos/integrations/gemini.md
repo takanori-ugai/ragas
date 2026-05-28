@@ -13,7 +13,7 @@ val llm =
             GoogleGenAiChatModel
                 .builder()
                 .apiKey(System.getenv("GOOGLE_API_KEY") ?: error("GOOGLE_API_KEY is required"))
-                .modelName("gemma-4-31b-it")
+                .modelName("gemini-2.5-flash")
                 .temperature(0.0)
                 .build(),
         runConfig = RunConfig(timeoutSeconds = 90),

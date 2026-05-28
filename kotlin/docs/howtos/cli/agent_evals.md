@@ -13,12 +13,17 @@ The `agent_evals` template evaluates an agent's final answer and tool behavior.
 ## Agent Call
 
 ```kotlin
+import kotlinx.coroutines.runBlocking
+
 interface MathAgent {
     suspend fun solve(expression: String): Double
 }
 
-val mathAgent: MathAgent = TODO("Provide MathAgent implementation")
-val output = mathAgent.solve("(2 + 3) * (6 - 2)")
+fun main() = runBlocking {
+    val mathAgent: MathAgent = TODO("Provide MathAgent implementation")
+    val output = mathAgent.solve("(2 + 3) * (6 - 2)")
+    println(output)
+}
 ```
 
 ## Correctness Metric

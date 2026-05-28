@@ -155,9 +155,9 @@ LocalCsvBackend("datasets").saveDataset(
 ## Analyze Results
 
 ```kotlin
-import java.io.File
+import ragas.backends.LocalCsvBackend
 
-val rows = File("experiments/rag-eval-baseline.csv").readLines().drop(1)
-val passCount = rows.count { it.contains(",pass") }
+val rows = LocalCsvBackend(".").loadExperiment("rag-eval-baseline")
+val passCount = rows.count { (it["score"] as? String)?.equals("pass", ignoreCase = true) == true }
 println("pass=$passCount total=${rows.size}")
 ```

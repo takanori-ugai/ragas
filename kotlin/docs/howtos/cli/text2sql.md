@@ -22,8 +22,17 @@ interface Text2SqlAgent {
 
 ```kotlin
 // @compile
-fun executionAccuracy(expectedRows: List<List<Any?>>, predictedRows: List<List<Any?>>): String =
-    if (expectedRows == predictedRows) "correct" else "incorrect"
+fun executionAccuracy(expectedRows: List<List<Any?>>, predictedRows: List<List<Any?>>): String {
+    val normalizedExpected =
+        expectedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    val normalizedPredicted =
+        predictedRows
+            .map { row -> row.map { cell -> cell?.toString() ?: "<NULL>" } }
+            .sortedBy { row -> row.joinToString("\u0001") }
+    return if (normalizedExpected == normalizedPredicted) "correct" else "incorrect"
+}
 ```
 
 ## DB Connection
