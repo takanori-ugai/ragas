@@ -50,7 +50,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-google-genai:1.16.1-beta26")
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.16.1")
     implementation("dev.langchain4j:langchain4j-community-neo4j:1.15.0-beta25")
-    implementation("com.langchain.smith:langsmith-java:0.1.0-beta.6")
+    implementation("com.langchain.smith:langsmith-java:0.1.0-beta.7")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.3.21")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
