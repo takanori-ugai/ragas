@@ -43,12 +43,12 @@ dependencies {
     implementation("gg.jte:jte-kotlin:3.2.4")
 
     // LangChain4j dependencies
-    implementation("dev.langchain4j:langchain4j:1.16.1")
-    implementation("dev.langchain4j:langchain4j-open-ai:1.16.1")
-    implementation("dev.langchain4j:langchain4j-azure-open-ai:1.16.1")
-    implementation("dev.langchain4j:langchain4j-ollama:1.16.1")
-    implementation("dev.langchain4j:langchain4j-google-genai:1.16.1-beta26")
-    implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.16.1")
+    implementation("dev.langchain4j:langchain4j:1.16.2")
+    implementation("dev.langchain4j:langchain4j-open-ai:1.16.2")
+    implementation("dev.langchain4j:langchain4j-azure-open-ai:1.16.2")
+    implementation("dev.langchain4j:langchain4j-ollama:1.16.2")
+    implementation("dev.langchain4j:langchain4j-google-genai:1.16.2-beta26")
+    implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.16.2")
     implementation("dev.langchain4j:langchain4j-community-neo4j:1.15.0-beta25")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.7")
 
