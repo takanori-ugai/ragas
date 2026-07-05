@@ -8,8 +8,8 @@ import com.langchain.smith.models.datasets.runs.ExampleWithRunsCh
 import com.langchain.smith.models.datasets.runs.RunCreateParams
 import com.langchain.smith.models.examples.Example
 import com.langchain.smith.models.examples.bulk.BulkCreateParams
+import com.langchain.smith.models.runs.RunQueryPage
 import com.langchain.smith.models.runs.RunQueryParams
-import com.langchain.smith.models.runs.RunQueryResponse
 import com.langchain.smith.models.runs.RunSchema
 import com.langchain.smith.models.runs.RunTypeEnum
 import com.langchain.smith.models.sessions.SessionListPage
@@ -232,7 +232,7 @@ class LangsmithRemoteApiIntegrationTest {
         val runService = mockk<RunService>()
         val sessionListPage = mockk<SessionListPage>()
         val session = mockk<TracerSession>()
-        val runQueryResponse = mockk<RunQueryResponse>()
+        val runQueryResponse = mockk<RunQueryPage>()
         val run = mockk<RunSchema>()
 
         val sessionListParams = slot<SessionListParams>()
