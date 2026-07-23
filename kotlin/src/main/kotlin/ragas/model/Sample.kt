@@ -154,9 +154,7 @@ data class MultiTurnSample(
                                 }
                             }
 
-                            is ToolMessage -> {
-                                Unit
-                            }
+                            is ToolMessage -> {}
 
                             is HumanMessage -> {
                                 error("ToolMessage must follow an AiMessage or another ToolMessage.")
@@ -165,9 +163,7 @@ data class MultiTurnSample(
                     }
                 }
 
-                is HumanMessage -> {
-                    Unit
-                }
+                is HumanMessage -> {}
             }
         }
     }
