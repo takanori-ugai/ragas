@@ -308,9 +308,7 @@ object LangGraphIntegration {
             buildMap<String, JsonElement> {
                 message.entries.forEach { (key, value) ->
                     when (key) {
-                        "type", "role", "content", "tool_calls" -> {
-                            Unit
-                        }
+                        "type", "role", "content", "tool_calls" -> {}
 
                         "additional_kwargs" -> {
                             val sanitized =

@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm") version "2.4.0"
     application
     id("com.gradleup.shadow") version "9.4.3"
-    kotlin("plugin.serialization") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.10"
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("org.jetbrains.dokka") version "2.2.0"
@@ -49,7 +49,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:1.18.0")
     implementation("dev.langchain4j:langchain4j-google-genai:1.18.0-beta28")
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.18.0")
-    implementation("dev.langchain4j:langchain4j-community-neo4j:1.15.0-beta25")
+    implementation("dev.langchain4j:langchain4j-community-neo4j:1.18.0-beta28")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.11")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.0")
