@@ -5,7 +5,6 @@ import com.langchain.smith.client.okhttp.LangsmithOkHttpClient
 import com.langchain.smith.core.JsonValue
 import com.langchain.smith.models.datasets.DataType
 import com.langchain.smith.models.datasets.DatasetCreateParams
-import com.langchain.smith.models.datasets.runs.RunCreateParams
 import com.langchain.smith.models.examples.bulk.BulkCreateParams
 import com.langchain.smith.models.runs.RunQueryParams
 import com.langchain.smith.models.runs.RunTypeEnum
@@ -303,21 +302,26 @@ object LangsmithIntegration {
             val resolvedProjectId =
                 projectId ?: createOrGetProjectSession(client, projectName = projectName, datasetId = datasetId).id()
 
-            val runCreateBuilder =
-                RunCreateParams
+            val runQueryBuilder =
+                com.langchain.smith.models.datasets.runs.RunQueryParams
                     .builder()
                     .datasetId(datasetId)
                     .addSessionId(resolvedProjectId)
                     .preview(preview)
                     .includeAnnotatorDetail(includeAnnotatorDetail)
-            limit?.let(runCreateBuilder::limit)
-            format?.let { runCreateBuilder.format(RunCreateParams.Format.of(it)) }
+            limit?.let(runQueryBuilder::limit)
+            format?.let {
+                runQueryBuilder.format(
+                    com.langchain.smith.models.datasets.runs.RunQueryParams.Format
+                        .of(it),
+                )
+            }
 
             val examplesWithRuns =
                 client
                     .datasets()
                     .runs()
-                    .create(runCreateBuilder.build())
+                    .query(runQueryBuilder.build())
                     .orElse(emptyList())
             val evaluatedExamples =
                 examplesWithRuns.map { example ->
