@@ -5,7 +5,6 @@ import com.langchain.smith.models.datasets.DataType
 import com.langchain.smith.models.datasets.Dataset
 import com.langchain.smith.models.datasets.DatasetCreateParams
 import com.langchain.smith.models.datasets.runs.ExampleWithRunsCh
-import com.langchain.smith.models.datasets.runs.RunCreateParams
 import com.langchain.smith.models.examples.Example
 import com.langchain.smith.models.examples.bulk.BulkCreateParams
 import com.langchain.smith.models.runs.RunQueryPage
@@ -31,6 +30,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import com.langchain.smith.models.datasets.runs.RunQueryParams as DatasetRunQueryParams
 
 class LangsmithRemoteApiIntegrationTest {
     private lateinit var originalClientFactory: (LangsmithClientConfig) -> LangsmithClient
@@ -160,14 +160,14 @@ class LangsmithRemoteApiIntegrationTest {
         val run = mockk<ExampleWithRunsCh.Run>()
 
         val sessionCreateParams = slot<com.langchain.smith.models.sessions.SessionCreateParams>()
-        val runCreateParams = slot<RunCreateParams>()
+        val runQueryParams = slot<com.langchain.smith.models.datasets.runs.RunQueryParams>()
 
         every { client.sessions() } returns sessionService
         every { client.datasets() } returns datasetService
         every { sessionService.create(capture(sessionCreateParams)) } returns createdSession
         every { createdSession.id() } returns "proj-1"
         every { datasetService.runs() } returns datasetRunService
-        every { datasetRunService.create(capture(runCreateParams)) } returns java.util.Optional.of(listOf(exampleWithRuns))
+        every { datasetRunService.query(capture(runQueryParams)) } returns java.util.Optional.of(listOf(exampleWithRuns))
 
         every { exampleWithRuns.id() } returns "ex-1"
         every { exampleWithRuns.datasetId() } returns "ds-1"
@@ -216,11 +216,11 @@ class LangsmithRemoteApiIntegrationTest {
         assertEquals("ds-1", sessionCreateParams.captured.referenceDatasetId().orElse(null))
         assertEquals(true, sessionCreateParams.captured.upsert().orElse(false))
 
-        assertEquals("ds-1", runCreateParams.captured.datasetId().orElse(null))
-        assertEquals(listOf("proj-1"), runCreateParams.captured.sessionIds())
-        assertEquals(10L, runCreateParams.captured.limit().orElse(null))
-        assertEquals(true, runCreateParams.captured.preview().orElse(false))
-        assertEquals(true, runCreateParams.captured.includeAnnotatorDetail().orElse(false))
+        assertEquals("ds-1", runQueryParams.captured.datasetId().orElse(null))
+        assertEquals(listOf("proj-1"), runQueryParams.captured.sessionIds())
+        assertEquals(10L, runQueryParams.captured.limit().orElse(null))
+        assertEquals(true, runQueryParams.captured.preview().orElse(false))
+        assertEquals(true, runQueryParams.captured.includeAnnotatorDetail().orElse(false))
 
         verify(exactly = 1) { client.close() }
     }
