@@ -52,7 +52,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-community-neo4j:1.20.0-beta30")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.22")
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("io.mockk:mockk:1.14.11")
 }
