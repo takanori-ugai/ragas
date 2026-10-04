@@ -49,7 +49,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:1.20.0")
     implementation("dev.langchain4j:langchain4j-google-genai:1.20.2-beta30")
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.20.0")
-    implementation("dev.langchain4j:langchain4j-community-neo4j:1.20.2-beta30")
+    implementation("dev.langchain4j:langchain4j-community-neo4j:1.20.0-beta30")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.23")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
