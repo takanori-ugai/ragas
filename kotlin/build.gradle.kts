@@ -47,7 +47,7 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-open-ai:1.20.2")
     implementation("dev.langchain4j:langchain4j-azure-open-ai:1.20.2")
     implementation("dev.langchain4j:langchain4j-ollama:1.20.2")
-    implementation("dev.langchain4j:langchain4j-google-genai:1.20.2-beta30")
+    implementation("dev.langchain4j:langchain4j-google-genai:1.22.0-beta32")
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.20.2")
     implementation("dev.langchain4j:langchain4j-community-neo4j:1.20.0-beta30")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.23")
