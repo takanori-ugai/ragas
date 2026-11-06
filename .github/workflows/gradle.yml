@@ -36,7 +36,7 @@ jobs:
       working-directory: kotlin
       run: ./gradlew build
     - name: Upload build product
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.0
       with:
         name: my-build-artifact
         path: kotlin/build/libs/*.jar
