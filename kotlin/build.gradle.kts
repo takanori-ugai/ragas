@@ -47,9 +47,9 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-open-ai:1.22.0")
     implementation("dev.langchain4j:langchain4j-azure-open-ai:1.22.0")
     implementation("dev.langchain4j:langchain4j-ollama:1.22.0")
-    implementation("dev.langchain4j:langchain4j-google-genai:1.22.0-beta32")
+    implementation("dev.langchain4j:langchain4j-google-genai:1.23.0-beta33")
     implementation("dev.langchain4j:langchain4j-google-ai-gemini:1.22.0")
-    implementation("dev.langchain4j:langchain4j-community-neo4j:1.22.0-beta32")
+    implementation("dev.langchain4j:langchain4j-community-neo4j:1.23.0-beta33")
     implementation("com.langchain.smith:langsmith-java:0.1.0-beta.28")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.21")
