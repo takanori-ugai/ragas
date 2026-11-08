@@ -44,7 +44,7 @@ dependencies {
 
     // LangChain4j dependencies
     implementation("dev.langchain4j:langchain4j:1.23.0")
-    implementation("dev.langchain4j:langchain4j-open-ai:1.22.0")
+    implementation("dev.langchain4j:langchain4j-open-ai:1.23.0")
     implementation("dev.langchain4j:langchain4j-azure-open-ai:1.23.0")
     implementation("dev.langchain4j:langchain4j-ollama:1.23.0")
     implementation("dev.langchain4j:langchain4j-google-genai:1.23.0-beta33")
